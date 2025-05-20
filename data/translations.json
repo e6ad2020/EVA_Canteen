@@ -1,0 +1,958 @@
+{
+  "welcome_title": {
+    "en": "Welcome to<br>EVA Canteen",
+    "ar": "أهلاً بكم في<br>كانتين إيفا"
+  },
+  "canteen_name": {
+    "en": "EVA Canteen",
+    "ar": "كانتين إيفا"
+  },
+  "item_name_coffee": {
+    "en": "Coffee",
+    "ar": "قهوة"
+  },
+  "item_name_pizza": {
+    "en": "Pizza",
+    "ar": "بيتزا"
+  },
+  "item_name_cookies": {
+    "en": "Cookies",
+    "ar": "كوكيز"
+  },
+  "item_name_fries": {
+    "en": "French fries",
+    "ar": "بطاطس مقلية"
+  },
+  "item_name_burger": {
+    "en": "Burger",
+    "ar": "برجر"
+  },
+  "item_name_soda": {
+    "en": "Soda",
+    "ar": "صودا"
+  },
+  "item_name_salad": {
+    "en": "Salad",
+    "ar": "سلطة"
+  },
+  "item_name_cake": {
+    "en": "Cake Slice",
+    "ar": "شريحة كيك"
+  },
+  "item_name_croissant": {
+    "en": "Croissant",
+    "ar": "كرواسون"
+  },
+  "item_name_pasta": {
+    "en": "Pasta Aglio e Olio",
+    "ar": "باستا أليو إي أوليو"
+  },
+  "item_name_chips": {
+    "en": "Potato Chips",
+    "ar": "رقائق البطاطس"
+  },
+  "item_name_juice": {
+    "en": "Orange Juice",
+    "ar": "عصير برتقال"
+  },
+  "item_name_sandwich": {
+    "en": "Club Sandwich",
+    "ar": "كلوب ساندويتش"
+  },
+  "item_name_muffin": {
+    "en": "Muffin",
+    "ar": "مافن"
+  },
+  "item_name_onionrings": {
+    "en": "Onion Rings",
+    "ar": "حلقات بصل"
+  },
+  "item_name_soup": {
+    "en": "Soup of the Day",
+    "ar": "شوربة اليوم"
+  },
+  "item_desc_coffee": {
+    "en": "A rich and aromatic blend, perfect to kickstart your day or enjoy a relaxing break.",
+    "ar": "مزيج غني وعطري، مثالي لبدء يومك أو الاستمتاع باستراحة مريحة."
+  },
+  "item_desc_pizza": {
+    "en": "Classic cheese pizza with a tangy tomato sauce and a crispy crust. Always a favorite!",
+    "ar": "بيتزا جبنة كلاسيكية بصلصة طماطم منعشة وقشرة مقرمشة. الخيار المفضل دائماً!"
+  },
+  "sort_sweet": {
+    "en": "Sweet",
+    "ar": "حلويات"
+  },
+  "sort_lunch": {
+    "en": "Lunch",
+    "ar": "غداء"
+  },
+  "sort_snacks": {
+    "en": "Snacks",
+    "ar": "خفيف"
+  },
+  "bundle_discount_applied": {
+    "en": "Bundle Discount",
+    "ar": "خصم الحزمة"
+  },
+  "currency_symbol": {
+    "en": "L.E",
+    "ar": "ج.م"
+  },
+  "canteen_closed_login_alert": {
+    "en": "Sorry, the canteen is currently closed. Please try again later.",
+    "ar": "عذراً، الكانتين مغلق حالياً. يرجى المحاولة مرة أخرى لاحقاً."
+  },
+  "canteen_closed_signup_alert": {
+    "en": "Sorry, the canteen is currently closed. Account registration is unavailable.",
+    "ar": "عذراً، الكانتين مغلق حالياً. تسجيل الحسابات غير متاح."
+  },
+  "error_title": {
+    "en": "Error",
+    "ar": "خطأ"
+  },
+  "canteen_closed_indicator": {
+    "en": "Canteen is currently CLOSED",
+    "ar": "الكانتين مغلق حالياً"
+  },
+  "canteen_status_title": {
+    "en": "Canteen Status",
+    "ar": "حالة الكانتين"
+  },
+  "canteen_status_open": {
+    "en": "Open",
+    "ar": "مفتوح"
+  },
+  "canteen_status_closed": {
+    "en": "Closed",
+    "ar": "مغلق"
+  },
+  "canteen_status_hint": {
+    "en": "Toggle to open or close the canteen for regular users.",
+    "ar": "بدّل لفتح أو إغلاق الكانتين للمستخدمين العاديين."
+  },
+  "info_title": {
+    "en": "Information",
+    "ar": "معلومات"
+  },
+  "force_logout_canteen_closed": {
+    "en": "The canteen has been closed by management. You have been logged out.",
+    "ar": "تم إغلاق الكانتين من قبل الإدارة. تم تسجيل خروجك."
+  },
+  "product_out_of_stock_alert": {
+    "en": "Sorry, '{name}' is out of stock!",
+    "ar": "عذراً، '{name}' نفذ من المخزون!"
+  },
+  "item_out_of_stock_alert": {
+    "en": "Sorry, {itemName} is out of stock!",
+    "ar": "عذراً، {itemName} نفذ من المخزون!"
+  },
+  "error_product_not_found": {
+    "en": "Error: Product data could not be found. Please remove it from your cart.",
+    "ar": "خطأ: تعذر العثور على بيانات المنتج. يرجى إزالته من سلتك."
+  },
+  "sign_in_label": {
+    "en": "sign in",
+    "ar": "تسجيل الدخول"
+  },
+  "email_placeholder": {
+    "en": "email.....",
+    "ar": "البريد الإلكتروني....."
+  },
+  "password_placeholder": {
+    "en": "password*****",
+    "ar": "كلمة المرور*****"
+  },
+  "password_again_placeholder": {
+    "en": "password again*****",
+    "ar": "كلمة المرور مرة أخرى*****"
+  },
+  "submit_button": {
+    "en": "submit",
+    "ar": "تأكيد"
+  },
+  "register_button": {
+    "en": "Register",
+    "ar": "تسجيل"
+  },
+  "login_button": {
+    "en": "Login",
+    "ar": "دخول"
+  },
+  "new_account_prompt": {
+    "en": "new account?",
+    "ar": "حساب جديد؟"
+  },
+  "pick_photo_label": {
+    "en": "pick photo",
+    "ar": "اختر صورة"
+  },
+  "back_to_login_button": {
+    "en": "Back to Login",
+    "ar": "العودة للدخول"
+  },
+  "back_to_welcome_button": {
+    "en": "Back to Welcome",
+    "ar": "العودة للترحيب"
+  },
+  "back_button": {
+    "en": "Back",
+    "ar": "رجوع"
+  },
+  "logout_button": {
+    "en": "Log out",
+    "ar": "تسجيل الخروج"
+  },
+  "cart_label": {
+    "en": "Cart",
+    "ar": "السلة"
+  },
+  "menu_label": {
+    "en": "Menu",
+    "ar": "القائمة"
+  },
+  "sort_label": {
+    "en": "Sort",
+    "ar": "فرز"
+  },
+  "total_label": {
+    "en": "Total",
+    "ar": "الإجمالي"
+  },
+  "payment_method_label": {
+    "en": "Payment Method",
+    "ar": "طريقة الدفع"
+  },
+  "payment_cash": {
+    "en": "Cash",
+    "ar": "نقداً"
+  },
+  "payment_card": {
+    "en": "Card",
+    "ar": "بطاقة"
+  },
+  "add_to_cart_button": {
+    "en": "Add to Cart",
+    "ar": "أضف إلى السلة"
+  },
+  "added_to_cart_button": {
+    "en": "Added!",
+    "ar": "تمت الإضافة!"
+  },
+  "item_details_title": {
+    "en": "Item Details",
+    "ar": "تفاصيل المنتج"
+  },
+  "item_name_placeholder": {
+    "en": "Item Name",
+    "ar": "اسم المنتج"
+  },
+  "item_description_placeholder": {
+    "en": "Item description loading...",
+    "ar": "جاري تحميل وصف المنتج..."
+  },
+  "cart_empty_message": {
+    "en": "Your cart is empty.",
+    "ar": "سلتك فارغة."
+  },
+  "checkout_success_alert": {
+    "en": "Payment Method: {method}\nOrder ID: {id}\n\nYour order is placed (simulation).",
+    "ar": "الإجمالي: {total}\nطريقة الدفع: {method}\nرقم الطلب: {id}\n\nجاري إعداد طلبك (محاكاة)."
+  },
+  "checkout_success_title": {
+    "en": "Order Confirmed!",
+    "ar": "تم تأكيد الطلب!"
+  },
+  "ok_button": {
+    "en": "OK",
+    "ar": "حسناً"
+  },
+  "cart_is_empty_alert": {
+    "en": "Your cart is empty!",
+    "ar": "سلتك فارغة!"
+  },
+  "quantity_prefix": {
+    "en": "x",
+    "ar": "×"
+  },
+  "login_error_invalid": {
+    "en": "Invalid credentials.",
+    "ar": "بيانات الاعتماد غير صالحة."
+  },
+  "login_error_fields": {
+    "en": "Please enter email and password.",
+    "ar": "الرجاء إدخال البريد الإلكتروني وكلمة المرور."
+  },
+  "register_error_match": {
+    "en": "Passwords don't match or field empty.",
+    "ar": "كلمات المرور غير متطابقة أو الحقل فارغ."
+  },
+  "register_error_fields": {
+    "en": "Please fill all fields.",
+    "ar": "الرجاء ملء جميع الحقول."
+  },
+  "register_error_photo": {
+    "en": "Please select a profile picture.",
+    "ar": "الرجاء اختيار صورة شخصية."
+  },
+  "management_button": {
+    "en": "Management",
+    "ar": "الإدارة"
+  },
+  "admin_login_title": {
+    "en": "Management<br>Login",
+    "ar": "تسجيل دخول<br>الإدارة"
+  },
+  "admin_enter_creds": {
+    "en": "Enter Credentials",
+    "ar": "أدخل بيانات الاعتماد"
+  },
+  "admin_email_placeholder": {
+    "en": "admin email.....",
+    "ar": "بريد المدير....."
+  },
+  "admin_password_placeholder": {
+    "en": "admin password*****",
+    "ar": "كلمة مرور المدير*****"
+  },
+  "admin_login_error": {
+    "en": "Invalid admin credentials.",
+    "ar": "بيانات اعتماد المدير غير صالحة."
+  },
+  "exit_button": {
+    "en": "Exit",
+    "ar": "خروج"
+  },
+  "order_management_title": {
+    "en": "Order Management",
+    "ar": "إدارة الطلبات"
+  },
+  "search_order_id_placeholder": {
+    "en": "Search by Order ID...",
+    "ar": "ابحث برقم الطلب..."
+  },
+  "search_button": {
+    "en": "Search",
+    "ar": "بحث"
+  },
+  "order_log_title": {
+    "en": "Order Log",
+    "ar": "سجل الطلبات"
+  },
+  "no_orders_found": {
+    "en": "No orders found.",
+    "ar": "لم يتم العثور على طلبات."
+  },
+  "order_preview_title": {
+    "en": "Order Preview",
+    "ar": "معاينة الطلب"
+  },
+  "order_preview_placeholder": {
+    "en": "Select an order from the log to view details.",
+    "ar": "اختر طلبًا من السجل لعرض التفاصيل."
+  },
+  "order_id_label": {
+    "en": "Order ID",
+    "ar": "رقم الطلب"
+  },
+  "order_placed_label": {
+    "en": "Placed",
+    "ar": "تاريخ الطلب"
+  },
+  "order_status_label": {
+    "en": "Status",
+    "ar": "الحالة"
+  },
+  "order_payment_label": {
+    "en": "Payment",
+    "ar": "الدفع"
+  },
+  "order_total_label": {
+    "en": "Total",
+    "ar": "الإجمالي"
+  },
+  "order_items_label": {
+    "en": "Items",
+    "ar": "المنتجات"
+  },
+  "order_status_pending": {
+    "en": "pending",
+    "ar": "قيد الانتظار"
+  },
+  "order_status_preparing": {
+    "en": "preparing",
+    "ar": "قيد التجهيز"
+  },
+  "order_status_delivered": {
+    "en": "delivered",
+    "ar": "تم التوصيل"
+  },
+  "subtotal_label": {
+    "en": "Subtotal",
+    "ar": "المجموع قبل الخصم"
+  },
+  "settings_title": {
+    "en": "Settings",
+    "ar": "الإعدادات"
+  },
+  "settings_button_label": {
+    "en": "Settings",
+    "ar": "الإعدادات"
+  },
+  "language_setting_label": {
+    "en": "Language",
+    "ar": "اللغة"
+  },
+  "theme_setting_label": {
+    "en": "App Theme",
+    "ar": "سمة التطبيق"
+  },
+  "theme_blue": {
+    "en": "Blue (Default)",
+    "ar": "الأزرق (الافتراضي)"
+  },
+  "theme_green": {
+    "en": "Green",
+    "ar": "الأخضر"
+  },
+  "theme_purple": {
+    "en": "Purple",
+    "ar": "البنفسجي"
+  },
+  "theme_light_blue": {
+    "en": "Light Blue",
+    "ar": "أزرق فاتح"
+  },
+  "theme_mono_light": {
+    "en": "Monochrome Light",
+    "ar": "أبيض وأسود فاتح"
+  },
+  "theme_dark_grey": {
+    "en": "Dark Grey",
+    "ar": "رمادي داكن"
+  },
+  "theme_night": {
+    "en": "Night Mode",
+    "ar": "الوضع الليلي"
+  },
+  "theme_mono_dark": {
+    "en": "Monochrome Dark",
+    "ar": "أبيض وأسود داكن"
+  },
+  "theme_yellow": {
+    "en": "Yellow",
+    "ar": "أصفر"
+  },
+  "theme_orange": {
+    "en": "Orange",
+    "ar": "برتقالي"
+  },
+  "item_desc_cookies": {
+    "en": "Deliciously chewy chocolate chip cookies, baked fresh. Irresistible!",
+    "ar": "كوكيز برقائق الشوكولاتة لذيذة ومخبوزة طازجة. لا تقاوم!"
+  },
+  "item_desc_fries": {
+    "en": "Crispy golden french fries, lightly salted. The perfect side or snack.",
+    "ar": "بطاطس مقلية ذهبية مقرمشة، مملحة قليلاً. الطبق الجانبي أو الوجبة الخفيفة المثالية."
+  },
+  "item_desc_burger": {
+    "en": "Juicy beef patty on a toasted bun with lettuce, tomato, and our special sauce.",
+    "ar": "قطعة لحم بقري طرية على خبز محمص مع خس وطماطم وصلصتنا الخاصة."
+  },
+  "item_desc_soda": {
+    "en": "A cold and refreshing fizzy drink to quench your thirst.",
+    "ar": "مشروب غازي بارد ومنعش لإرو اء عطشك."
+  },
+  "item_desc_salad": {
+    "en": "A fresh mix of greens, vegetables, and a light vinaigrette dressing. Healthy and tasty!",
+    "ar": "مزيج طازج من الخضروات الورقية والخضروات وصلصة الخل الخفيفة. صحي ولذيذ!"
+  },
+  "item_desc_cake": {
+    "en": "A moist and decadent slice of chocolate cake with creamy frosting. Pure indulgence!",
+    "ar": "شريحة كيك شوكولاتة رطبة وغنية مع كريمة غنية. متعة خالصة!"
+  },
+  "item_desc_croissant": {
+    "en": "A buttery, flaky, viennoiserie pastry inspired by the shape of the Austrian kipferl.",
+    "ar": "معجنات فيينوازري زبدية وهشة مستوحاة من شكل الكيفرل النمساوي."
+  },
+  "item_desc_pasta": {
+    "en": "Simple yet delicious Italian pasta dish with garlic, olive oil, and red pepper flakes.",
+    "ar": "طبق باستا إيطالي بسيط ولكنه لذيذ بالثوم وزيت الزيتون ورقائق الفلفل الأحمر."
+  },
+  "item_desc_chips": {
+    "en": "Thinly sliced potatoes, deep-fried or baked until crispy. The ultimate salty snack!",
+    "ar": "شرائح بطاطس رفيعة، مقلية أو مخبوزة حتى تصبح مقرمشة. الوجبة الخفيفة المالحة المطلقة!"
+  },
+  "item_desc_juice": {
+    "en": "Freshly squeezed orange juice, packed with Vitamin C and natural sweetness.",
+    "ar": "عصير برتقال طازج، غني بفيتامين سي وحلاوة طبيعية."
+  },
+  "item_desc_sandwich": {
+    "en": "Classic club sandwich with layers of turkey, bacon, lettuce, tomato, and mayo on toasted bread.",
+    "ar": "كلوب ساندويتش كلاسيكي بطبقات من الديك الرومي، لحم مقدد، خس، طماطم، ومايونيز على خبز محمص."
+  },
+  "item_desc_muffin": {
+    "en": "A soft and moist muffin, perfect for breakfast or a sweet treat. Ask for today's flavor!",
+    "ar": "مافن طري ورطب، مثالي للإفطار أو كحلوى. اسأل عن نكهة اليوم!"
+  },
+  "item_desc_onionrings": {
+    "en": "Thick-cut onion rings coated in a crispy batter and fried to golden perfection.",
+    "ar": "حلقات بصل سميكة مغطاة بعجينة مقرمشة ومقلية حتى الكمال الذهبي."
+  },
+  "item_desc_soup": {
+    "en": "Warm and comforting soup made fresh daily. Please ask your server for today's selection.",
+    "ar": "شوربة دافئة ومريحة تحضر طازجة يوميًا. يرجى سؤال النادل عن اختيار اليوم."
+  },
+  "item_desc_default": {
+    "en": "A tasty item from our menu.",
+    "ar": "منتج لذيذ من قائمتنا."
+  },
+  "discover_button": {
+    "en": "Discover",
+    "ar": "اكتشف"
+  },
+  "discovery_mode_title": {
+    "en": "Discovery Mode",
+    "ar": "وضع الاستكشاف"
+  },
+  "discovery_mode_enable_label": {
+    "en": "Enable Discovery Mode",
+    "ar": "تفعيل وضع الاستكشاف"
+  },
+  "discovery_bundles_title": {
+    "en": "Special Bundles",
+    "ar": "عروض خاصة"
+  },
+  "discovery_suggestions_title": {
+    "en": "Meal Ideas",
+    "ar": "أفكار وجبات"
+  },
+  "discovery_all_items_title": {
+    "en": "Explore the Menu",
+    "ar": "استكشف القائمة"
+  },
+  "suggestion_burger_combo_name": {
+    "en": "Classic Combo",
+    "ar": "كومبو كلاسيك"
+  },
+  "suggestion_burger_combo_desc": {
+    "en": "The perfect trio: Burger, Fries, and Soda.",
+    "ar": "الثلاثي المثالي: برجر، بطاطس، وصودا."
+  },
+  "suggestion_coffee_break_name": {
+    "en": "Coffee Break",
+    "ar": "استراحة قهوة"
+  },
+  "suggestion_coffee_break_desc": {
+    "en": "Relax with a warm Coffee and a soft Muffin.",
+    "ar": "استرخِ مع قهوة دافئة ومافن طري."
+  },
+  "suggestion_lunch_light_name": {
+    "en": "Light Lunch",
+    "ar": "غداء خفيف"
+  },
+  "suggestion_lunch_light_desc": {
+    "en": "A healthy and refreshing Salad paired with Juice.",
+    "ar": "سلطة صحية ومنعشة مع عصير."
+  },
+  "bundle_lunch_deal_name": {
+    "en": "Lunch Power Deal",
+    "ar": "عرض الغداء القوي"
+  },
+  "bundle_lunch_deal_desc": {
+    "en": "Grab a Pizza, Salad, and Soda together and save!",
+    "ar": "احصل على بيتزا وسلطة وصودا معًا ووفر!"
+  },
+  "bundle_sweet_treat_name": {
+    "en": "Sweet Treat Bundle",
+    "ar": "حزمة الحلوى اللذيذة"
+  },
+  "bundle_sweet_treat_desc": {
+    "en": "Indulge with Cake, Coffee, and a Croissant at a special price.",
+    "ar": "دلل نفسك بالكيك والقهوة والكرواسون بسعر خاص."
+  },
+  "add_bundle_button": {
+    "en": "Add Bundle",
+    "ar": "أضف الحزمة"
+  },
+  "bundle_added_button": {
+    "en": "Bundle Added!",
+    "ar": "تمت إضافة الحزمة!"
+  },
+  "discount_tag": {
+    "en": "{percent}% OFF",
+    "ar": "خصم {percent}%"
+  },
+  "includes_items": {
+    "en": "Includes:",
+    "ar": "يشمل:"
+  },
+  "original_price": {
+    "en": "Original:",
+    "ar": "الأصلي:"
+  },
+  "bundle_price": {
+    "en": "Bundle Price:",
+    "ar": "سعر الحزمة:"
+  },
+  "add_suggestion_button": {
+    "en": "Add All Items",
+    "ar": "أضف كل المنتجات"
+  },
+  "suggestion_added_button": {
+    "en": "Items Added!",
+    "ar": "تمت إضافة المنتجات!"
+  },
+  "suggestion_total_price": {
+    "en": "Total Price:",
+    "ar": "السعر الإجمالي:"
+  },
+  "discovery_passcode_prompt": {
+    "en": "Enter Discovery Mode Passcode:",
+    "ar": "أدخل رمز مرور وضع الاستكشاف:"
+  },
+  "discovery_passcode_modal_title": {
+    "en": "Enter Passcode",
+    "ar": "أدخل الرمز"
+  },
+  "discovery_passcode_incorrect_message": {
+    "en": "Incorrect passcode entered.",
+    "ar": "تم إدخال رمز مرور غير صحيح."
+  },
+  "cancel_button": {
+    "en": "Cancel",
+    "ar": "إلغاء"
+  },
+  "manage_products_button": {
+    "en": "Manage Products",
+    "ar": "إدارة المنتجات"
+  },
+  "product_management_title": {
+    "en": "Product Management",
+    "ar": "إدارة المنتجات"
+  },
+  "back_to_orders_button": {
+    "en": "Back to Orders",
+    "ar": "العودة للطلبات"
+  },
+  "save_button": {
+    "en": "Save",
+    "ar": "حفظ"
+  },
+  "saved_button": {
+    "en": "Saved!",
+    "ar": "تم الحفظ!"
+  },
+  "product_quantity_header": {
+    "en": "Qty",
+    "ar": "الكمية"
+  },
+  "manage_categories_title": {
+    "en": "Manage Categories",
+    "ar": "إدارة الفئات"
+  },
+  "add_category_title": {
+    "en": "Add New Category",
+    "ar": "إضافة فئة جديدة"
+  },
+  "category_name_en_label": {
+    "en": "Category Name (English):",
+    "ar": "اسم الفئة (الإنجليزية):"
+  },
+  "category_name_ar_label": {
+    "en": "Category Name (Arabic):",
+    "ar": "اسم الفئة (العربية):"
+  },
+  "category_name_placeholder": {
+    "en": "e.g., Breakfast",
+    "ar": "مثال: فطور"
+  },
+  "add_category_button": {
+    "en": "Add Category",
+    "ar": "إضافة فئة"
+  },
+  "add_category_error_generic": {
+    "en": "Please enter names in both languages.",
+    "ar": "الرجاء إدخال الأسماء باللغتين."
+  },
+  "add_category_error_exists": {
+    "en": "A category with this name or key might already exist.",
+    "ar": "قد توجد فئة بهذا الاسم أو المفتاح بالفعل."
+  },
+  "add_category_success": {
+    "en": "Category '{name}' added successfully!",
+    "ar": "تمت إضافة الفئة '{name}' بنجاح!"
+  },
+  "edit_category_title": {
+    "en": "Edit Category",
+    "ar": "تعديل الفئة"
+  },
+  "edit_category_error_generic": {
+    "en": "Please enter names in both languages.",
+    "ar": "الرجاء إدخال الأسماء باللغتين."
+  },
+  "edit_category_success": {
+    "en": "Category '{name}' updated successfully!",
+    "ar": "تم تحديث الفئة '{name}' بنجاح!"
+  },
+  "delete_button": {
+    "en": "Delete",
+    "ar": "حذف"
+  },
+  "delete_category_error_not_empty": {
+    "en": "Cannot delete category '{name}' because it contains products. Please move or delete the products first.",
+    "ar": "لا يمكن حذف الفئة '{name}' لأنها تحتوي على منتجات. يرجى نقل المنتجات أو حذفها أولاً."
+  },
+  "delete_category_success": {
+    "en": "Category '{name}' deleted successfully.",
+    "ar": "تم حذف الفئة '{name}' بنجاح."
+  },
+  "add_new_product_title": {
+    "en": "Add New Product",
+    "ar": "إضافة منتج جديد"
+  },
+  "product_name_en_label": {
+    "en": "Product Name (English):",
+    "ar": "اسم المنتج (الإنجليزية):"
+  },
+  "product_name_ar_label": {
+    "en": "Product Name (Arabic):",
+    "ar": "اسم المنتج (العربية):"
+  },
+  "product_desc_en_label": {
+    "en": "Description (English):",
+    "ar": "الوصف (الإنجليزية):"
+  },
+  "product_desc_ar_label": {
+    "en": "Description (Arabic):",
+    "ar": "الوصف (العربية):"
+  },
+  "product_name_en_placeholder": {
+    "en": "e.g., Special Sandwich",
+    "ar": "مثال: Special Sandwich"
+  },
+  "product_name_ar_placeholder": {
+    "en": "e.g., ساندويتش خاص",
+    "ar": "مثال: ساندويتش خاص"
+  },
+  "product_desc_en_placeholder": {
+    "en": "e.g., Chicken, lettuce, tomato...",
+    "ar": "مثال: Chicken, lettuce, tomato..."
+  },
+  "product_desc_ar_placeholder": {
+    "en": "e.g., دجاج، خس، طماطم...",
+    "ar": "مثال: دجاج، خس، طماطم..."
+  },
+  "product_price_label": {
+    "en": "Price ({currency}):",
+    "ar": "السعر ({currency}):"
+  },
+  "product_price_placeholder": {
+    "en": "e.g., 55.50",
+    "ar": "مثال: 55.50"
+  },
+  "product_quantity_label": {
+    "en": "Quantity:",
+    "ar": "الكمية:"
+  },
+  "product_quantity_placeholder": {
+    "en": "e.g., 50 (999 for unlimited)",
+    "ar": "مثال: 50 (999 للمتاح دائماً)"
+  },
+  "product_image_label": {
+    "en": "Image URL:",
+    "ar": "رابط الصورة:"
+  },
+  "product_image_placeholder": {
+    "en": "https://...",
+    "ar": "https://..."
+  },
+  "product_category_label": {
+    "en": "Category:",
+    "ar": "الفئة:"
+  },
+  "add_product_button": {
+    "en": "Add Product",
+    "ar": "إضافة المنتج"
+  },
+  "add_product_error_generic": {
+    "en": "Please fill all fields correctly.",
+    "ar": "الرجاء ملء جميع الحقول بشكل صحيح."
+  },
+  "add_product_error_en_ar_generic": {
+    "en": "Please fill all fields, including English and Arabic names/descriptions.",
+    "ar": "الرجاء ملء جميع الحقول، بما في ذلك الأسماء والأوصاف باللغتين الإنجليزية والعربية."
+  },
+  "add_product_error_price": {
+    "en": "Invalid price.",
+    "ar": "السعر غير صالح."
+  },
+  "add_product_error_quantity": {
+    "en": "Invalid quantity.",
+    "ar": "الكمية غير صالحة."
+  },
+  "add_product_error_image": {
+    "en": "Invalid image URL.",
+    "ar": "رابط الصورة غير صالح."
+  },
+  "add_product_success": {
+    "en": "Product '{name}' added successfully!",
+    "ar": "تمت إضافة المنتج '{name}' بنجاح!"
+  },
+  "edit_button": {
+    "en": "Edit",
+    "ar": "تعديل"
+  },
+  "remove_button": {
+    "en": "Remove",
+    "ar": "إزالة"
+  },
+  "remove_product_success": {
+    "en": "Product '{name}' removed successfully.",
+    "ar": "تمت إزالة المنتج '{name}' بنجاح."
+  },
+  "edit_product_title": {
+    "en": "Edit Product",
+    "ar": "تعديل المنتج"
+  },
+  "save_changes_button": {
+    "en": "Save Changes",
+    "ar": "حفظ التغييرات"
+  },
+  "edit_product_error_generic": {
+    "en": "Please fill all fields correctly.",
+    "ar": "الرجاء ملء جميع الحقول بشكل صحيح."
+  },
+  "edit_product_error_price": {
+    "en": "Invalid price.",
+    "ar": "السعر غير صالح."
+  },
+  "edit_product_error_quantity": {
+    "en": "Invalid quantity.",
+    "ar": "الكمية غير صالحة."
+  },
+  "edit_product_error_image": {
+    "en": "Invalid image URL.",
+    "ar": "رابط الصورة غير صالح."
+  },
+  "edit_product_success": {
+    "en": "Product '{name}' updated successfully!",
+    "ar": "تم تحديث المنتج '{name}' بنجاح!"
+  },
+  "drag_categories_hint": {
+    "en": "Drag and drop to reorder categories.",
+    "ar": "اسحب وأفلت لإعادة ترتيب الفئات."
+  },
+  "drag_products_hint": {
+    "en": "Drag and drop to reorder products within this category.",
+    "ar": "اسحب وأفلت لإعادة ترتيب المنتجات داخل هذه الفئة."
+  },
+  "back_to_categories_button": {
+    "en": "Back to Categories",
+    "ar": "العودة للفئات"
+  },
+  "products_label": {
+    "en": "Products",
+    "ar": "المنتجات"
+  },
+  "drag_to_reorder": {
+    "en": "Drag to reorder",
+    "ar": "اسحب للإعادة الترتيب"
+  },
+  "no_products_in_category": {
+    "en": "No products in this category.",
+    "ar": "لا توجد منتجات في هذه الفئة."
+  },
+  "error_loading_products": {
+    "en": "Error loading products.",
+    "ar": "خطأ في تحميل المنتجات."
+  },
+  "no_categories_found": {
+    "en": "No categories available.",
+    "ar": "لا توجد فئات متاحة."
+  },
+  "confirm_action_title": {
+    "en": "Confirm Action",
+    "ar": "تأكيد الإجراء"
+  },
+  "confirm_button": {
+    "en": "Confirm",
+    "ar": "تأكيد"
+  },
+  "delete_confirm_button": {
+    "en": "Delete",
+    "ar": "حذف"
+  },
+  "confirm_delete_category_message": {
+    "en": "Are you sure you want to delete the category '{name}'? This action cannot be undone.",
+    "ar": "هل أنت متأكد من رغبتك في حذف الفئة '{name}'؟ لا يمكن التراجع عن هذا الإجراء."
+  },
+  "confirm_remove_product_message": {
+    "en": "Are you sure you want to remove the product '{name}'? This action cannot be undone.",
+    "ar": "هل أنت متأكد من رغبتك في إزالة المنتج '{name}'؟ لا يمكن التراجع عن هذا الإجراء."
+  },
+  "config_management_title": {
+    "en": "Configuration Management",
+    "ar": "إدارة الإعدادات"
+  },
+  "export_config_button": {
+    "en": "Export Config",
+    "ar": "تصدير الإعدادات"
+  },
+  "import_config_button": {
+    "en": "Import Config",
+    "ar": "استيراد الإعدادات"
+  },
+  "import_config_confirm_message": {
+    "en": "Are you sure you want to import a configuration?\n\nThis will overwrite ALL existing app data (orders, products, categories, and settings). This action cannot be undone.",
+    "ar": "هل أنت متأكد من رغبتك في استيراد الإعدادات؟\n\nسيؤدي هذا إلى الكتابة فوق جميع بيانات التطبيق الموجودة (الطلبات، المنتجات، الفئات، والإعدادات). لا يمكن التراجع عن هذا الإجراء."
+  },
+  "import_config_success_message": {
+    "en": "Configuration imported successfully!",
+    "ar": "تم استيراد الإعدادات بنجاح!"
+  },
+  "import_config_error_generic": {
+    "en": "Import failed: Invalid file or format.",
+    "ar": "فشل الاستيراد: ملف أو تنسيق غير صالح."
+  },
+  "import_config_error_json_parse": {
+    "en": "Import failed: Could not parse JSON file.",
+    "ar": "فشل الاستيراد: تعذر تحليل ملف JSON."
+  },
+  "import_config_error_structure": {
+    "en": "Import failed: Invalid configuration structure.",
+    "ar": "فشل الاستيراد: هيكل الإعدادات غير صالح."
+  },
+  "checkout_error_connection": {
+    "en": "Connection Error: Order saved locally only.",
+    "ar": "خطأ في الاتصال: تم حفظ الطلب محليًا فقط."
+  },
+  "item_name_prod": {
+    "en": "Product",
+    "ar": "منتج"
+  },
+  "checkout_success_id": {
+    "en": "Order ID:",
+    "ar": "رقم الطلب:"
+  },
+  "checkout_success_total": {
+    "en": "Total:",
+    "ar": "الإجمالي:"
+  },
+  "checkout_success_method": {
+    "en": "Payment Method:",
+    "ar": "طريقة الدفع:"
+  },
+  "checkout_error_empty": {
+    "en": "Your cart is empty!",
+    "ar": "سلتك فارغة!"
+  },
+  "item_name_prod-1745308960876-1j187s": {
+    "en": "tt",
+    "ar": "اا"
+  },
+  "item_desc_prod-1745308960876-1j187s": {
+    "en": "kk",
+    "ar": "نن"
+  }
+}

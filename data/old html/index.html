@@ -1,0 +1,499 @@
+
+<!DOCTYPE html>
+<html lang="en"> <!-- Default language set here -->
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>EVA Canteen</title> <!-- Updated Title -->
+    <!-- Font Awesome -->
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css">
+    <!-- Google Fonts -->
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Nunito:wght@400;600;700&family=Cairo:wght@400;600;700&display=swap" rel="stylesheet">
+
+    <!-- Link to your external CSS file -->
+    <link rel="stylesheet" href="style.css">
+
+</head>
+<body data-theme="blue"> <!-- Default theme set here -->
+
+    <!-- MOVED Fixed Buttons Outside App Container -->
+    <button id="toggle-fullscreen-btn" class="fixed-button" title="Enter Full Screen"><i class="fas fa-expand"></i></button>
+    <button id="settings-btn" class="fixed-button" title="Settings"><i class="fas fa-cog"></i></button>
+
+    <div class="app-container">
+        <!-- Screen 1: Login -->
+        <div class="screen" id="screen-1">
+             <div class="screen-content">
+                 <h2 class="screen-title" data-lang-key="welcome_title">Welcome to<br>EVA Canteen</h2>
+                 <div class="form-box">
+                     <h3 data-lang-key="sign_in_label">sign in</h3>
+                     <input type="email" id="login-email" data-lang-placeholder-key="email_placeholder" placeholder="email.....">
+                     <input type="password" id="login-password" data-lang-placeholder-key="password_placeholder" placeholder="password*****">
+                     <p id="login-error" class="error-message" data-lang-key="login_error_invalid">Invalid credentials (use any)</p>
+                 </div>
+                 <button class="button submit-button" id="login-submit" data-lang-key="submit_button">submit</button>
+                 <div class="switch-account">
+                     <p data-lang-key="new_account_prompt">new account?</p>
+                     <button class="button rect-button register-button" data-target="screen-2" data-lang-key="register_button">Register</button>
+                 </div>
+                 <button class="button small-button" id="goto-admin-login-button" style="margin-top: 25px; background-color: #ffc107; width: auto;">
+                     <i class="fas fa-cog"></i> <span data-lang-key="management_button">Management</span>
+                 </button>
+             </div>
+        </div>
+
+        <!-- Screen 2: Register -->
+        <div class="screen" id="screen-2">
+             <div class="screen-content">
+                 <h2 class="screen-title" data-lang-key="welcome_title">Welcome to<br>EVA Canteen</h2>
+                 <div class="form-box">
+                     <h3 data-lang-key="register_button">Register</h3>
+                     <input type="email" id="register-email" data-lang-placeholder-key="email_placeholder" placeholder="email.....">
+                     <input type="password" id="register-password" data-lang-placeholder-key="password_placeholder" placeholder="password*****">
+                     <input type="password" id="register-password-confirm" data-lang-placeholder-key="password_again_placeholder" placeholder="password again*****">
+                     <p id="register-error" class="error-message" data-lang-key="register_error_match">Passwords don't match or field empty.</p>
+                     <p class="pick-photo-label" data-lang-key="pick_photo_label">pick photo</p>
+                     <div class="photo-picker" id="register-photo-picker">
+                         <img src="https://i.postimg.cc/6pkqNQdB/file-000000005f5052309370194ce0d09274-conversation-id-67e85992-b064-8005-abf6-a96aee541aaf-message-i.png" alt="Profile Pic 1" class="profile-pic">
+                         <img src="https://i.postimg.cc/XYGqh5B2/IMG.png" alt="Profile Pic 2" class="profile-pic active">
+                         <img src="https://i.postimg.cc/sXy2v068/file-000000000cb852309a865637b17bf852-conversation-id-67e85992-b064-8005-abf6-a96aee541aaf-message-i.png" alt="Profile Pic 3" class="profile-pic">
+                     </div>
+                 </div>
+                 <button class="button submit-button" id="register-submit" data-lang-key="submit_button">submit</button>
+                 <button class="button back-button" data-target="screen-1">
+                     <i class="fas fa-arrow-left"></i> <span data-lang-key="back_to_login_button">Back to Login</span>
+                 </button>
+             </div>
+        </div>
+
+        <!-- Screen 3: Menu -->
+        <div class="screen" id="screen-3">
+            <div class="screen-content">
+                <div class="header">
+                     <button class="header-button logout-button" id="logout-button">
+                         <span data-lang-key="logout_button">Log out</span> <i class="fas fa-arrow-left"></i>
+                     </button>
+                     <h3 class="screen-title" data-lang-key="canteen_name">EVA Canteen</h3>
+                     <div class="cart-icon-container" data-target="screen-4"> <div class="cart-icon"><i class="fas fa-shopping-cart"></i><span class="cart-badge" id="cart-badge">0</span></div> <span data-lang-key="cart_label">Cart</span> </div>
+                 </div>
+                <div class="sort-options">
+                    <p data-lang-key="sort_label">Sort</p>
+                    <div class="sort-buttons" id="menu-sort-buttons">
+                        <!-- Sort buttons populated by JS based on categories -->
+                    </div>
+                </div>
+                <button class="button small-button" id="discover-button" style="display: none; margin-top: -5px; margin-bottom: 20px;">
+                     <i class="fas fa-compass"></i> <span data-lang-key="discover_button">Discover</span>
+                </button>
+
+                 <div class="menu-grid" id="menu-grid"></div>
+             </div>
+        </div>
+
+        <!-- Screen 4: Cart -->
+        <div class="screen" id="screen-4">
+             <div class="screen-content">
+                 <div class="header">
+                     <button class="header-button" data-target="screen-3">
+                         <span data-lang-key="menu_label">Menu</span> <i class="fas fa-utensils"></i>
+                     </button>
+                     <h3 class="screen-title" data-lang-key="canteen_name">EVA Canteen</h3>
+                     <div class="user-icon-container"> <div class="user-icon"> <img id="user-profile-image-display" src="" alt="User Profile" style="display: none;"> <i id="guest-user-icon" class="fas fa-user" style="display: block;"></i> </div> <span id="user-display-name">@guest</span> </div>
+                 </div>
+                 <h4 data-lang-key="cart_label">Cart</h4>
+                 <div class="cart-items" id="cart-items-container"></div>
+                 <div class="cart-total">
+                     <h4 data-lang-key="total_label">Total</h4>
+                     <div class="total-calculation" id="total-calculation-details"></div>
+                     <div class="payment-method-section">
+                         <p class="payment-label" data-lang-key="payment_method_label">Payment Method</p>
+                         <div class="payment-methods" id="payment-methods">
+                             <button class="sort-button payment-button active" data-method="cash"> <i class="fas fa-money-bill-wave"></i> <span data-lang-key="payment_cash">Cash</span> </button>
+                             <button class="sort-button payment-button" data-method="card"> <i class="fas fa-credit-card"></i> <span data-lang-key="payment_card">Card</span> </button>
+                         </div>
+                     </div>
+                     <span class="final-equals">=</span>
+                     <span class="total-amount-button" id="checkout-button">0 L.E</span>
+                 </div>
+            </div>
+        </div>
+
+        <!-- Screen 6: Admin Login -->
+        <div class="screen" id="screen-6">
+             <div class="screen-content">
+                 <h2 class="screen-title" data-lang-key="admin_login_title">Management<br>Login</h2>
+                 <div class="form-box">
+                     <h3 data-lang-key="admin_enter_creds">Enter Credentials</h3>
+                     <input type="email" id="admin-email" data-lang-placeholder-key="admin_email_placeholder" placeholder="admin email....." value="admin@canteen.app">
+                     <input type="password" id="admin-password" data-lang-placeholder-key="admin_password_placeholder" placeholder="admin password*****" value="admin123">
+                     <p id="admin-login-error" class="error-message" data-lang-key="admin_login_error">Invalid admin credentials.</p>
+                 </div>
+                 <button class="button submit-button" id="admin-login-submit" data-lang-key="login_button">Login</button>
+                 <button class="button back-button" data-target="screen-1">
+                     <i class="fas fa-arrow-left"></i> <span data-lang-key="back_to_welcome_button">Back to Welcome</span>
+                 </button>
+             </div>
+        </div>
+
+        <!-- Screen 5: Order Management -->
+        <div class="screen" id="screen-5">
+            <div class="screen-content management-container">
+                 <div class="header">
+                     <button class="header-button back-to-login-button" id="mgmt-back-to-login">
+                         <span data-lang-key="exit_button">Exit</span> <i class="fas fa-sign-out-alt"></i>
+                     </button>
+                     <h3 class="screen-title" data-lang-key="order_management_title">Order Management</h3>
+                     <div style="width: 80px; flex-shrink: 0;"></div> <!-- Keep Spacer -->
+                 </div>
+                 <div class="search-section">
+                     <input type="text" id="order-search-input" data-lang-placeholder-key="search_order_id_placeholder" placeholder="Search by Order ID...">
+                     <button class="button small-button" id="order-search-button"><i class="fas fa-search"></i> <span data-lang-key="search_button">Search</span></button>
+                 </div>
+
+                 <!-- Button to go to Product Management -->
+                 <button class="button small-button" id="goto-product-mgmt-button" data-target="screen-9" style="margin-top: 15px; background-color: #28a745; width: auto;">
+                     <i class="fas fa-boxes"></i> <span data-lang-key="manage_products_button">Manage Products</span>
+                 </button>
+                 <!-- END Button -->
+
+                 <div class="order-management-layout">
+                     <div class="order-log-section">
+                         <h4 data-lang-key="order_log_title">Order Log</h4>
+                         <div class="order-log-container" id="order-log-container"></div>
+                     </div>
+                     <div class="order-preview-section" id="order-preview-section">
+                         <h4 data-lang-key="order_preview_title">Order Preview</h4>
+                         <div class="order-preview-content" id="order-preview-content"></div>
+                         <div class="order-status-controls" id="order-status-controls"></div>
+                     </div>
+                </div> <!-- END order-management-layout -->
+
+                <!-- START: Config Management Section -->
+                <div class="config-management-section">
+                    <h4 data-lang-key="config_management_title">Configuration Management</h4>
+                    <div class="config-buttons">
+                         <button class="button small-button" id="export-config-button">
+                            <i class="fas fa-download"></i> <span data-lang-key="export_config_button">Export Config</span>
+                         </button>
+                         <input type="file" id="import-config-input" accept=".json" style="display: none;">
+                         <button class="button small-button" id="import-config-button">
+                            <i class="fas fa-upload"></i> <span data-lang-key="import_config_button">Import Config</span>
+                         </button>
+                    </div>
+                    <p id="import-config-error" class="error-message" data-lang-key="import_config_error_generic"></p>
+                </div>
+                <!-- END: Config Management Section -->
+
+            </div> <!-- END screen-content -->
+        </div> <!-- END screen-5 -->
+
+        <!-- Screen 7: Item Preview -->
+        <div class="screen" id="screen-7">
+             <div class="screen-content item-preview-container">
+                 <div class="header">
+                     <button class="header-button back-button" id="item-preview-back-button">
+                         <i class="fas fa-arrow-left"></i> <span data-lang-key="back_button">Back</span>
+                     </button>
+                     <h3 class="screen-title" data-lang-key="item_details_title">Item Details</h3>
+                     <div class="cart-icon-container" data-target="screen-4" style="visibility: visible;">
+                         <div class="cart-icon">
+                             <i class="fas fa-shopping-cart"></i>
+                             <span class="cart-badge" id="cart-badge-preview">0</span>
+                         </div>
+                         <span data-lang-key="cart_label">Cart</span>
+                     </div>
+                 </div>
+                 <img id="preview-item-image" src="https://via.placeholder.com/220x165/eee?text=Loading..." alt="Item Image" class="preview-image">
+                 <h3 id="preview-item-name" class="preview-name" data-lang-key="item_name_placeholder">Item Name</h3>
+                 <p id="preview-item-description" class="preview-description" data-lang-key="item_description_placeholder">Item description loading...</p>
+                 <p id="preview-item-price" class="preview-price">0 L.E</p>
+                 <button class="button add-to-cart-preview-button" id="add-to-cart-preview-button">
+                     <i class="fas fa-cart-plus"></i> <span data-lang-key="add_to_cart_button">Add to Cart</span>
+                 </button>
+            </div>
+        </div>
+
+        <!-- Screen 8: Discovery Mode -->
+        <div class="screen" id="screen-8">
+            <div class="screen-content">
+                <div class="header">
+                    <button class="header-button" data-target="screen-3">
+                        <i class="fas fa-arrow-left"></i> <span data-lang-key="back_button">Back</span>
+                    </button>
+                    <h3 class="screen-title" data-lang-key="discovery_mode_title">Discovery Mode</h3>
+                    <div class="cart-icon-container" data-target="screen-4" style="visibility: visible;">
+                        <div class="cart-icon">
+                            <i class="fas fa-shopping-cart"></i>
+                            <span class="cart-badge" id="cart-badge-discovery">0</span>
+                        </div>
+                        <span data-lang-key="cart_label">Cart</span>
+                    </div>
+                </div>
+                <section class="discovery-section discovery-section-bundles"> <h4 data-lang-key="discovery_bundles_title">Special Bundles</h4> <div class="discovery-offers-scroller" id="discovery-bundles-scroller"></div> </section>
+                <section class="discovery-section discovery-section-ideas"> <h4 data-lang-key="discovery_suggestions_title">Meal Ideas</h4> <div class="discovery-suggestions-grid" id="discovery-suggestions-grid"></div> </section>
+                <section class="discovery-section discovery-section-all-items"> <h4 data-lang-key="discovery_all_items_title">Explore the Menu</h4> <div class="discovery-categories-container" id="discovery-categories-container"></div> </section>
+            </div>
+        </div>
+        <!-- End Screen 8 -->
+
+        <!-- START: Screen 9: Product Management (REVISED STRUCTURE + CATEGORY MGMT) -->
+        <div class="screen" id="screen-9">
+            <div class="screen-content management-container">
+                 <div class="header">
+                     <!-- Back Button: Dynamically changes target -->
+                     <button class="header-button back-button" id="product-mgmt-back-button" data-target="screen-5">
+                         <i class="fas fa-arrow-left"></i> <span data-lang-key="back_to_orders_button">Back to Orders</span>
+                     </button>
+                     <!-- Title: Dynamically changes -->
+                     <h3 class="screen-title" id="product-mgmt-title" data-lang-key="product_management_title">Product Management</h3>
+                     <div style="width: 80px; flex-shrink: 0;"></div> <!-- Spacer -->
+                 </div>
+
+                 <!-- Container for Category List View -->
+                 <div id="category-view-container" class="view-container active">
+                     <h4 data-lang-key="manage_categories_title">Manage Categories</h4>
+                     <p class="drag-hint" data-lang-key="drag_categories_hint">Drag and drop to reorder categories.</p>
+                     <div class="category-list-container scrollable-list" id="category-list-container">
+                         <!-- Draggable Category items will be loaded here by JS -->
+                     </div>
+
+                     <!-- START: Add Category Form -->
+                      <div class="add-category-form" id="add-category-form" style="border-top: var(--border-thickness) dashed var(--border-color); padding-top: 20px; margin-top: 20px;">
+                          <h5 data-lang-key="add_category_title">Add New Category</h5>
+                          <div class="form-box">
+                              <label for="new-category-name-en" data-lang-key="category_name_en_label">Category Name (English):</label>
+                              <input type="text" id="new-category-name-en" data-lang-placeholder-key="category_name_placeholder" placeholder="e.g., Breakfast">
+
+                              <label for="new-category-name-ar" data-lang-key="category_name_ar_label">Category Name (Arabic):</label>
+                              <input type="text" id="new-category-name-ar" data-lang-placeholder-key="category_name_placeholder" placeholder="مثال: فطور">
+
+                              <p id="add-category-error" class="error-message" data-lang-key="add_category_error_generic">Please enter names in both languages.</p>
+                          </div>
+                          <button class="button small-button" id="add-new-category-button">
+                              <i class="fas fa-plus-circle"></i> <span data-lang-key="add_category_button">Add Category</span>
+                          </button>
+                      </div>
+                     <!-- END: Add Category Form -->
+
+                 </div> <!-- END category-view-container -->
+
+                 <!-- Container for Product Grid View (within a category) -->
+                 <div id="product-view-container" class="view-container">
+                     <!-- Category Title will be updated by JS -->
+                     <h4 id="product-view-category-title">Category Products</h4>
+                     <p class="drag-hint" data-lang-key="drag_products_hint">Drag and drop to reorder products within this category.</p>
+                     <!-- Product Grid (User-like display) -->
+                     <div class="product-grid-container scrollable-list" id="product-grid-container">
+                         <!-- Draggable Product items will be loaded here by JS -->
+                     </div>
+
+                     <!-- Add Product Form (Now inside the product view) -->
+                     <div class="add-product-form" id="add-product-form-container" style="border-top: var(--border-thickness) dashed var(--border-color); padding-top: 20px; margin-top: 20px;">
+                         <h5 data-lang-key="add_new_product_title">Add New Product to <span id="add-product-category-name">Category</span></h5>
+                         <div class="form-box">
+                            <!-- START: Modified Product Inputs -->
+                            <label for="new-product-name-en" data-lang-key="product_name_en_label">Product Name (English):</label>
+                            <input type="text" id="new-product-name-en" data-lang-placeholder-key="product_name_en_placeholder" placeholder="e.g., Special Sandwich">
+
+                            <label for="new-product-name-ar" data-lang-key="product_name_ar_label">Product Name (Arabic):</label>
+                            <input type="text" id="new-product-name-ar" data-lang-placeholder-key="product_name_ar_placeholder" placeholder="e.g., ساندويتش خاص">
+
+                            <label for="new-product-desc-en" data-lang-key="product_desc_en_label">Description (English):</label>
+                            <input type="text" id="new-product-desc-en" data-lang-placeholder-key="product_desc_en_placeholder" placeholder="e.g., Chicken, lettuce, tomato...">
+
+                            <label for="new-product-desc-ar" data-lang-key="product_desc_ar_label">Description (Arabic):</label>
+                            <input type="text" id="new-product-desc-ar" data-lang-placeholder-key="product_desc_ar_placeholder" placeholder="e.g., دجاج، خس، طماطم...">
+                            <!-- END: Modified Product Inputs -->
+
+                            <label for="new-product-price" data-lang-key="product_price_label">Price ({currency}):</label>
+                            <input type="number" id="new-product-price" min="0" step="0.01" data-lang-placeholder-key="product_price_placeholder" placeholder="e.g., 55.50">
+
+                            <label for="new-product-quantity" data-lang-key="product_quantity_label">Initial Quantity:</label>
+                            <input type="number" id="new-product-quantity" min="0" step="1" data-lang-placeholder-key="product_quantity_placeholder" placeholder="e.g., 50 (use 999 for unlimited)">
+
+                            <label for="new-product-image" data-lang-key="product_image_label">Image URL:</label>
+                            <input type="text" id="new-product-image" data-lang-placeholder-key="product_image_placeholder" placeholder="https://...">
+
+                            <input type="hidden" id="new-product-category-key"> <!-- Store category key -->
+
+                            <p id="add-product-error" class="error-message" data-lang-key="add_product_error_en_ar_generic">Please fill all fields, including English and Arabic names/descriptions.</p>
+                        </div>
+                         <button class="button small-button" id="add-new-product-button">
+                             <i class="fas fa-plus-circle"></i> <span data-lang-key="add_product_button">Add Product</span>
+                         </button>
+                     </div><!-- END add-product-form-container -->
+                 </div><!-- END product-view-container -->
+
+            </div> <!-- END screen-content -->
+        </div> <!-- END screen-9 -->
+        <!-- END: Screen 9: Product Management -->
+
+
+    </div><!-- end app-container -->
+
+     <!-- Floating Settings Panel -->
+    <div id="settings-panel">
+        <!-- Language Section -->
+        <div class="settings-group" id="language-group">
+            <span class="settings-label" data-lang-key="language_setting_label">Language</span>
+            <div class="settings-current-display" id="current-language-display" tabindex="0" role="button" aria-haspopup="listbox" aria-expanded="false">
+                <span id="current-language-text">English</span>
+                <i class="fas fa-chevron-down"></i>
+            </div>
+            <div class="settings-options-list language-options" id="language-options" role="listbox">
+                <div class="option-item active" data-lang="en" role="option" aria-selected="true"> <span>English</span> <i class="fas fa-check"></i> </div>
+                <div class="option-item" data-lang="ar" role="option" aria-selected="false"> <span>العربية</span> <i class="fas fa-check"></i> </div>
+            </div>
+        </div>
+
+        <!-- Theme Section -->
+        <div class="settings-group" id="theme-group">
+            <span class="settings-label" data-lang-key="theme_setting_label">App Theme</span>
+            <div class="settings-current-display" id="current-theme-display" tabindex="0" role="button" aria-haspopup="listbox" aria-expanded="false">
+                <span class="theme-swatch swatch-blue" id="current-theme-swatch"></span>
+                <span id="current-theme-text">Default Blue</span>
+                <i class="fas fa-chevron-down"></i>
+            </div>
+            <div class="settings-options-list theme-options" id="theme-options" role="listbox">
+                 <div class="option-item active" data-theme="blue" role="option" aria-selected="true"> <span class="theme-swatch swatch-blue"></span> <span data-lang-key="theme_blue">Default Blue</span> <i class="fas fa-check"></i> </div>
+                 <div class="option-item" data-theme="green" role="option" aria-selected="false"> <span class="theme-swatch swatch-green"></span> <span data-lang-key="theme_green">Green</span> <i class="fas fa-check"></i> </div>
+                 <div class="option-item" data-theme="purple" role="option" aria-selected="false"> <span class="theme-swatch swatch-purple"></span> <span data-lang-key="theme_purple">Purple</span> <i class="fas fa-check"></i> </div>
+                 <div class="option-item" data-theme="light-blue" role="option" aria-selected="false"> <span class="theme-swatch swatch-light-blue"></span> <span data-lang-key="theme_light_blue">Light Blue</span> <i class="fas fa-check"></i> </div>
+                 <div class="option-item" data-theme="mono-light" role="option" aria-selected="false"> <span class="theme-swatch swatch-mono-light"></span> <span data-lang-key="theme_mono_light">Monochrome Light</span> <i class="fas fa-check"></i> </div>
+                 <div class="option-item" data-theme="dark-grey" role="option" aria-selected="false"> <span class="theme-swatch swatch-dark-grey"></span> <span data-lang-key="theme_dark_grey">Dark Grey</span> <i class="fas fa-check"></i> </div>
+                 <div class="option-item" data-theme="night" role="option" aria-selected="false"> <span class="theme-swatch swatch-night"></span> <span data-lang-key="theme_night">Night Mode</span> <i class="fas fa-check"></i> </div>
+                 <div class="option-item" data-theme="mono-dark" role="option" aria-selected="false"> <span class="theme-swatch swatch-mono-dark"></span> <span data-lang-key="theme_mono_dark">Monochrome Dark</span> <i class="fas fa-check"></i> </div>
+                 <div class="option-item" data-theme="yellow" role="option" aria-selected="false"> <span class="theme-swatch swatch-yellow"></span> <span data-lang-key="theme_yellow">Yellow</span> <i class="fas fa-check"></i> </div>
+                 <div class="option-item" data-theme="orange" role="option" aria-selected="false"> <span class="theme-swatch swatch-orange"></span> <span data-lang-key="theme_orange">Orange</span> <i class="fas fa-check"></i> </div>
+            </div>
+        </div>
+
+        <!-- Discovery Mode Toggle Section (with Passcode) -->
+        <div class="settings-group" id="discovery-toggle-group">
+            <span class="settings-label" data-lang-key="discovery_mode_enable_label">Enable Discovery Mode</span>
+            <div class="settings-toggle" id="discovery-mode-toggle" role="switch" aria-checked="false" tabindex="0">
+                <div class="toggle-switch"></div>
+            </div>
+        </div>
+        <!-- End Discovery Mode Toggle Section -->
+
+    </div>
+    <!-- End Floating Settings Panel -->
+
+    <!-- Custom Alert Modal -->
+    <div id="custom-alert-overlay" class="modal-overlay">
+        <div id="custom-alert-box" class="modal-box">
+            <h3 data-lang-key="checkout_success_title">Order Confirmed!</h3>
+            <p id="custom-alert-message"></p>
+            <button id="custom-alert-close" class="button" data-lang-key="ok_button">OK</button>
+        </div>
+    </div>
+    <!-- End Custom Alert Modal -->
+
+    <!-- Passcode Modal -->
+    <div id="passcode-modal-overlay" class="modal-overlay">
+        <div id="passcode-modal-box" class="modal-box">
+            <h3 id="passcode-modal-title" data-lang-key="discovery_passcode_modal_title">Enter Passcode</h3>
+            <input type="password" id="passcode-modal-input" data-lang-placeholder-key="discovery_passcode_prompt" placeholder="Enter Discovery Mode Passcode:">
+            <p id="passcode-modal-error" class="error-message" data-lang-key="discovery_passcode_incorrect_message">Incorrect passcode entered.</p>
+            <div class="passcode-modal-buttons">
+                <button id="passcode-modal-cancel" class="button cancel-button" data-lang-key="cancel_button">Cancel</button>
+                <button id="passcode-modal-ok" class="button ok-button" data-lang-key="ok_button">OK</button>
+            </div>
+        </div>
+    </div>
+    <!-- End Passcode Modal -->
+
+    <!-- Edit Product Modal (MODIFIED FOR EN/AR) -->
+    <div id="edit-product-modal-overlay" class="modal-overlay">
+        <div id="edit-product-modal-box" class="modal-box">
+            <h3 data-lang-key="edit_product_title">Edit Product</h3>
+            <input type="hidden" id="edit-product-id">
+
+            <div class="form-box"> <!-- Scrollable area -->
+                <!-- START: Modified Product Inputs -->
+                <label for="edit-product-name-en" data-lang-key="product_name_en_label">Product Name (English):</label>
+                <input type="text" id="edit-product-name-en" data-lang-placeholder-key="product_name_en_placeholder">
+
+                <label for="edit-product-name-ar" data-lang-key="product_name_ar_label">Product Name (Arabic):</label>
+                <input type="text" id="edit-product-name-ar" data-lang-placeholder-key="product_name_ar_placeholder">
+
+                <label for="edit-product-desc-en" data-lang-key="product_desc_en_label">Description (English):</label>
+                <input type="text" id="edit-product-desc-en" data-lang-placeholder-key="product_desc_en_placeholder">
+
+                <label for="edit-product-desc-ar" data-lang-key="product_desc_ar_label">Description (Arabic):</label>
+                <input type="text" id="edit-product-desc-ar" data-lang-placeholder-key="product_desc_ar_placeholder">
+                <!-- END: Modified Product Inputs -->
+
+                <label for="edit-product-price" data-lang-key="product_price_label">Price ({currency}):</label>
+                <input type="number" id="edit-product-price" min="0" step="0.01" data-lang-placeholder-key="product_price_placeholder">
+
+                <label for="edit-product-quantity" data-lang-key="product_quantity_label">Quantity:</label>
+                <input type="number" id="edit-product-quantity" min="0" step="1" data-lang-placeholder-key="product_quantity_placeholder">
+
+                <label for="edit-product-image" data-lang-key="product_image_label">Image URL:</label>
+                <input type="text" id="edit-product-image" data-lang-placeholder-key="product_image_placeholder">
+
+                <label for="edit-product-category" data-lang-key="product_category_label">Category:</label>
+                <select id="edit-product-category">
+                    <!-- Options will be populated dynamically by JS based on 'categories' array -->
+                </select>
+            </div><!-- end form-box -->
+
+            <p id="edit-product-error" class="error-message" data-lang-key="edit_product_error_generic">Please fill all fields correctly.</p>
+
+            <div class="passcode-modal-buttons"> <!-- Reusing modal button container style -->
+                <button id="edit-product-cancel" class="button cancel-button" data-lang-key="cancel_button">Cancel</button>
+                <button id="edit-product-save" class="button ok-button" data-lang-key="save_changes_button">Save</button>
+            </div>
+        </div>
+    </div>
+    <!-- End Edit Product Modal -->
+
+    <!-- START: Edit Category Modal -->
+    <div id="edit-category-modal-overlay" class="modal-overlay">
+        <div id="edit-category-modal-box" class="modal-box">
+            <h3 data-lang-key="edit_category_title">Edit Category</h3>
+            <!-- Hidden inputs to store keys -->
+            <input type="hidden" id="edit-category-key">
+            <input type="hidden" id="edit-category-name-key">
+
+            <div class="form-box" style="margin-bottom: 10px; width: 100%;">
+                <label for="edit-category-name-en" data-lang-key="category_name_en_label">Category Name (English):</label>
+                <input type="text" id="edit-category-name-en" data-lang-placeholder-key="category_name_placeholder">
+
+                <label for="edit-category-name-ar" data-lang-key="category_name_ar_label">Category Name (Arabic):</label>
+                <input type="text" id="edit-category-name-ar" data-lang-placeholder-key="category_name_placeholder">
+            </div>
+
+            <p id="edit-category-error" class="error-message" data-lang-key="edit_category_error_generic">Please enter names in both languages.</p>
+
+            <div class="passcode-modal-buttons"> <!-- Reusing modal button container style -->
+                <button id="edit-category-cancel" class="button cancel-button" data-lang-key="cancel_button">Cancel</button>
+                <button id="edit-category-save" class="button ok-button" data-lang-key="save_changes_button">Save</button>
+            </div>
+        </div>
+    </div>
+    <!-- END: Edit Category Modal -->
+
+    <!-- START: Custom Confirmation Modal -->
+    <div id="custom-confirm-modal-overlay" class="modal-overlay">
+        <div id="custom-confirm-modal-box" class="modal-box confirm-modal"> <!-- Added confirm-modal class for potential specific styling -->
+            <h3 id="custom-confirm-title" data-lang-key="confirm_action_title">Confirm Action</h3>
+            <p id="custom-confirm-message"></p>
+            <div class="passcode-modal-buttons"> <!-- Reuse button container style -->
+                <button id="custom-confirm-cancel-button" class="button cancel-button" data-lang-key="cancel_button">Cancel</button>
+                <button id="custom-confirm-ok-button" class="button ok-button confirm-button" data-lang-key="confirm_button">Confirm</button> <!-- Added confirm-button class -->
+            </div>
+        </div>
+    </div>
+    <!-- END: Custom Confirmation Modal -->
+
+
+    <!-- Link to your external JavaScript file -->
+    <script src="script.js"></script>
+
+</body>
+</html>

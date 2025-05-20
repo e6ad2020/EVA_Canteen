@@ -1,0 +1,37 @@
+[
+  {
+    "key": "sweet",
+    "name_key": "sort_sweet",
+    "productIds": [
+      "coffee",
+      "croissant",
+      "cake",
+      "juice",
+      "cookies",
+      "muffin"
+    ]
+  },
+  {
+    "key": "lunch",
+    "name_key": "sort_lunch",
+    "productIds": [
+      "pizza",
+      "burger",
+      "salad",
+      "pasta",
+      "sandwich",
+      "soup",
+      "prod-1745308960876-1j187s"
+    ]
+  },
+  {
+    "key": "snacks",
+    "name_key": "sort_snacks",
+    "productIds": [
+      "fries",
+      "soda",
+      "chips",
+      "onionrings"
+    ]
+  }
+]
