@@ -30,6 +30,9 @@ document.addEventListener('DOMContentLoaded', () => {
     let currentAdminOrderSelection = null;
     let previewButtonTimeout = null; // Timeout for preview button state
     let draggedElement = null; // For drag and drop
+    let allArchivedOrders = [];
+    let currentOrderView = 'active'; // 'active' or 'archived'
+    let isInitialArchivedOrdersLoaded = false;
     let currentProductMgmtCategory = null; // Track which category is being viewed in product management
     let isDiscoveryModeActivated = localStorage.getItem(LS_KEYS.DISCOVERY_MODE) === 'true';
     let selectedPaymentMethod = 'cash'; // Initialize default payment method state
@@ -161,12 +164,27 @@ document.addEventListener('DOMContentLoaded', () => {
                             allOrders = message.payload;
                             // Optionally save to local storage as well? Or rely solely on server?
                             // saveOrders(); // Decide if needed
-                            renderOrderLog(allOrders); // Re-render the log
+                            if (currentOrderView === 'active') {
+                                renderOrderLog(allOrders); // Re-render the log
+                            }
                             if (currentAdminOrderSelection) {
                                 // If an order was selected, re-show its details
                                 showOrderDetails(currentAdminOrderSelection);
                             } else {
                                 clearOrderPreview();
+                            }
+                        }
+                        break;
+                    case 'initial_archived_orders':
+                        if (isManagementClient) {
+                            console.log('Received initial archived orders from server:', message.payload);
+                            allArchivedOrders = message.payload.map(order => ({ ...order, timestamp: new Date(order.timestamp) }));
+                            isInitialArchivedOrdersLoaded = true;
+                            if (currentOrderView === 'archived') {
+                                renderOrderLog(allArchivedOrders);
+                            }
+                            if (currentAdminOrderSelection && currentOrderView === 'archived') {
+                                showOrderDetails(currentAdminOrderSelection);
                             }
                         }
                         break;
@@ -190,8 +208,35 @@ document.addEventListener('DOMContentLoaded', () => {
                                 // Optionally update the existing order: allOrders[existingOrderIndex] = newOrder;
                             }
                             // Update UI regardless (in case an existing order was updated, or just to ensure render)
-                            renderOrderLog(allOrders); // Refresh the log display
+                            if (currentOrderView === 'active') {
+                                renderOrderLog(allOrders); // Refresh the log display
+                            }
                             // Maybe show a notification?
+                        }
+                        break;
+                    case 'orders_updated': // Server broadcasts this when active orders change (e.g., after archiving)
+                        if (isManagementClient) {
+                            console.log('Received updated active orders from server:', message.payload);
+                            allOrders = message.payload.map(order => ({ ...order, timestamp: new Date(order.timestamp) }));
+                            if (currentOrderView === 'active') {
+                                renderOrderLog(allOrders);
+                            }
+                        }
+                        break;
+                    case 'archived_orders_updated': // Server broadcasts this when archived orders change
+                        if (isManagementClient) {
+                            console.log('Received updated archived orders from server:', message.payload);
+                            allArchivedOrders = message.payload.map(order => ({ ...order, timestamp: new Date(order.timestamp) }));
+                            if (currentOrderView === 'archived') {
+                                renderOrderLog(allArchivedOrders);
+                            }
+                        }
+                        break;
+                    case 'archive_process_complete':
+                        if (isManagementClient) {
+                            const count = message.payload.archivedCount || 0;
+                            // Ensure translation key 'archive_process_success' will be added later
+                            showCustomAlert(getText('archive_process_success', "Archived {count} orders successfully.").replace('{count}', count));
                         }
                         break;
                     // Add cases for other messages like 'order_status_updated' if implemented
@@ -201,7 +246,7 @@ document.addEventListener('DOMContentLoaded', () => {
                         console.log('Received updated products from server:', message.payload.length, 'items');
                         // Log quantity of a specific item for debugging (e.g., coffee)
                         const oldCoffeeQty = baseMenuData.find(p => p.id === 'coffee')?.quantity;
-                        baseMenuData = message.payload;
+                        baseMenuData = message.payload; // This is correct for products_updated
                         const newCoffeeQty = baseMenuData.find(p => p.id === 'coffee')?.quantity;
                         console.log(`Coffee quantity updated: ${oldCoffeeQty} -> ${newCoffeeQty}`); // Example log
                         // saveProducts(); // Optional: Decide if client should still save locally or rely on server
@@ -866,6 +911,14 @@ document.addEventListener('DOMContentLoaded', () => {
         server_connection_lost_logout: { en: "Connection to server lost. You have been logged out.", ar: "انقطع الاتصال بالخادم. تم تسجيل خروجك." },
         // --- END ADDED KEY ---
         register_error_invalid_email: { en: "Please enter a valid email address.", ar: "الرجاء إدخال عنوان بريد إلكتروني صالح." }, // <-- ADDED
+        // --- NEW Archive Feature Translations ---
+        view_archived_orders_button: { en: "View Archived Orders", ar: "عرض الطلبات المؤرشفة" },
+        view_active_orders_button: { en: "View Active Orders", ar: "عرض الطلبات النشطة" },
+        archived_orders_log_title: { en: "Archived Orders Log", ar: "سجل الطلبات المؤرشفة" },
+        run_archive_process_button: { en: "Archive Old Orders", ar: "أرشفة الطلبات القديمة" },
+        archive_process_success: { en: "Archived {count} orders successfully.", ar: "تم أرشفة {count} طلبات بنجاح." },
+        archive_process_fail: { en: "Archiving process failed.", ar: "فشلت عملية الأرشفة." }
+        // --- END NEW Archive Translations ---
     };
 
 
@@ -1169,8 +1222,13 @@ document.addEventListener('DOMContentLoaded', () => {
 
                  if (id === 'screen-4') updateCartUI();
                  if (id === 'screen-5') {
-                    renderOrderLog(); clearOrderPreview(); if(orderSearchInput) orderSearchInput.value = '';
+                    currentOrderView = 'active'; // Default to active view when entering screen 5
+                    isInitialArchivedOrdersLoaded = false; // Reset flag so archived orders are fetched if needed
+                    renderOrderLog(); // This will now render active orders by default
+                    clearOrderPreview(); 
+                    if(orderSearchInput) orderSearchInput.value = '';
                     if(importConfigErrorMsg) importConfigErrorMsg.style.display = 'none'; // Hide import error on screen entry
+                    // TODO: Update button texts for archive toggle here if they are static in HTML
                  }
                  // Screen 9 logic
                  if (id === 'screen-9') {
@@ -1629,7 +1687,20 @@ document.addEventListener('DOMContentLoaded', () => {
          console.log(`Order ${id} status -> ${n}`);
          handleOrderSearch(); // Re-run search to filter/sort and re-render
      }
-     function handleOrderSearch() { if(!orderSearchInput) return; const s = orderSearchInput.value.trim().toLowerCase(), o = s ? allOrders.filter(ord => ord.id.toLowerCase().includes(s)) : allOrders; renderOrderLog(o); if (currentAdminOrderSelection && o.some(ord => ord.id === currentAdminOrderSelection)) showOrderDetails(currentAdminOrderSelection); else clearOrderPreview(); }
+     function handleOrderSearch() {
+        if (!orderSearchInput) return;
+        const searchQuery = orderSearchInput.value.trim().toLowerCase();
+        const sourceOrders = currentOrderView === 'active' ? allOrders : allArchivedOrders;
+        const ordersToDisplay = searchQuery ? sourceOrders.filter(ord => ord.id.toLowerCase().includes(searchQuery)) : sourceOrders;
+        
+        renderOrderLog(ordersToDisplay); // Pass the filtered list to renderOrderLog
+        
+        if (currentAdminOrderSelection && ordersToDisplay.some(ord => ord.id === currentAdminOrderSelection)) {
+            showOrderDetails(currentAdminOrderSelection);
+        } else {
+            clearOrderPreview();
+        }
+    }
 
     // --- Category / Product Order Management ---
     function initializeCategories() {

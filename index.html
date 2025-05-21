@@ -160,9 +160,18 @@
                  </button>
                  <!-- END Button -->
 
+                 <div class="archive-controls" style="margin-top: 15px; margin-bottom: 10px; display: flex; gap: 10px; flex-wrap: wrap;">
+                    <button class="button small-button" id="toggle-archive-view-button" style="background-color: #ff8c00; width: auto;">
+                        <i class="fas fa-archive"></i> <span data-lang-key="view_archived_orders_button">View Archived Orders</span>
+                    </button>
+                    <button class="button small-button" id="run-archive-process-button" style="background-color: #dc3545; width: auto;">
+                        <i class="fas fa-history"></i> <span data-lang-key="run_archive_process_button">Archive Old Orders</span>
+                    </button>
+                </div>
+
                  <div class="order-management-layout">
                      <div class="order-log-section">
-                         <h4 data-lang-key="order_log_title">Order Log</h4>
+                         <h4 id="order-log-title" data-lang-key="order_log_title">Order Log</h4>
                          <div class="order-log-container" id="order-log-container"></div>
                      </div>
                      <div class="order-preview-section" id="order-preview-section">
