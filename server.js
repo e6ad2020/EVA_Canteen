@@ -11,6 +11,7 @@ const CATEGORIES_FILE = path.join(DATA_DIR, 'categories.json');
 const TRANSLATIONS_FILE = path.join(DATA_DIR, 'translations.json');
 const STATUS_FILE = path.join(DATA_DIR, 'canteenStatus.json');
 const USERS_FILE = path.join(DATA_DIR, 'users.json');
+const ARCHIVED_ORDERS_FILE = path.join(DATA_DIR, 'archived_orders.json');
 
 // Ensure data directory exists
 if (!fs.existsSync(DATA_DIR)) {
@@ -31,8 +32,8 @@ function loadDataFromFile(filePath, defaultData = []) {
             const jsonData = JSON.parse(fileData);
             console.log(`Data loaded successfully from ${filePath}`);
 
-            // Special handling for orders remains
-            if (filePath === ORDERS_FILE) {
+            // Special handling for orders (active and archived) to ensure timestamps are Date objects
+            if (filePath === ORDERS_FILE || filePath === ARCHIVED_ORDERS_FILE) {
                 // Ensure jsonData for orders is an array before mapping
                 if (!Array.isArray(jsonData)) {
                     console.warn(`Order data from ${filePath} is not an array. Using default empty array.`);
@@ -181,6 +182,7 @@ let categories = loadDataFromFile(CATEGORIES_FILE, defaultCategories);
 let translations = loadDataFromFile(TRANSLATIONS_FILE, defaultTranslations);
 let canteenStatus = loadDataFromFile(STATUS_FILE, defaultStatus);
 let allUsers = loadDataFromFile(USERS_FILE, defaultUsers);
+let archivedOrders = loadDataFromFile(ARCHIVED_ORDERS_FILE, []);
 
 // Check if newly added keys exist after loading from file
 // console.log(`[Server Startup] Does translations object have 'info_title'? `, translations.hasOwnProperty('info_title'));
@@ -406,6 +408,51 @@ wss.on('connection', (ws) => {
                          ws.send(JSON.stringify({ type: 'initial_orders', payload: allOrders }));
                      }
                      break;
+                case 'get_archived_orders':
+                    if (clientInfo.isManagement) {
+                        console.log(`Management client requested archived orders.`);
+                        ws.send(JSON.stringify({ type: 'initial_archived_orders', payload: archivedOrders }));
+                    }
+                    break;
+                case 'archive_old_orders':
+                    if (clientInfo.isManagement) {
+                        console.log('Management client requested to archive old orders.');
+                        const now = new Date();
+                        const oneDayInMillis = 24 * 60 * 60 * 1000;
+                        
+                        const ordersToArchive = [];
+                        const remainingActiveOrders = [];
+
+                        allOrders.forEach(order => {
+                            if (order.timestamp instanceof Date && (now.getTime() - order.timestamp.getTime()) > oneDayInMillis) {
+                                ordersToArchive.push(order);
+                            } else {
+                                remainingActiveOrders.push(order);
+                            }
+                        });
+
+                        if (ordersToArchive.length > 0) {
+                            archivedOrders.unshift(...ordersToArchive);
+                            allOrders = remainingActiveOrders;
+
+                            saveDataToFile(ORDERS_FILE, allOrders);
+                            saveDataToFile(ARCHIVED_ORDERS_FILE, archivedOrders);
+
+                            broadcastToManagement(JSON.stringify({ type: 'orders_updated', payload: allOrders }));
+                            broadcastToManagement(JSON.stringify({ type: 'archived_orders_updated', payload: archivedOrders }));
+                            
+                            ws.send(JSON.stringify({ type: 'archive_process_complete', payload: { archivedCount: ordersToArchive.length } }));
+                            console.log(`Archived ${ordersToArchive.length} orders. ${remainingActiveOrders.length} orders remain active.`);
+                        } else {
+                            console.log('No orders found older than 24 hours to archive.');
+                            ws.send(JSON.stringify({ type: 'archive_process_complete', payload: { archivedCount: 0, message: 'No old orders to archive.' } }));
+                        }
+                    } else {
+                        console.warn('Unauthorized attempt to archive old orders.');
+                        // Optionally send an error back to the client if they weren't supposed to call this
+                        // ws.send(JSON.stringify({ type: 'error', payload: 'Unauthorized' }));
+                    }
+                    break;
 
                 // --- START: Admin Actions ---
                 case 'admin_product_added':
@@ -825,6 +872,7 @@ process.on('SIGINT', () => {
     saveDataToFile(CATEGORIES_FILE, categories);
     saveDataToFile(TRANSLATIONS_FILE, translations);
     saveDataToFile(STATUS_FILE, canteenStatus);
+    saveDataToFile(ARCHIVED_ORDERS_FILE, archivedOrders);
     console.log('Data saving complete.');
 
     wss.close((err) => {
