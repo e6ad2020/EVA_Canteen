@@ -655,6 +655,11 @@ document.addEventListener('DOMContentLoaded', () => {
     const customConfirmCancelBtn = document.getElementById('custom-confirm-cancel-button');
     // --- End New References ---
 
+    // Order Management Buttons & Title (Screen 5)
+    const orderLogTitle = document.getElementById('order-log-title'),
+          toggleOrderViewButton = document.getElementById('toggle-order-view-button'),
+          runArchiveProcessButton = document.getElementById('run-archive-process-button');
+
     // NEW: Config Management Elements
     const exportConfigButton = document.getElementById('export-config-button');
     const importConfigButton = document.getElementById('import-config-button');
@@ -911,14 +916,6 @@ document.addEventListener('DOMContentLoaded', () => {
         server_connection_lost_logout: { en: "Connection to server lost. You have been logged out.", ar: "انقطع الاتصال بالخادم. تم تسجيل خروجك." },
         // --- END ADDED KEY ---
         register_error_invalid_email: { en: "Please enter a valid email address.", ar: "الرجاء إدخال عنوان بريد إلكتروني صالح." }, // <-- ADDED
-        // --- NEW Archive Feature Translations ---
-        view_archived_orders_button: { en: "View Archived Orders", ar: "عرض الطلبات المؤرشفة" },
-        view_active_orders_button: { en: "View Active Orders", ar: "عرض الطلبات النشطة" },
-        archived_orders_log_title: { en: "Archived Orders Log", ar: "سجل الطلبات المؤرشفة" },
-        run_archive_process_button: { en: "Archive Old Orders", ar: "أرشفة الطلبات القديمة" },
-        archive_process_success: { en: "Archived {count} orders successfully.", ar: "تم أرشفة {count} طلبات بنجاح." },
-        archive_process_fail: { en: "Archiving process failed.", ar: "فشلت عملية الأرشفة." }
-        // --- END NEW Archive Translations ---
     };
 
 
