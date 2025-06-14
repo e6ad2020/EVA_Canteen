@@ -436,7 +436,6 @@ document.addEventListener('DOMContentLoaded', () => {
                         identifyAsManagementClient(); // Sets isManagementClient = true and informs server (server might ignore if already knows)
                         if(adminLoginErrorMsg) adminLoginErrorMsg.style.display = 'none';
                         // Clear admin login fields on success
-                        if(adminEmailInput) adminEmailInput.value = '';
                         if(adminPasswordInput) adminPasswordInput.value = '';
                         showScreen('screen-5'); // Navigate to the admin screen
                         break;
