@@ -38,12 +38,22 @@
     /* Theme 1: White & Blue (Light Blue) */
     --main-bg-color-light-blue: #ffffff; --lighter-bg-light-blue: #E3F2FD; --button-bg-color-light-blue: #E3F2FD;
     --active-green-light-blue: #66BB6A; --remove-red-light-blue: #EF5350; --pending-orange-light-blue: #FFA726;
-    --delivered-green-light-blue: #4CAF50; --preparing-yellow-light-blue: #FFEE58; --text-color-dark-light-blue: #0D47A1; /* Dark Blue Text */
-    --text-color-light-light-blue: #0D47A1; /* Dark Blue Text for buttons */ --border-color-light-blue: #90A4AE; /* Blue Grey Border */
-    --body-outer-bg-light-blue: #ECEFF1; /* Very Light Grey Outer */
+    --delivered-green-light-blue: #4CAF50; --preparing-yellow-light-blue: #FFEE58; --text-color-dark-light-blue: #0D47A1;
+    --text-color-light-light-blue: #0D47A1; --border-color-light-blue: #90A4AE;
+    --body-outer-bg-light-blue: #ECEFF1;
     /* Colors for Light Blue Swatch */
     --swatch-light-blue-1: #ffffff;
-    --swatch-light-blue-2: #90CAF9; /* A visible light blue */
+    --swatch-light-blue-2: #90CAF9;
+
+    /* NEW Theme: White & Red (Light Red) */
+    --main-bg-color-light-red: #ffffff; --lighter-bg-light-red: #FFEBEE; --button-bg-color-light-red: #FFEBEE;
+    --active-green-light-red: #66BB6A; --remove-red-light-red: #EF5350; --pending-orange-light-red: #FFA726;
+    --delivered-green-light-red: #4CAF50; --preparing-yellow-light-red: #FFEE58; --text-color-dark-light-red: #B71C1C;
+    --text-color-light-light-red: #B71C1C; --border-color-light-red: #EF9A9A;
+    --body-outer-bg-light-red: #FFEBEE;
+    /* Colors for Light Red Swatch */
+    --swatch-light-red-1: #ffffff;
+    --swatch-light-red-2: #EF9A9A;
 
     /* Theme 2: White & Black (Monochrome Light) */
     --main-bg-color-mono-light: #ffffff; --lighter-bg-mono-light: #f5f5f5; --button-bg-color-mono-light: #f5f5f5;
@@ -144,6 +154,8 @@
     --status-preparing-text: #000000;/* Black */
     --status-delivered-bg: #32CD32; /* LimeGreen */
     --status-delivered-text: #ffffff;/* White */
+
+    --control-center-button-hover-bg: var(--item-hover-bg);
 }
 
 /* Apply Aliases based on theme attribute */
@@ -212,6 +224,14 @@ body[data-theme="orange"] {
     --text-color-light: var(--text-color-light-orange); --border-color: var(--border-color-orange);
     --body-outer-bg: var(--body-outer-bg-orange);
 }
+/* ADDED: Light Red Theme Application */
+body[data-theme="light-red"] {
+    --main-bg-color: var(--main-bg-color-light-red); --lighter-blue-bg: var(--lighter-bg-light-red); --button-bg-color: var(--button-bg-color-light-red);
+    --active-green: var(--active-green-light-red); --remove-red: var(--remove-red-light-red); --pending-orange: var(--pending-orange-light-red);
+    --delivered-green: var(--delivered-green-light-red); --preparing-yellow: var(--preparing-yellow-light-red); --text-color-dark: var(--text-color-dark-light-red);
+    --text-color-light: var(--text-color-light-light-red); --border-color: var(--border-color-light-red);
+    --body-outer-bg: var(--body-outer-bg-light-red);
+}
 
 
 html { font-size: 16px; scroll-behavior: smooth; height: 100%; box-sizing: border-box; }
@@ -219,7 +239,7 @@ html { font-size: 16px; scroll-behavior: smooth; height: 100%; box-sizing: borde
 
 /* DEFAULT BODY STYLES (LTR) */
 body {
-    background-color: var(--body-outer-bg); /* Use theme variable */
+    background-color: #282828; /* MODIFIED: Use fixed grey instead of var(--body-outer-bg) */
     display: flex; justify-content: center; align-items: flex-start; padding: 20px 10px; font-family: var(--font-en); margin: 0; min-height: 100vh; overflow-x: hidden;
     transition: padding var(--view-change-speed) ease, background-color var(--view-change-speed) ease;
     direction: ltr;
@@ -350,7 +370,7 @@ body.full-screen-mode .app-container { max-width: none; margin: 0; border: none;
     opacity: 0; pointer-events: none;
     transform: translateY(40px);
     overflow-y: auto; z-index: 1;
-    background-color: var(--main-bg-color);
+    background-color: transparent;
     transition: opacity var(--transition-speed) ease-in-out,
                 transform calc(var(--transition-speed) * 1.5) cubic-bezier(0.175, 0.885, 0.32, 1.275),
                 background-color var(--view-change-speed) ease;
@@ -480,13 +500,92 @@ body[data-theme="green"] .payment-button.active, body[data-theme="yellow"] .paym
 .payment-button i { font-size: 1.1em; margin-right: 8px; }
 
 /* Management Screen (Order Management - Screen 5) */
-.management-container { display: flex; flex-direction: column; width: 100%; flex-grow: 1; gap: 20px; }
-.search-section { display: flex; gap: 10px; width: 100%; margin-bottom: 0; flex-wrap: wrap; }
-.search-section input { flex-grow: 1; margin-bottom: 0; min-width: 150px; }
-.search-section .button { width: auto; margin-top: 0; padding: 10px 15px; font-size: 1rem; border-radius: var(--element-border-radius); flex-shrink: 0; }
-.order-management-layout { display: flex; flex-direction: column; flex-grow: 1; gap: 15px; width: 100%; }
-.order-log-section { display: flex; flex-direction: column; width: 100%; }
-.order-log-container { max-height: 200px; overflow-y: auto; border: var(--border-thickness) solid var(--border-color); border-radius: var(--element-border-radius); padding: 10px; background-color: rgba(255, 255, 255, 0.1); display: flex; flex-direction: column; gap: 8px; transition: border-color var(--view-change-speed) ease;}
+.management-container {
+    display: flex; flex-direction: column; width: 100%; flex-grow: 1; gap: 20px;
+    padding-bottom: 20px; /* Add padding for scrollbar if content is long */
+}
+
+.order-management-layout {
+    display: flex;
+    flex-direction: row; /* Default to row for wider screens */
+    gap: 20px;
+    margin-top: 15px;
+    /* ADDED: Ensure this layout takes full width if its parent allows */
+    width: 100%;
+}
+
+.order-log-section {
+    flex: 1; /* Takes up available space */
+    background-color: var(--container-bg); /* Assuming a theme variable */
+    padding: 15px;
+    border-radius: var(--element-border-radius); /* Standard border radius */
+    box-shadow: var(--box-shadow-light); /* Standard shadow */
+    min-width: 250px; /* Adjusted min-width */
+    /* max-height: 60vh; */ /* Limit height and allow scrolling - Will be overridden below for specific container */
+    display: flex;
+    flex-direction: column;
+}
+
+.order-view-toggle-buttons {
+    display: flex;
+    gap: 8px; /* MODIFIED: Reduced gap */
+    margin-bottom: 12px; /* MODIFIED: Adjusted space */
+}
+
+.toggle-order-view-button {
+    flex-grow: 1;
+    background-color: var(--button-bg-color); /* Use theme variable */
+    color: var(--text-color-dark); /* Use theme variable */
+    border: 1px solid var(--border-color); /* Use theme variable */
+    padding: 6px 10px; /* MODIFIED: Reduced padding */
+    font-size: 0.85rem; /* MODIFIED: Reduced font size */
+    border-radius: var(--element-border-radius); /* Consistent border radius */
+}
+
+.toggle-order-view-button.active {
+    background-color: var(--active-green); /* Use theme variable for active state */
+    color: var(--text-color-dark); /* Ensure text is readable, might need specific color for some themes */
+    border-color: var(--active-green); /* Match background */
+    font-weight: bold;
+}
+/* Ensure correct text color for active toggle button on specific themes */
+body[data-theme="green"] .toggle-order-view-button.active,
+body[data-theme="yellow"] .toggle-order-view-button.active,
+body[data-theme="orange"] .toggle-order-view-button.active,
+body[data-theme="mono-dark"] .toggle-order-view-button.active,
+body[data-theme="dark-grey"] .toggle-order-view-button.active,
+body[data-theme="night"] .toggle-order-view-button.active {
+    color: var(--text-color-dark); /* Or a specific color like #000 if needed */
+}
+body[data-theme="mono-dark"] .toggle-order-view-button.active {
+    color: var(--main-bg-color-mono-dark); /* Black text on white active button */
+}
+
+
+.order-log-section h4 {
+    margin-top: 0;
+    margin-bottom: 10px;
+    color: var(--text-color-dark); /* Adjusted from strong to dark for consistency */
+    text-align: center;
+    font-size: 1.3em; /* Ensure this isn't too large, matches other h4 in this section */
+    -webkit-text-stroke: 0; /* Remove stroke for cleaner look in this context */
+    text-stroke: 0;
+}
+
+.order-log-container {
+    max-height: 350px; /* MODIFIED: Increased max-height significantly */
+    overflow-y: auto;
+    border: var(--border-thickness) solid var(--border-color);
+    border-radius: var(--element-border-radius);
+    padding: 10px;
+    background-color: rgba(255, 255, 255, 0.05); /* Slightly lighter for contrast if main bg is dark */
+    display: flex;
+    flex-direction: column;
+    gap: 8px;
+    transition: border-color var(--view-change-speed) ease;
+    margin-bottom: 0; /* Removed margin-bottom as search is separate */
+}
+
 .order-log-item { display: flex; justify-content: space-between; align-items: center; background-color: var(--lighter-blue-bg); border: var(--border-thickness) solid var(--border-color); border-radius: 5px; padding: 8px 12px; cursor: pointer; transition: background-color var(--fast-transition-speed), border-color var(--view-change-speed), color var(--view-change-speed); gap: 5px; }
 .order-log-item:hover { background-color: color-mix(in srgb, var(--lighter-blue-bg) 80%, white); }
 .order-log-item.active { background-color: var(--active-green); }
@@ -502,10 +601,18 @@ body[data-theme="green"] .payment-button.active, body[data-theme="yellow"] .paym
 .order-status.preparing { background-color: var(--status-preparing-bg); color: var(--status-preparing-text); }
 .order-status.delivered { background-color: var(--status-delivered-bg); color: var(--status-delivered-text); }
 
-.order-preview-section { display: flex; flex-direction: column; width: 100%; border: var(--border-thickness) solid var(--border-color); border-radius: var(--element-border-radius); padding: 15px; background-color: rgba(255, 255, 255, 0.1); min-height: 150px; transition: border-color var(--view-change-speed) ease;}
+.order-preview-section {
+    display: flex; 
+    flex-direction: column; 
+    border: var(--border-thickness) solid var(--border-color); 
+    border-radius: var(--element-border-radius); 
+    padding: 15px; 
+    background-color: color-mix(in srgb, var(--main-bg-color) 90%, #ffffff 10%); /* Slightly lighter background */
+    min-height: 250px; /* Default min-height for stacked view */
+}
 .order-preview-content { font-size: 0.9rem; color: var(--text-color-dark); flex-grow: 1; text-align: left; transition: color var(--view-change-speed) ease;}
-.order-preview-content p { margin: 3px 0; font-weight: 600; } .order-preview-content p strong { margin-right: 5px; } html[lang="ar"] .order-preview-content p strong { margin-left: 5px; margin-right: 0; } .order-preview-content p span { font-weight: normal; }
-.order-preview-content ul { list-style: none; padding-left: 15px; margin: 5px 0; } .order-preview-content li { margin-bottom: 2px; font-size: 0.95em;}
+.order-preview-content p { margin: 8px 0; font-weight: 600; } .order-preview-content p strong { margin-right: 8px; } html[lang="ar"] .order-preview-content p strong { margin-left: 8px; margin-right: 0; } .order-preview-content p span { font-weight: normal; }
+.order-preview-content ul { list-style: none; padding-left: 15px; margin: 10px 0; } .order-preview-content li { margin-bottom: 5px; font-size: 0.95em;}
 .order-preview-placeholder { text-align: center; color: #555; margin-top: 20px; transition: color var(--view-change-speed) ease;}
  body[data-theme="yellow"] .order-preview-placeholder, body[data-theme="orange"] .order-preview-placeholder { color: #888; }
 .order-status-controls { display: flex; gap: 10px; margin-top: 15px; justify-content: center; flex-wrap: wrap; }
@@ -925,7 +1032,7 @@ body[data-theme="dark-grey"] .discovery-category-grid::-webkit-scrollbar-thumb, 
     }
 }
 @media (min-width: 992px) {
-     html { font-size: 18px; } body:not(.full-screen-mode) { padding: 40px 30px; align-items: center; } .app-container:not(body.full-screen-mode *) { max-width: 800px; min-height: 700px; border-radius: 50px; } .screen { padding: 35px 40px; } .screen-content { padding-bottom: 90px; } h2 { font-size: 2.5rem; } h4 { font-size: 2rem; } #screen-5 h4 { font-size: 1.7rem; } .menu-grid { grid-template-columns: repeat(3, 1fr); gap: 30px; } .cart-total { gap: 10px; } .total-calculation { max-height: 120px; } .item-preview-container { padding-top: 20px; } .preview-image { max-width: 350px; } .preview-name { font-size: 2.2rem; } .preview-description { font-size: 1.1rem; max-width: 700px; } .preview-price { font-size: 1.5rem; padding: 8px 25px; } .add-to-cart-preview-button { max-width: 320px; padding: 14px 25px; font-size: 1.4rem; } .management-container { gap: 30px; } .order-management-layout { flex-direction: row; align-items: flex-start; gap: 25px; width: 100%; } html[lang="ar"] .order-management-layout { flex-direction: row-reverse; } .order-log-section { flex: 1 1 45%; } .order-log-container { max-height: 420px; } .order-preview-section { flex: 1 1 55%; min-height: 420px; } .order-preview-content { font-size: 1rem; }
+     html { font-size: 18px; } body:not(.full-screen-mode) { padding: 40px 30px; align-items: center; } .app-container:not(body.full-screen-mode *) { max-width: 800px; min-height: 700px; border-radius: 50px; } .screen { padding: 35px 40px; } .screen-content { padding-bottom: 90px; } h2 { font-size: 2.5rem; } h4 { font-size: 2rem; } #screen-5 h4 { font-size: 1.7rem; } .menu-grid { grid-template-columns: repeat(3, 1fr); gap: 30px; } .cart-total { gap: 10px; } .total-calculation { max-height: 120px; } .item-preview-container { padding-top: 20px; } .preview-image { max-width: 350px; } .preview-name { font-size: 2.2rem; } .preview-description { font-size: 1.1rem; max-width: 700px; } .preview-price { font-size: 1.5rem; padding: 8px 25px; } .add-to-cart-preview-button { max-width: 320px; padding: 14px 25px; font-size: 1.4rem; } .management-container { gap: 30px; } .order-management-layout { flex-direction: row; align-items: flex-start; gap: 25px; width: 100%; } html[lang="ar"] .order-management-layout { flex-direction: row-reverse; } .order-log-section { flex: 1 1 50%; /* Adjusted to 50% */ } .order-log-container { max-height: 420px; } .order-preview-section { flex: 1 1 50%; /* Adjusted to 50% */ min-height: 420px; } .order-preview-content { font-size: 1rem; }
      #screen-8 .screen-content { gap: 60px; }
      .discovery-offers-scroller { gap: 30px; }
      .offer-card { flex-basis: 65%; max-width: 380px; }
@@ -1264,3 +1371,375 @@ body[data-theme="mono-dark"] #screen-10 .order-log-section h4 {
 /* @media (min-width: 600px) { ... } */
 /* @media (min-width: 992px) { ... } */
 /* @media (min-width: 1200px) { ... } */
+
+/* Search section specific to management screen */
+#screen-5 .search-section {
+    display: flex;
+    flex-direction: column; /* Stack input and button */
+    gap: 10px;
+    align-items: stretch; /* Make items take full width */
+    width: 100%;
+    margin-bottom: 15px;
+}
+
+#screen-5 .search-section input[type="text"] {
+    margin-bottom: 0;
+    font-size: 0.95rem;
+    width: 100%;
+    padding: 10px 12px; 
+    border-radius: var(--element-border-radius); 
+    border: var(--border-thickness) solid var(--border-color); 
+    background-color: var(--lighter-blue-bg); 
+    color: var(--text-color-dark); 
+}
+
+#screen-5 .search-section input[type="text"]:focus {
+    outline: none;
+    box-shadow: 0 0 0 2px var(--active-green);
+}
+
+#screen-5 .search-section .button {
+    margin-top: 0; 
+    width: auto; 
+    align-self: flex-start; /* Align button to the left */
+    padding: 8px 25px; 
+    font-size: 0.9rem; 
+}
+
+/* Order Management Layout - Small Screens First (Mobile First Approach) */
+.order-management-layout {
+    display: flex;
+    flex-direction: column; /* Default to column for small screens */
+    gap: 15px; /* Gap for stacked view */
+    width: 100%;
+    margin-top: 15px; 
+}
+
+.order-log-section,
+.order-preview-section {
+    width: 100%; /* Full width when stacked */
+}
+
+.order-log-section {
+    background-color: var(--container-bg); 
+    padding: 15px;
+    border-radius: var(--element-border-radius); 
+    box-shadow: var(--box-shadow-light); 
+    min-width: 250px; 
+    display: flex; 
+    flex-direction: column; 
+}
+
+.order-preview-section {
+    display: flex; 
+    flex-direction: column; 
+    border: var(--border-thickness) solid var(--border-color); 
+    border-radius: var(--element-border-radius); 
+    padding: 15px; 
+    background-color: color-mix(in srgb, var(--main-bg-color) 90%, #ffffff 10%); /* Slightly lighter background */
+    min-height: 250px; /* Default min-height for stacked view */
+}
+
+
+.order-log-container {
+    max-height: 300px; 
+    /* ... ensure other .order-log-container styles are intact ... */
+}
+
+/* Media Query for Larger Screens (992px and up) */
+@media (min-width: 992px) {
+    /* ... ensure other existing 992px styles are intact ... */
+
+    .order-management-layout {
+        flex-direction: row; /* Row layout for larger screens */
+        align-items: flex-start;
+        gap: 20px; 
+    }
+
+    html[lang="ar"] .order-management-layout {
+        flex-direction: row-reverse;
+    }
+
+    .order-log-section {
+        flex: 1 1 50%; /* MODIFIED: Increased width basis to 50% */
+        min-width: 300px; /* Adjusted min-width slightly if needed */
+        background-color: var(--container-bg); /* Ensure log section has its original background */
+    }
+
+    .order-preview-section {
+        flex: 1 1 50%; /* MODIFIED: Adjusted width basis to 50% */
+        min-height: 450px; 
+        background-color: color-mix(in srgb, var(--main-bg-color) 90%, #ffffff 10%); /* Consistent slightly lighter background */
+    }
+
+    .order-log-container {
+        max-height: 450px; 
+    }
+    /* ... ensure other existing 992px styles are intact ... */
+}
+
+@media (min-width: 1200px) {
+    /* ... ensure other existing 1200px styles are intact ... */
+    .order-log-container {
+        max-height: 500px; 
+    }
+    .order-preview-section {
+        min-height: 500px; 
+    }
+    /* ... ensure other existing 1200px styles are intact ... */
+}
+/* ... existing code ... */
+/* --- END: Fixes for Monochrome Dark Text Visibility --- */
+
+/* --- Responsive adjustments for order status buttons --- */
+@media (max-width: 380px) {
+    .order-status-controls {
+        gap: 5px; /* Reduce gap between buttons */
+        padding-left: 5px; /* Add some padding to the container */
+        padding-right: 5px;
+    }
+    .status-button {
+        padding: 6px 10px; /* Reduce button padding */
+        font-size: 0.85rem; /* Slightly smaller font */
+    }
+    .status-button i {
+        margin-right: 3px; /* Reduce icon margin */
+    }
+    html[lang="ar"] .status-button i {
+        margin-left: 3px; /* Adjust for RTL */
+        margin-right: 0;
+    }
+}
+
+/* --- END: Admin Order Management Styling --- */
+
+#screen-10 .order-log-section h4 {
+    margin-top: 0;
+    margin-bottom: 15px;
+    font-size: 1.4em; /* Consistent sizing */
+    /* Other styles remain as they are */
+}
+
+body[data-theme="dark-grey"] #screen-10 .order-log-section h4,
+body[data-theme="night"] #screen-10 .order-log-section h4,
+body[data-theme="mono-dark"] #screen-10 .order-log-section h4 {
+    color: var(--text-color-light); /* Consistent with other dark theme h4 */
+}
+
+
+/* --- Responsive Adjustments for Order Management Layout --- */
+@media (max-width: 991.98px) {
+    .order-management-layout {
+        flex-direction: column; /* Ensure vertical stacking */
+        gap: 15px; /* Add some gap between stacked items */
+    }
+    .order-log-section {
+        min-height: 200px; /* Prevent collapsing when order log is short */
+        flex-basis: auto; /* Allow natural height based on content + min-height */
+        flex-grow: 0; /* Don't grow beyond content unless necessary */
+        flex-shrink: 0; /* Don't shrink excessively */
+        width: 100%; /* Take full width in column layout */
+        /* max-height: none; */ /* Remove max-height if previously set for small screens here */
+    }
+    .order-preview-section {
+        min-height: 180px; /* Prevent collapsing */
+        flex-basis: auto; /* Allow natural height */
+        flex-grow: 0;
+        flex-shrink: 0;
+        width: 100%; /* Take full width in column layout */
+    }
+    .order-log-container {
+        max-height: 250px; /* Or a suitable value for scrollable area on mobile */
+    }
+}
+
+
+@media (min-width: 992px) {
+    /* Ensure the layout is row-based for larger screens */
+    .order-management-layout {
+        flex-direction: row;
+        align-items: flex-start; /* Align items to the top */
+        gap: 25px; /* Original gap for desktop */
+    }
+
+    html[lang="ar"] .order-management-layout {
+        flex-direction: row-reverse; /* RTL support for desktop */
+    }
+
+    .order-log-section {
+        flex: 1 1 50%; /* Restore desktop flex proportions */
+        /* min-height will be inherited or can be set specifically if needed */
+        /* width is controlled by flex property now */
+    }
+
+    .order-preview-section {
+        flex: 1 1 50%; /* Restore desktop flex proportions */
+        min-height: 420px; /* Desktop min-height */
+        /* width is controlled by flex property now */
+    }
+
+    .order-log-container {
+        max-height: 420px; /* Desktop max-height */
+    }
+    /* Remove the problematic line from previous linter error, this block is now clean */
+} /* End 992px */
+
+@media (min-width: 1200px) {
+     .app-container:not(body.full-screen-mode *) { max-width: 900px; }
+}
+
+/* ... existing code ... */
+
+body[data-theme="light-blue"] {
+    --main-bg-color: var(--main-bg-color-light-blue); --lighter-blue-bg: var(--lighter-bg-light-blue); --button-bg-color: var(--button-bg-color-light-blue);
+    --active-green: var(--active-green-light-blue); --remove-red: var(--remove-red-light-blue); --pending-orange: var(--pending-orange-light-blue);
+    --delivered-green: var(--delivered-green-light-blue); --preparing-yellow: var(--preparing-yellow-light-blue); --text-color-dark: var(--text-color-dark-light-blue);
+    --text-color-light: var(--text-color-light-light-blue); --border-color: var(--border-color-light-blue);
+    --body-outer-bg: var(--body-outer-bg-light-blue);
+}
+
+body[data-theme="light-blue"] .app-container {
+    background-image: url('theme_light_blue_wallpaper_template/phone.png');
+    background-size: cover; /* Changed from contain to cover */
+    background-position: center;
+    background-repeat: no-repeat;
+}
+
+@media (min-width: 768px) {
+    body[data-theme="light-blue"] .app-container {
+        background-image: url('theme_light_blue_wallpaper_template/desktop.png');
+        background-size: cover; /* Changed from contain to cover */
+    }
+}
+
+/* NEW Light Red Theme */
+body[data-theme="light-red"] {
+    --main-bg-color: var(--main-bg-color-light-red); --lighter-blue-bg: var(--lighter-bg-light-red); --button-bg-color: var(--button-bg-color-light-red);
+    --active-green: var(--active-green-light-red); --remove-red: var(--remove-red-light-red); --pending-orange: var(--pending-orange-light-red);
+    --delivered-green: var(--delivered-green-light-red); --preparing-yellow: var(--preparing-yellow-light-red); --text-color-dark: var(--text-color-dark-light-red);
+    --text-color-light: var(--text-color-light-light-red); --border-color: var(--border-color-light-red);
+    --body-outer-bg: var(--body-outer-bg-light-red);
+}
+
+body[data-theme="mono-light"] {
+    --main-bg-color: var(--main-bg-color-mono-light); --lighter-blue-bg: var(--lighter-bg-mono-light); --button-bg-color: var(--button-bg-color-mono-light);
+    --active-green: var(--active-green-mono-light); --remove-red: var(--remove-red-mono-light); --pending-orange: var(--pending-orange-mono-light);
+    --delivered-green: var(--delivered-green-mono-light); --preparing-yellow: var(--preparing-yellow-mono-light); --text-color-dark: var(--text-color-dark-mono-light);
+    --text-color-light: var(--text-color-light-mono-light); --border-color: var(--border-color-mono-light);
+    --body-outer-bg: var(--body-outer-bg-mono-light);
+}
+
+.theme-swatch.swatch-light-blue {
+    background: linear-gradient(135deg, var(--swatch-light-blue-1) 50%, var(--swatch-light-blue-2) 50%);
+}
+
+.theme-swatch.swatch-light-red {
+    background: linear-gradient(135deg, var(--swatch-light-red-1) 50%, var(--swatch-light-red-2) 50%);
+}
+
+.theme-swatch.swatch-mono-light {
+    background: linear-gradient(135deg, var(--swatch-mono-light-1) 50%, var(--swatch-mono-light-2) 50%);
+}
+
+body[data-theme="light-red"] .app-container {
+    background-image: url('theme_light_red_wallpaper_template/phone.png');
+    background-size: cover; /* Changed from contain to cover */
+    background-position: center;
+    background-repeat: no-repeat;
+}
+
+@media (min-width: 768px) {
+    body[data-theme="light-red"] .app-container {
+        background-image: url('theme_light_red_wallpaper_template/desktop.png');
+        background-size: cover; /* Changed from contain to cover */
+    }
+}
+
+/* Improve text visibility in dark themes on Screen 9 category management */
+body[data-theme="night"] #screen-9 #category-view-container h5,
+body[data-theme="night"] #screen-9 #category-view-container .settings-form label,
+body[data-theme="night"] #screen-9 #category-view-container .drag-hint,
+body[data-theme="night"] #screen-9 #category-view-container .category-list-item .category-name {
+    color: var(--text-color);
+}
+
+body[data-theme="mono-dark"] #screen-9 #category-view-container h5,
+body[data-theme="mono-dark"] #screen-9 #category-view-container .settings-form label,
+body[data-theme="mono-dark"] #screen-9 #category-view-container .drag-hint,
+body[data-theme="mono-dark"] #screen-9 #category-view-container .category-list-item .category-name {
+    color: var(--text-color);
+}
+
+/* Improve text visibility in dark themes on Screen 9 category management - REVISED */
+body[data-theme="night"] #screen-9 #category-view-container .add-category-form h5,
+body[data-theme="night"] #screen-9 #category-view-container .add-category-form label,
+body[data-theme="night"] #screen-9 #category-view-container .drag-hint,
+body[data-theme="night"] #screen-9 #category-view-container .category-list-item .category-name {
+    color: var(--text-color-dark); /* Should be light text for night theme */
+}
+
+body[data-theme="mono-dark"] #screen-9 #category-view-container .add-category-form h5,
+body[data-theme="mono-dark"] #screen-9 #category-view-container .add-category-form label,
+body[data-theme="mono-dark"] #screen-9 #category-view-container .drag-hint,
+body[data-theme="mono-dark"] #screen-9 #category-view-container .category-list-item .category-name {
+    color: var(--text-color-dark); /* Should be light text for mono-dark theme */
+}
+
+body[data-theme="mono-dark"] #screen-9 #category-view-container .add-category-form label,
+body[data-theme="mono-dark"] #screen-9 #category-view-container .drag-hint,
+body[data-theme="mono-dark"] #screen-9 #category-view-container .category-list-item .category-name {
+    color: var(--text-color-dark); /* Should be light text for mono-dark theme */
+}
+
+body[data-theme="night"] #screen-9 #product-view-container #add-product-form-container .form-box label,
+body[data-theme="night"] #screen-9 #product-view-container .product-grid-item-admin .product-quantity-admin {
+    color: var(--text-color-dark);
+}
+
+body[data-theme="mono-dark"] #screen-9 #product-view-container #add-product-form-container .form-box label,
+body[data-theme="mono-dark"] #screen-9 #product-view-container .product-grid-item-admin .product-quantity-admin {
+    color: var(--text-color-dark);
+}
+
+body[data-theme="mono-dark"] .category-name { color: #000; }
+body[data-theme="mono-dark"] .category-list-item .drag-handle { color: var(--text-color-dark); }
+body[data-theme="mono-dark"] .product-name-admin, body[data-theme="mono-dark"] .product-price-admin { color: var(--text-color-light-mono-dark); }
+
+body[data-theme="mono-dark"] #screen-9 #product-view-container #add-product-form-container .form-box label,
+body[data-theme="mono-dark"] #screen-9 #product-view-container .product-grid-item-admin .product-quantity-admin {
+    color: var(--text-color-dark);
+}
+
+body[data-theme="mono-dark"] .switch .slider {
+    background-color: var(--lighter-bg-mono-dark);
+}
+
+body[data-theme="mono-dark"] .switch .slider:before {
+    background-color: var(--border-color-mono-dark);
+}
+
+body[data-theme="mono-dark"] .switch input:checked + .slider {
+    background-color: var(--active-green-mono-dark);
+}
+
+body[data-theme="mono-dark"] .switch input:checked + .slider:before {
+    background-color: var(--main-bg-color-mono-dark);
+}
+
+/* Custom styling for error messages in Light Red theme */
+body[data-theme="light-red"] .error-message {
+    border: 1px solid #000000; /* Black border */
+    padding: 5px; /* Add some padding */
+    border-radius: var(--element-border-radius); /* Consistent border radius */
+    background-color: color-mix(in srgb, var(--lighter-bg-light-red) 90%, #ffffff); /* Slightly off-white background */
+    color: var(--remove-red-light-red); /* Explicitly use the theme's red for errors */
+}
+
+/* Custom styling for error messages in Light Blue theme */
+body[data-theme="light-blue"] .error-message {
+    border: 1px solid #000000; /* Black border */
+    padding: 5px; /* Add some padding */
+    border-radius: var(--element-border-radius); /* Consistent border radius */
+    background-color: color-mix(in srgb, var(--lighter-bg-light-blue) 90%, #ffffff); /* Slightly off-white background */
+    color: var(--remove-red-light-blue); /* Explicitly use the theme's red for errors */
+}

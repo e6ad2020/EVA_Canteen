@@ -1,21 +1,25 @@
 document.addEventListener('DOMContentLoaded', () => {
     // --- Constants & State ---
     const LS_KEYS = {
-        LANGUAGE: 'canteen_language',
-        THEME: 'canteen_theme',
-        USER: 'canteen_user',
-        CART: 'canteen_cart',
-        ORDERS: 'canteen_orders', // For client-side persistence/backup
-        PRODUCTS: 'canteen_products', // Cache product data
-        CATEGORIES: 'canteen_categories', // Cache category structure/order
-        TRANSLATIONS: 'canteen_translations', // Cache translations
-        DISCOVERY_MODE: 'canteen_discovery_mode' // Boolean flag
+        LANGUAGE: 'canteenAppLanguage',
+        THEME: 'canteenAppTheme',
+        CURRENT_USER: 'canteenAppCurrentUser',
+        CART: 'canteenAppCart',
+        ORDERS: 'canteenAppOrders',
+        PRODUCTS: 'canteenAppProductsData_v2', // Updated key for new structure
+        CATEGORIES: 'canteenAppCategories_v2', // Updated key for new structure
+        LAST_ORDER_DATE: 'canteenAppLastOrderDate',
+        LAST_ORDER_SEQUENCE: 'canteenAppLastOrderSequence',
+        ADMIN_LOGGED_IN: 'canteenAdminLoggedIn_v2', // Updated for clarity
+        DISCOVERY_MODE: 'canteenDiscoveryMode',
+        CANTEEN_OPEN: 'canteenIsOpen_v2' // For server-driven status
     };
-    const DISCOVERY_PASSCODE = '1234'; // Simple passcode for discovery
+    // REMOVED: const DISCOVERY_PASSCODE = '1234'; // Simple passcode for discovery
     // Re-add constants that were likely removed during previous refactoring
     const DEFAULT_PROFILE_PIC = 'https://i.postimg.cc/XYGqh5B2/IMG.png';
-    const ADMIN_EMAIL = "admin@canteen.app";
-    const ADMIN_PASSWORD = "admin123";
+    // REMOVED: Hardcoded admin credentials
+    // const ADMIN_EMAIL = "admin@canteen.app";
+    // const ADMIN_PASSWORD = "admin123";
 
     let currentScreen = null; // Initialize as null, not string
     let currentUser = null;
@@ -28,6 +32,7 @@ document.addEventListener('DOMContentLoaded', () => {
     let translations = {}; // Initialized later with default translations
     let categories = [];
     let currentAdminOrderSelection = null;
+    let currentOrderLogView = 'current'; // New state variable for order log view: 'current' or 'archived'
     let previewButtonTimeout = null; // Timeout for preview button state
     let draggedElement = null; // For drag and drop
     let currentProductMgmtCategory = null; // Track which category is being viewed in product management
@@ -41,6 +46,9 @@ document.addEventListener('DOMContentLoaded', () => {
     let isInitialTranslationsLoaded = false;
 
     const DEFAULT_PRODUCTS = []; // Add this line
+
+    let suggestionButtonTimeouts = {}; // Added: For discovery mode button timeouts
+    let bundleButtonTimeouts = {};   // Added: For discovery mode button timeouts
 
     // --- DOM Elements Caching ---
     // Cache frequently accessed DOM elements
@@ -74,7 +82,7 @@ document.addEventListener('DOMContentLoaded', () => {
     // *** Using Local Network IP for testing on the same LAN ***
     // Ensure server.js is running on the machine with this IP (192.168.1.14)
     // and the firewall allows connections on port 8080.
-    const WS_URL = 'ws://192.168.1.10:8080'; // <-- Local Network IP
+    const WS_URL = 'ws://192.168.1.11:8080'; // <-- Local Network IP
     let reconnectInterval = 5000; // Reconnect every 5 seconds
     let isManagementClient = false; // Flag to track if this instance is management
 
@@ -128,15 +136,35 @@ document.addEventListener('DOMContentLoaded', () => {
                         }
                         break;
                     case 'initial_translations':
-                         // Log the received payload *before* assigning it
-                         // console.log('[WebSocket] Received initial_translations payload:', message.payload);
-                         // console.log(`[WebSocket] Received payload has keys: info_title=${message.payload.hasOwnProperty('info_title')}, force_logout...=${message.payload.hasOwnProperty('force_logout_canteen_closed')}`);
                          if (message.payload && typeof message.payload === 'object') {
-                             translations = message.payload; // Assign received payload
-                             isInitialTranslationsLoaded = true; // <<< SET FLAG HERE
-                             // console.log('[WebSocket] Initial translations assigned locally.'); // Log after assignment
-                             updateLanguageUI(); // Update UI based on new translations
-                             renderInitialUIIfNeeded(); // <<< CALL CHECK HERE TOO
+                            // translations = message.payload; // OLD: Direct assignment overwrites defaults
+                            // NEW: Merge server translations into existing defaults/localStorage translations
+                            console.log('[WebSocket] Merging initial_translations from server into existing translations.');
+                            for (const key in message.payload) {
+                                if (message.payload.hasOwnProperty(key)) {
+                                    const incomingValue = message.payload[key];
+                                    if (translations.hasOwnProperty(key) && typeof translations[key] === 'object') {
+                                        if (typeof incomingValue === 'object') {
+                                            Object.assign(translations[key], incomingValue);
+                                        } else {
+                                            console.warn(`[initial_translations] Ignoring update for key '${key}' because existing is object but incoming is not. Incoming:`, incomingValue);
+                                        }
+                                    } else {
+                                        if (typeof incomingValue === 'object' || typeof incomingValue === 'string') {
+                                            translations[key] = incomingValue;
+                                        } else {
+                                            console.warn(`[initial_translations] Ignoring update for new/non-object key '${key}' because incoming type is not object/string. Incoming:`, incomingValue);
+                                        }
+                                    }
+                                }
+                            }
+                            // After merging, ensure translations are saved to local storage so they persist
+                            // if the server is later offline, and also so that they are the base for next session.
+                            saveTranslations(); 
+
+                            isInitialTranslationsLoaded = true; 
+                            updateLanguageUI(); 
+                            renderInitialUIIfNeeded(); 
                          } else {
                              console.warn('Received invalid payload for initial_translations:', message.payload);
                          }
@@ -192,6 +220,29 @@ document.addEventListener('DOMContentLoaded', () => {
                             // Update UI regardless (in case an existing order was updated, or just to ensure render)
                             renderOrderLog(allOrders); // Refresh the log display
                             // Maybe show a notification?
+                        }
+                        break;
+                    case 'order_status_updated_broadcast':
+                        if (isManagementClient) {
+                            console.log('Received order_status_updated_broadcast:', message.payload);
+                            const { orderId, newStatus, updatedOrder } = message.payload;
+                            if (updatedOrder) {
+                                const orderIndex = allOrders.findIndex(o => o.id === orderId);
+                                if (orderIndex !== -1) {
+                                    allOrders[orderIndex] = updatedOrder; // Update the local order data
+                                    renderOrderLog(); // Re-render the entire order log based on current view mode
+                                    // If the updated order is the one currently being previewed, refresh the preview
+                                    if (currentAdminOrderSelection === orderId) {
+                                        showOrderDetails(orderId);
+                                    }
+                                    console.log(`Order ${orderId} updated locally from broadcast.`);
+                                } else {
+                                    console.warn(`Received broadcast for an order ${orderId} not found locally.`);
+                                    // Optionally, add it if it was missing, though this implies a sync issue
+                                }
+                            } else {
+                                console.warn('Received order_status_updated_broadcast without full updatedOrder payload.');
+                            }
                         }
                         break;
                     // Add cases for other messages like 'order_status_updated' if implemented
@@ -254,9 +305,30 @@ document.addEventListener('DOMContentLoaded', () => {
                         if (message.payload && typeof message.payload === 'object') {
                             // Merge received translations into the existing object
                             // This prevents accidentally wiping out translations if payload is empty or partial
-                            Object.assign(translations, message.payload);
-                            console.log('Translations merged.');
-                            // saveTranslations(); // Optional: Client save
+                            // Object.assign(translations, message.payload); // OLD LINE
+                            for (const key in message.payload) {
+                                if (message.payload.hasOwnProperty(key)) {
+                                    const incomingValue = message.payload[key];
+                                    // If the existing translation is an object (i.e., {en: ..., ar: ...})
+                                    // only accept an incoming value if it's also an object.
+                                    if (translations.hasOwnProperty(key) && typeof translations[key] === 'object') {
+                                        if (typeof incomingValue === 'object') {
+                                            Object.assign(translations[key], incomingValue); // Merge into the existing language object
+                                        } else {
+                                            console.warn(`[translations_updated] Ignoring update for key '${key}' because existing is an object but incoming is not. Incoming:`, incomingValue);
+                                        }
+                                    } else {
+                                        // If existing is not an object or doesn't exist, accept object or string.
+                                        if (typeof incomingValue === 'object' || typeof incomingValue === 'string') {
+                                            translations[key] = incomingValue;
+                                        } else {
+                                            console.warn(`[translations_updated] Ignoring update for new/non-object key '${key}' because incoming type is not object/string. Incoming:`, incomingValue);
+                                        }
+                                    }
+                                }
+                            }
+                            console.log('Translations merged from server.');
+                            saveTranslations(); // Re-enable saving after server update
                             updateLanguageUI(); // Refresh UI with potentially updated translations
                         } else {
                              console.warn('Received invalid payload for translations_updated:', message.payload);
@@ -357,6 +429,78 @@ document.addEventListener('DOMContentLoaded', () => {
                         }
                         break;
                     // --- END: Handle Auth Responses ---
+
+                    // --- START: Handle Admin Auth Responses ---
+                    case 'admin_login_success':
+                        console.log("Admin login successful (verified by server):", message.payload.message);
+                        identifyAsManagementClient(); // Sets isManagementClient = true and informs server (server might ignore if already knows)
+                        if(adminLoginErrorMsg) adminLoginErrorMsg.style.display = 'none';
+                        // Clear admin login fields on success
+                        if(adminEmailInput) adminEmailInput.value = '';
+                        if(adminPasswordInput) adminPasswordInput.value = '';
+                        showScreen('screen-5'); // Navigate to the admin screen
+                        break;
+                    case 'admin_login_error':
+                        console.error('Admin login error from server:', message.payload);
+                        if (adminLoginErrorMsg) {
+                            const payload = message.payload;
+                            let errorText = '';
+
+                            if (payload && payload.errorCode) {
+                                switch (payload.errorCode) {
+                                    case 'ATTEMPTS_REMAINING':
+                                        const invalidCredsPart = getText('admin_login_error_invalid_creds') || "Invalid admin email or password.";
+                                        const attempts = payload.attemptsRemaining;
+                                        const attemptsPart = attempts === 1 ?
+                                            getText('admin_login_attempts_singular') || "1 attempt remaining." :
+                                            (getText('admin_login_attempts_plural') || "{attempts} attempts remaining.").replace('{attempts}', attempts);
+                                        errorText = `${invalidCredsPart} ${attemptsPart}`;
+                                        break;
+                                    case 'ACCOUNT_LOCKED':
+                                        const prefix = getText('admin_login_prefix_too_many_attempts') || "Too many failed attempts.";
+                                        const lockedPart = (getText('admin_login_locked') || "Account locked. Try again in {minutes} minute(s).").replace('{minutes}', payload.lockoutMinutes);
+                                        errorText = `${prefix} ${lockedPart}`;
+                                        break;
+                                    case 'MISSING_DETAILS':
+                                        errorText = getText('admin_login_missing_details') || payload.message || "Missing admin login details.";
+                                        break;
+                                    case 'SERVER_ERROR':
+                                        errorText = getText('admin_login_server_error') || payload.message || "Server error during admin login.";
+                                        break;
+                                    default:
+                                        errorText = payload.defaultMessage || payload.message || getText('admin_login_error'); // Fallback to default message from server or generic client key
+                                }
+                            } else {
+                                // Fallback for older message format or if errorCode is missing
+                                errorText = payload.message || getText('admin_login_error');
+                            }
+                            adminLoginErrorMsg.textContent = errorText;
+                            adminLoginErrorMsg.style.display = 'block';
+                        }
+                        // Clear password field on error, but keep email for user convenience
+                        if(adminPasswordInput) adminPasswordInput.value = '';
+                        break;
+                    // --- END: Handle Admin Auth Responses ---
+
+                    // --- START: Handle Discovery Passcode Responses ---
+                    case 'discovery_passcode_success':
+                        console.log("Discovery passcode correct (verified by server).");
+                        isDiscoveryModeActivated = true;
+                        localStorage.setItem(LS_KEYS.DISCOVERY_MODE, isDiscoveryModeActivated);
+                        updateDiscoveryToggleVisualState();
+                        updateDiscoverButtonVisibility();
+                        hidePasscodeModal();
+                        if (passcodeModalError) passcodeModalError.style.display = 'none';
+                        break;
+                    case 'discovery_passcode_error':
+                        console.warn("Discovery passcode incorrect (verified by server).");
+                        if (passcodeModalError) {
+                            passcodeModalError.textContent = message.payload.message || getText('discovery_passcode_incorrect_message');
+                            passcodeModalError.style.display = 'block';
+                        }
+                        if (passcodeModalInput) passcodeModalInput.value = '';
+                        break;
+                    // --- END: Handle Discovery Passcode Responses ---
 
                     default:
                         console.log('Unknown message type received:', message.type);
@@ -499,6 +643,7 @@ document.addEventListener('DOMContentLoaded', () => {
           orderPreviewSection = document.getElementById('order-preview-section'),
           orderPreviewContent = document.getElementById('order-preview-content'),
           orderStatusControls = document.getElementById('order-status-controls'),
+          orderViewToggleButtons = document.querySelectorAll('.toggle-order-view-button'), // New DOM element
           // Screen 7 elements
           itemPreviewBackButton = document.getElementById('item-preview-back-button'),
           previewItemImage = document.getElementById('preview-item-image'),
@@ -508,6 +653,7 @@ document.addEventListener('DOMContentLoaded', () => {
           addToCartPreviewButton = document.getElementById('add-to-cart-preview-button'),
           cartBadgePreview = document.getElementById('cart-badge-preview'),
           // Screen 8 elements
+          discoveryBackButton = document.getElementById('discovery-back-button'), // Added this line
           cartBadgeDiscovery = document.getElementById('cart-badge-discovery'),
           discoveryBundlesScroller = document.getElementById('discovery-bundles-scroller'),
           discoverySuggestionsGrid = document.getElementById('discovery-suggestions-grid'),
@@ -721,6 +867,8 @@ document.addEventListener('DOMContentLoaded', () => {
         order_status_pending: { en: "pending", ar: "قيد الانتظار" },
         order_status_preparing: { en: "preparing", ar: "قيد التجهيز" },
         order_status_delivered: { en: "delivered", ar: "تم التوصيل" },
+        order_log_current_button: { en: "Current Orders", ar: "الطلبات الحالية" }, // New translation
+        order_log_archived_button: { en: "Archived Orders", ar: "الطلبات المؤرشفة" }, // New translation
          subtotal_label: { en: "Subtotal", ar: "المجموع قبل الخصم" },
          settings_title: { en: "Settings", ar: "الإعدادات" }, settings_button_label: { en: "Settings", ar: "الإعدادات" }, language_setting_label: { en: "Language", ar: "اللغة" }, theme_setting_label: { en: "App Theme", ar: "سمة التطبيق" },
          theme_blue: { en: "Blue (Default)", ar: "الأزرق (الافتراضي)" }, theme_green: { en: "Green", ar: "الأخضر" }, theme_purple: { en: "Purple", ar: "البنفسجي" },
@@ -728,6 +876,7 @@ document.addEventListener('DOMContentLoaded', () => {
          theme_mono_dark: { en: "Monochrome Dark", ar: "أبيض وأسود داكن" },
          theme_yellow: { en: "Yellow", ar: "أصفر" },
          theme_orange: { en: "Orange", ar: "برتقالي" },
+         theme_light_red: { en: "Light Red", ar: "أحمر فاتح" }, // Added this line
          item_name_coffee: { en: "Coffee", ar: "قهوة" }, item_name_pizza: { en: "Pizza", ar: "بيتزا" }, item_name_cookies: { en: "Cookies", ar: "كوكيز" }, item_name_fries: { en: "French fries", ar: "بطاطس مقلية" }, item_name_burger: { en: "Burger", ar: "برجر" }, item_name_soda: { en: "Soda", ar: "صودا" }, item_name_salad: { en: "Salad", ar: "سلطة" }, item_name_cake: { en: "Cake Slice", ar: "شريحة كيك" }, item_name_croissant: { en: "Croissant", ar: "كرواسون" }, item_name_pasta: { en: "Pasta Aglio e Olio", ar: "باستا أليو إي أوليو" }, item_name_chips: { en: "Potato Chips", ar: "رقائق البطاطس" }, item_name_juice: { en: "Orange Juice", ar: "عصير برتقال" }, item_name_sandwich: { en: "Club Sandwich", ar: "كلوب ساندويتش" }, item_name_muffin: { en: "Muffin", ar: "مافن" }, item_name_onionrings: { en: "Onion Rings", ar: "حلقات بصل" }, item_name_soup: { en: "Soup of the Day", ar: "شوربة اليوم" }, item_desc_default: { en: "A tasty item from our menu.", ar: "منتج لذيذ من قائمتنا." },
          // Discovery Mode Translations
          discover_button: { en: "Discover", ar: "اكتشف" },
@@ -866,19 +1015,31 @@ document.addEventListener('DOMContentLoaded', () => {
         server_connection_lost_logout: { en: "Connection to server lost. You have been logged out.", ar: "انقطع الاتصال بالخادم. تم تسجيل خروجك." },
         // --- END ADDED KEY ---
         register_error_invalid_email: { en: "Please enter a valid email address.", ar: "الرجاء إدخال عنوان بريد إلكتروني صالح." }, // <-- ADDED
+        // --- ADDED for product/category specific import/export ---
+        import_products_config_confirm_message: {en: "Are you sure you want to import this configuration?\n\nThis will overwrite ONLY products, categories, and their related translations. Orders and general app settings will NOT be affected. This action cannot be undone.", ar: "هل أنت متأكد من رغبتك في استيراد هذا الإعداد؟\n\nسيؤدي هذا إلى الكتابة فوق المنتجات والفئات والترجمات المرتبطة بها فقط. لن تتأثر الطلبات وإعدادات التطبيق العامة. لا يمكن التراجع عن هذا الإجراء."},
+        import_products_config_success_message: {en: "Products, categories, and related translations imported successfully!", ar: "تم استيراد المنتجات والفئات والترجمات المرتبطة بها بنجاح!"},
+        // --- END ADDED ---
+        item_out_of_stock_alert: { en: "Sorry, '{itemName}' is out of stock!", ar: "عذراً، '{itemName}' نفذ من المخزون حالياً!" },
+        edit_product_success_title: { en: "Product Updated", ar: "تم تحديث المنتج" } // New title key
     };
 
 
     // --- Helper Functions ---
-    function getText(key) {
-         const ts = translations[key];
-         if (ts) {
-             // Return translation for current language, fallback to English, then key itself
-             return ts[currentLanguage] || ts['en'] || `[${key}]`;
-         }
-         // Log a warning if the key itself is not found in the translations object
-         console.warn(`Translation key not found: ${key}`);
-         return `[${key}]`; // Return the key as fallback indication
+    function getText(key, specificLang = null) { // Added specificLang parameter
+        console.log(`[getText] Called with key: "${key}", currentLanguage: "${currentLanguage}", specificLang: "${specificLang}"`); // DEBUG
+        const lang = specificLang || currentLanguage || 'en';
+        const translationSet = translations[key];
+        let text = key; 
+        if (translationSet && typeof translationSet === 'object') {
+            text = translationSet[lang] || translationSet.en || key;
+            console.log(`[getText] Found translationSet for "${key}". Attempting lang "${lang}". Result: "${text}"`); // DEBUG
+        } else if (typeof translationSet === 'string') {
+            text = translationSet;
+            console.log(`[getText] Found string translation for "${key}": "${text}"`); // DEBUG
+        } else {
+            console.log(`[getText] No translationSet found for key: "${key}". Returning key itself.`); // DEBUG
+        }
+        return text;
     }
     function getCurrency() { return getText('currency_symbol'); }
     function formatPrice(p) { return `${p} ${getCurrency()}`; }
@@ -1062,7 +1223,40 @@ document.addEventListener('DOMContentLoaded', () => {
     function toggleSettingsDropdown(g) { if (!g) return; const o = g === languageGroup ? themeGroup : languageGroup; const i = !g.classList.contains('open'); const d = g.querySelector('.settings-current-display'); const l = g.querySelector('.settings-options-list'); if (i && o && o.classList.contains('open')) { o.classList.remove('open', 'open-upward'); const oD = o.querySelector('.settings-current-display'); if (oD) oD.setAttribute('aria-expanded', 'false'); } let u = false; if (i && d && l) { const e = 150; const r = d.getBoundingClientRect(); const sB = window.innerHeight - r.bottom - 10; const sA = r.top - 10; if (sB < e && sA > sB) { u = true; } } g.classList.remove('open-upward'); if(i) { if (u) { g.classList.add('open-upward'); } g.classList.add('open'); } else { g.classList.remove('open'); } if (d) d.setAttribute('aria-expanded', i); }
     function closeAllSettingsDropdowns() { if(languageGroup) languageGroup.classList.remove('open', 'open-upward'); if(themeGroup) themeGroup.classList.remove('open', 'open-upward'); if(currentLanguageDisplay) currentLanguageDisplay.setAttribute('aria-expanded', 'false'); if(currentThemeDisplay) currentThemeDisplay.setAttribute('aria-expanded', 'false'); }
     function updateLanguageDisplay() { const s = languageOptions?.querySelector(`.option-item[data-lang="${currentLanguage}"]`); if (s && currentLanguageText) { currentLanguageText.textContent = s.querySelector('span').textContent; languageOptions?.querySelectorAll('.option-item').forEach(i => { const a = i.dataset.lang === currentLanguage; i.classList.toggle('active', a); i.setAttribute('aria-selected', a); }); } }
-    function updateThemeDisplay() { const s = themeOptions?.querySelector(`.option-item[data-theme="${currentTheme}"]`); if (s && currentThemeText && currentThemeSwatch) { const tK = s.querySelector('span:not(.theme-swatch)')?.dataset.langKey; if (tK) { currentThemeText.textContent = getText(tK); } else { currentThemeText.textContent = s.querySelector('span:not(.theme-swatch)')?.textContent || currentTheme; } const w = s.querySelector('.theme-swatch'); if (w) { currentThemeSwatch.style.background = w.style.background; currentThemeSwatch.className = 'theme-swatch'; const c = Array.from(w.classList).find(cls => cls !== 'theme-swatch'); if (c) { currentThemeSwatch.classList.add(c); } } themeOptions?.querySelectorAll('.option-item').forEach(i => { const a = i.dataset.theme === currentTheme; i.classList.toggle('active', a); i.setAttribute('aria-selected', a); }); } }
+    function updateThemeDisplay() { 
+        const s = themeOptions?.querySelector(`.option-item[data-theme="${currentTheme}"]`); 
+        if (s && currentThemeText && currentThemeSwatch) { 
+            const tK = s.querySelector('span:not(.theme-swatch)')?.dataset.langKey; 
+            console.log(`[updateThemeDisplay] Current theme: "${currentTheme}", Extracted langKey (tK): "${tK}"`); // DEBUG
+            console.log(`[updateThemeDisplay] --- Dumping translations object ---`); // DEBUG
+            console.log(translations); // DEBUG
+            if (translations['theme_light_red']) { // DEBUG
+                console.log(`[updateThemeDisplay] translations['theme_light_red'] exists:`, translations['theme_light_red']); // DEBUG
+            } else { // DEBUG
+                console.log(`[updateThemeDisplay] !!! translations['theme_light_red'] NOT FOUND !!!`); // DEBUG
+            } // DEBUG
+            if (tK) { 
+                const translatedText = getText(tK);
+                console.log(`[updateThemeDisplay] getText("${tK}") returned: "${translatedText}"`); // DEBUG
+                currentThemeText.textContent = translatedText; 
+            } else { 
+                currentThemeText.textContent = s.querySelector('span:not(.theme-swatch)')?.textContent || currentTheme; 
+                console.log(`[updateThemeDisplay] No langKey (tK) found. Fallback to textContent or currentTheme.`); // DEBUG
+            } 
+            const w = s.querySelector('.theme-swatch'); 
+            if (w) { 
+                currentThemeSwatch.style.background = w.style.background; 
+                currentThemeSwatch.className = 'theme-swatch'; 
+                const c = Array.from(w.classList).find(cls => cls !== 'theme-swatch'); 
+                if (c) { currentThemeSwatch.classList.add(c); } 
+            } 
+            themeOptions?.querySelectorAll('.option-item').forEach(i => { 
+                const a = i.dataset.theme === currentTheme; 
+                i.classList.toggle('active', a); 
+                i.setAttribute('aria-selected', a); 
+            }); 
+        } 
+    }
     function updateDiscoveryToggleVisualState() { if (discoveryModeToggle) { discoveryModeToggle.setAttribute('aria-checked', isDiscoveryModeActivated); } }
     function updateSettingsDisplays() { updateLanguageDisplay(); updateThemeDisplay(); updateDiscoveryToggleVisualState(); }
     function updateDiscoverButtonVisibility() { if (discoverButton) { discoverButton.style.display = isDiscoveryModeActivated ? 'inline-flex' : 'none'; } }
@@ -1096,7 +1290,17 @@ document.addEventListener('DOMContentLoaded', () => {
          document.querySelectorAll('[data-lang-placeholder-key]').forEach(el => {
              const key = el.dataset.langPlaceholderKey;
              if (el.tagName === 'INPUT' || el.tagName === 'TEXTAREA') {
-                 el.placeholder = getText(key);
+                let translation;
+                if (el.id === 'new-category-name-en') {
+                    translation = getText(key, 'en'); // Force English placeholder
+                    // console.log(`Setting placeholder for 'new-category-name-en': Language=en, Key=${key}, Translation=${translation}, ElementID=${el.id}`);
+                } else if (el.id === 'new-category-name-ar') {
+                    translation = getText(key, 'ar'); // Force Arabic placeholder
+                    // console.log(`Setting placeholder for 'new-category-name-ar': Language=ar, Key=${key}, Translation=${translation}, ElementID=${el.id}`);
+                } else {
+                    translation = getText(key); // Use current UI language for other placeholders
+                }
+                el.placeholder = translation;
              }
          });
          updateSettingsDisplays();
@@ -1157,20 +1361,46 @@ document.addEventListener('DOMContentLoaded', () => {
                  if (fromScreenId === 'screen-8') { Object.values(suggestionButtonTimeouts).forEach(clearTimeout); Object.values(bundleButtonTimeouts).forEach(clearTimeout); suggestionButtonTimeouts = {}; bundleButtonTimeouts = {}; }
                  if (fromScreenId === 'screen-9') { draggedElement = null; } // Reset dragged element when leaving screen 9
              }
+
+            // Updated logic for previousScreenId
+            if (fromScreenId && id !== 'screen-1') { // Store previous screen unless navigating to the main login screen
+                previousScreenId = fromScreenId;
+                console.log(`[Debug] Navigating from ${fromScreenId} to ${id}. previousScreenId set to: ${previousScreenId}`); // DEBUG
+            } else if (id === 'screen-1') { // Clear when going to main login
+                previousScreenId = null;
+                console.log(`[Debug] Navigating to ${id} (screen-1). previousScreenId cleared.`); // DEBUG
+            } else if (fromScreenId) {
+                // This case handles when fromScreenId is not null, but id is screen-1 (already handled above) or fromScreenId was null initially.
+                // If fromScreenId exists but previousScreenId wasn't set by the conditions above, it means we came from screen-1 or previousScreenId was null.
+                // It's safer to log if previousScreenId remains unchanged here for clarity, though it should be null if coming from screen-1 or initially null.
+                console.log(`[Debug] Navigating from ${fromScreenId} to ${id}. previousScreenId remains: ${previousScreenId}`); // DEBUG
+            } else {
+                console.log(`[Debug] Navigating to ${id} (no fromScreenId). previousScreenId remains: ${previousScreenId}`); // DEBUG
+            }
+            // Note: If navigating away from screen-7, the specific logic for screen-7's back button (item-preview-back-button)
+            // might still use its own previousScreenId which is set when entering screen-7. This general previousScreenId
+            // is for more generic back button functionality.
+
              requestAnimationFrame(() => {
                  targetScreen.classList.add('active');
                  currentScreen = targetScreen;
 
-                 if (id === 'screen-7' && fromScreenId && ['screen-3', 'screen-8'].includes(fromScreenId)) {
-                     previousScreenId = fromScreenId;
-                 } else if (id !== 'screen-7' && fromScreenId !== 'screen-7') {
-                     previousScreenId = null;
-                 }
+                 // Specific logic for screen-7's back button handling (already present and seems okay)
+                 // if (id === 'screen-7' && fromScreenId && ['screen-3', 'screen-8'].includes(fromScreenId)) {
+                 //     previousScreenId = fromScreenId; // This was the old specific logic for screen-7
+                 // } else if (id !== 'screen-7' && fromScreenId !== 'screen-7') {
+                 //     previousScreenId = null; // This was too aggressive
+                 // }
+
 
                  if (id === 'screen-4') updateCartUI();
                  if (id === 'screen-5') {
                     renderOrderLog(); clearOrderPreview(); if(orderSearchInput) orderSearchInput.value = '';
                     if(importConfigErrorMsg) importConfigErrorMsg.style.display = 'none'; // Hide import error on screen entry
+                    // Set the active toggle button based on currentOrderLogView
+                    orderViewToggleButtons.forEach(btn => {
+                        btn.classList.toggle('active', btn.dataset.viewMode === currentOrderLogView);
+                    });
                  }
                  // Screen 9 logic
                  if (id === 'screen-9') {
@@ -1410,7 +1640,11 @@ document.addEventListener('DOMContentLoaded', () => {
     function addToCart(id) {
         const productData = getProductData(id); if (!productData) { console.warn(`Product ${id} not found.`); return; }
         const cartItem = cart.find(i => i.id === id && !i.isDiscount); const currentCartQuantity = cartItem ? cartItem.quantity : 0;
-        if (productData.quantity !== 999 && productData.quantity <= currentCartQuantity) { showCustomAlert(`Sorry, '${getText(productData.name_key)}' is out of stock!`, 'checkout_success_title'); return; }
+        if (productData.quantity !== 999 && productData.quantity <= currentCartQuantity) { 
+            const itemName = getText(productData.name_key);
+            showCustomAlert(getText('item_out_of_stock_alert').replace('{itemName}', itemName), 'error_title'); // Changed title to 'error_title'
+            return; 
+        }
         const existingCartItemIndex = cart.findIndex(i => i.id === id && !i.isDiscount); if (existingCartItemIndex > -1) { cart[existingCartItemIndex].quantity++; } else { const cartProductData = { id: productData.id, price: productData.price, image: productData.image, category: productData.category, name_key: productData.name_key, description_key: productData.description_key, quantity: 1 }; cart.push(cartProductData); }
         updateCartUI(); // This will re-validate discounts
     }
@@ -1592,44 +1826,183 @@ document.addEventListener('DOMContentLoaded', () => {
          // --- REMOVED Cart clearing, UI updates, Alert, and Navigation from here --- 
          // --- These actions are now handled in the 'order_confirmed_by_server' message case --- 
      }
-     function renderOrderLog(f = allOrders) { if(!orderLogContainer) return; orderLogContainer.innerHTML = ''; const s = [...f].sort((a, b) => new Date(b.timestamp) - new Date(a.timestamp)); const c = getCurrency();
-         // *** Add Set to track rendered IDs in this pass ***
-         const renderedIds = new Set();
-         if (s.length === 0) { orderLogContainer.innerHTML = `<p class="no-orders-message">${getText('no_orders_found')}</p>`; return; }
-         s.forEach(o => {
-             // *** Check if ID already rendered in this pass ***
-             if (renderedIds.has(o.id)) {
-                 console.warn(`Skipping duplicate render for order ID: ${o.id}`);
-                 return; // Skip rendering this item
-             }
-             // *** Add ID to set ***
-             renderedIds.add(o.id);
+     function renderOrderLog(ordersToRender = null, viewModeToUse = currentOrderLogView) {
+        if(!orderLogContainer) return;
+        orderLogContainer.innerHTML = '';
 
-             const l = document.createElement('div'); l.className = 'order-log-item'; l.dataset.orderId = o.id; const t = getText(`order_status_${o.status}`); l.innerHTML = `<span class="order-id" title="${o.id}">${o.id.substring(o.id.length - 15)}</span><span class="order-status ${o.status}">${t}</span><span class="order-total">${formatPrice(o.totalAmount)}</span>`; l.classList.toggle('active', o.id === currentAdminOrderSelection); l.addEventListener('click', () => { currentAdminOrderSelection = o.id; showOrderDetails(o.id); renderOrderLog(f); }); orderLogContainer.appendChild(l); }); }
-     function clearOrderPreview() { if(!orderPreviewContent || !orderStatusControls) return; orderPreviewContent.innerHTML = `<p class="order-preview-placeholder">${getText('order_preview_placeholder')}</p>`; orderStatusControls.innerHTML = ''; currentAdminOrderSelection = null; orderLogContainer?.querySelectorAll('.order-log-item.active').forEach(i => i.classList.remove('active')); }
-     function showOrderDetails(id) { const o = allOrders.find(ord => ord.id === id); if (!o || !orderPreviewContent) { clearOrderPreview(); return; }
-         // Ensure o.timestamp is a Date object (it should be, based on server logic)
-         const orderDate = (o.timestamp instanceof Date) ? o.timestamp : new Date(o.timestamp);
+        const ordersToDisplay = ordersToRender || allOrders;
+        // console.log(`Rendering order log. View mode: ${viewModeToUse}. Orders available: ${ordersToDisplay.length}`);
 
-         const c = getCurrency(), l = currentLanguage === 'ar' ? 'ar-EG' : 'en-GB',
-               // Modified options for human-readable time:
-               ft = orderDate.toLocaleString(l, { day: '2-digit', month: 'short', year: 'numeric', hour: 'numeric', minute: '2-digit', hour12: true }),
-               tst = getText(`order_status_${o.status}`), tp = getText(`payment_${o.paymentMethod}`);
-         let ih = '<ul>'; let originalSubTotal = 0; let hasDiscount = false; o.items.forEach(i => { const n = getText(i.name_key); if (i.isDiscount) { ih += `<li style="color: var(--active-green);"><em>${n}: -${formatPrice(Math.abs(i.price) * i.quantity)}</em></li>`; hasDiscount = true; } else { ih += `<li>${getText('quantity_prefix')}${i.quantity} ${n} (${formatPrice(i.price * i.quantity)})</li>`; originalSubTotal += i.price * i.quantity; } }); ih += '</ul>'; let subtotalHtml = ''; if (hasDiscount && originalSubTotal > 0) { // Only show subtotal if there was a discount and items were bought
-         // Find the total discount amount from the saved order items
-         const totalDiscountAmount = o.items.reduce((sum, item) => sum + (item.isDiscount ? Math.abs(item.price * item.quantity) : 0), 0);
-         subtotalHtml = `<p><strong>${getText('subtotal_label')}:</strong> <span style="text-decoration: line-through;">${formatPrice(originalSubTotal)}</span></p><p style="color: var(--active-green); font-weight: bold;">${getText('bundle_discount_applied')}: -${formatPrice(totalDiscountAmount)}</p>`; // Show total discount
+        // Date logic for filtering
+        const startOfToday = new Date();
+        startOfToday.setHours(0, 0, 0, 0); // Set to the beginning of the current day
+
+        let filteredOrders = ordersToDisplay.filter(order => {
+            const orderDate = new Date(order.timestamp);
+            // It's important to normalize the order's date to the start of its day for consistent comparison
+            orderDate.setHours(0, 0, 0, 0);
+
+            if (viewModeToUse === 'archived') {
+                return orderDate < startOfToday; // Orders from before today are archived
+            } else { // 'current'
+                return orderDate >= startOfToday; // Orders from today onwards are current
+            }
+        });
+
+        // Sort orders: most recent first, then by ID for tie-breaking
+        filteredOrders.sort((a, b) => {
+            const dateA = new Date(a.timestamp);
+            const dateB = new Date(b.timestamp);
+            if (dateB - dateA !== 0) {
+                return dateB - dateA; // Most recent first
+            }
+            return a.id.localeCompare(b.id); // Then by ID
+        });
+
+        // Apply search filter if there's a search term
+        const searchTerm = orderSearchInput?.value.trim().toLowerCase();
+        if (searchTerm) {
+            filteredOrders = filteredOrders.filter(order => order.id.toLowerCase().includes(searchTerm));
+        }
+
+        orderLogContainer.innerHTML = ''; // Clear previous entries
+
+        if (filteredOrders.length === 0) {
+            orderLogContainer.innerHTML = `<p class="no-orders-message">${getText(viewModeToUse === 'archived' ? 'no_archived_orders_message' : 'no_current_orders_message')}</p>`;
+            if (currentAdminOrderSelection && !filteredOrders.some(o => o.id === currentAdminOrderSelection)) {
+                clearOrderPreview(); // Clear preview if selected order is not in the new filtered list
+            }
+            return;
+        }
+
+        filteredOrders.forEach(order => {
+            const item = document.createElement('div');
+            item.className = 'order-log-item';
+            item.dataset.orderId = order.id;
+            if (order.id === currentAdminOrderSelection) {
+                item.classList.add('active');
+            }
+
+            const orderIdSpan = document.createElement('span');
+            orderIdSpan.className = 'order-id';
+            orderIdSpan.textContent = order.id;
+            orderIdSpan.title = order.id; // Show full ID on hover
+
+            const statusSpan = document.createElement('span');
+            statusSpan.className = `order-status ${order.status}`;
+            statusSpan.textContent = getText(`order_status_${order.status}`) || order.status;
+
+            const totalSpan = document.createElement('span');
+            totalSpan.className = 'order-total';
+            totalSpan.textContent = formatPrice(order.totalAmount);
+
+            item.appendChild(orderIdSpan);
+            item.appendChild(statusSpan);
+            item.appendChild(totalSpan);
+
+            item.addEventListener('click', () => showOrderDetails(order.id));
+            orderLogContainer.appendChild(item);
+        });
+
+        // If a selected order is no longer in the filtered list (e.g., due to search or view change),
+        // and the list is not empty, clear the preview.
+        if (currentAdminOrderSelection && !filteredOrders.some(o => o.id === currentAdminOrderSelection)) {
+            clearOrderPreview();
+        }
      }
-         orderPreviewContent.innerHTML = `<p><strong>${getText('order_id_label')}:</strong> <span>${o.id}</span></p><p><strong>${getText('order_placed_label')}:</strong> <span>${ft}</span></p><p><strong>${getText('order_status_label')}:</strong><span style="text-transform:capitalize;font-weight:bold;"> ${tst}</span></p><p><strong>${getText('order_payment_label')}:</strong><span style="text-transform:capitalize;"> ${tp}</span></p>${subtotalHtml}<p><strong>${getText('order_total_label')}:</strong> <span>${formatPrice(o.totalAmount)}</span></p><p><strong>${getText('order_items_label')}:</strong></p>${ih}`; renderStatusButtons(o); }
+     function clearOrderPreview() { if(!orderPreviewContent || !orderStatusControls) return; orderPreviewContent.innerHTML = `<p class="order-preview-placeholder">${getText('order_preview_placeholder')}</p>`; orderStatusControls.innerHTML = ''; currentAdminOrderSelection = null; orderLogContainer?.querySelectorAll('.order-log-item.active').forEach(i => i.classList.remove('active')); }
+     function showOrderDetails(id) {
+         const o = allOrders.find(ord => ord.id === id);
+
+         // DEBUG: Log the entire order object
+         console.log('Showing details for order:', o);
+
+         if (!o || !orderPreviewContent) {
+             clearOrderPreview();
+             return;
+         }
+
+         currentAdminOrderSelection = id; // Store selected order ID
+
+         // Highlight active order in log
+         orderLogContainer?.querySelectorAll('.order-log-item').forEach(item => {
+             item.classList.toggle('active', item.dataset.orderId === id);
+         });
+
+        let itemsHtml = '<ul>';
+        o.items.forEach(item => {
+            const product = getProductData(item.id);
+            const itemName = product ? getText(product.name_key) : getText('unknown_item');
+            // Ensure item.price and item.quantity are valid numbers for calculation
+            const itemPrice = typeof item.price === 'number' ? item.price : 0;
+            const itemQuantity = typeof item.quantity === 'number' ? item.quantity : 0;
+            itemsHtml += `<li>${itemQuantity} x ${itemName} (${formatPrice(itemPrice * itemQuantity)})</li>`;
+        });
+        itemsHtml += '</ul>';
+
+        // Revised user display logic
+        let userDisplayHtml;
+        // MODIFIED: Check o.user and o.user.email instead of o.userEmail
+        if (o.user && o.user.email && o.user.email !== 'N/A') { // Registered user with a proper email
+            const userName = (typeof o.user.name === 'string' && o.user.name && o.user.name !== 'Guest') ? o.user.name : o.user.email.split('@')[0];
+            userDisplayHtml = `${userName} (<a href="mailto:${o.user.email}">${o.user.email}</a>)`;
+        } else {
+            // Guest user (o.user is null, or o.user.email is 'N/A' or missing)
+            userDisplayHtml = getText('user_guest');
+        }
+        
+        const orderTime = new Date(o.timestamp).toLocaleString(currentLanguage === 'ar' ? 'ar-EG-u-nu-latn' : 'en-GB', {
+            day: '2-digit', month: '2-digit', year: 'numeric',
+            hour: '2-digit', minute: '2-digit', hour12: true
+        });
+
+        // MODIFIED: Use o.totalAmount instead of o.total
+        const totalFormatted = (typeof o.totalAmount === 'number') ? formatPrice(o.totalAmount) : getText('total_undefined');
+
+        orderPreviewContent.innerHTML = `
+            <p><strong>${getText('order_id_label')}:</strong> <span>${o.id || getText('id_undefined')}</span></p>
+            <p><strong>${getText('user_label')}:</strong> <span>${userDisplayHtml}</span></p>
+            <p><strong>${getText('time_label')}:</strong> <span>${orderTime}</span></p>
+            <p><strong>${getText('status_label')}:</strong> <span class="order-status ${o.status}">${getText('order_status_' + o.status)}</span></p>
+            <p><strong>${getText('payment_method_label')}:</strong> <span>${getText('payment_method_' + o.paymentMethod) || o.paymentMethod}</span></p>
+            ${o.discountApplied ? `<p><strong>${getText('discount_applied_label')}:</strong> <span>${getText(o.discountApplied.name_key)} (${o.discountApplied.percentage}%)</span></p>` : ''}
+            <p><strong>${getText('items_label')}:</strong></p>
+            ${itemsHtml}
+            <p><strong>${getText('total_label')}:</strong> <span>${totalFormatted}</span></p>
+        `;
+        renderStatusButtons(o);
+     }
      function renderStatusButtons(o) { if(!orderStatusControls) return; orderStatusControls.innerHTML = ''; const p = ['pending', 'preparing', 'delivered']; p.forEach(s => { const b = document.createElement('button'); b.className = 'button small-button status-button'; b.dataset.status = s; const t = getText(`order_status_${s}`); b.textContent = t.charAt(0).toUpperCase() + t.slice(1); b.disabled = (o.status === s); b.classList.toggle('active', o.status === s); let ic = ''; if (s === 'pending') ic = 'fas fa-hourglass-start'; else if (s === 'preparing') ic = 'fas fa-cogs'; else if (s === 'delivered') ic = 'fas fa-check-circle'; if(ic) { const i = document.createElement('i'); i.className = ic; b.prepend(i, ' '); } b.addEventListener('click', () => updateOrderStatus(o.id, s)); orderStatusControls.appendChild(b); }); }
      function updateOrderStatus(id, n) {
-         const i = allOrders.findIndex(o => o.id === id); if (i === -1) return;
-         allOrders[i].status = n;
-         saveOrders(); // *** SAVE ORDERS AFTER STATUS UPDATE ***
-         console.log(`Order ${id} status -> ${n}`);
-         handleOrderSearch(); // Re-run search to filter/sort and re-render
+         const o = allOrders.find(ord => ord.id === id);
+         if (o) {
+             o.status = n;
+             // saveOrders(); // Client-side save, not for server persistence
+             renderOrderLog(); // Will use currentOrderLogView
+             showOrderDetails(id); // Re-render details to update button states
+
+             // Send status update to server via WebSocket
+             if (ws && ws.readyState === WebSocket.OPEN) {
+                 sendWebSocketMessage({
+                     type: 'update_order_status',
+                     payload: { orderId: id, newStatus: n }
+                 });
+                 console.log(`Sent update_order_status for order ${id} to ${n}`);
+             } else {
+                 console.error('WebSocket not connected. Cannot send order status update.');
+                 // Optionally, queue the update or notify the user
+             }
+         }
      }
-     function handleOrderSearch() { if(!orderSearchInput) return; const s = orderSearchInput.value.trim().toLowerCase(), o = s ? allOrders.filter(ord => ord.id.toLowerCase().includes(s)) : allOrders; renderOrderLog(o); if (currentAdminOrderSelection && o.some(ord => ord.id === currentAdminOrderSelection)) showOrderDetails(currentAdminOrderSelection); else clearOrderPreview(); }
+     function handleOrderSearch() {
+        // The actual filtering and re-rendering is now primarily handled by renderOrderLog
+        // This function mainly triggers a re-render with the current search term.
+        // console.log(`Order search triggered. Term: "${orderSearchInput?.value}", View: "${currentOrderLogView}"`);
+        renderOrderLog(); // Re-render based on current view and whatever is in search input
+
+        // If search clears, and an item was selected, we might want to ensure it's still valid
+        // or clear preview. renderOrderLog handles clearing preview if selected item is not in results.
+     }
 
     // --- Category / Product Order Management ---
     function initializeCategories() {
@@ -2579,7 +2952,8 @@ document.addEventListener('DOMContentLoaded', () => {
          updateProductCategoryDropdowns(); // Refresh category dropdowns in modals/forms (in case category names changed via Category Edit modal)
          updateLanguageUI(); // Refresh UI for updated translation keys and potentially category names in dropdowns
 
-         showCustomAlert(getText('edit_product_success').replace('{name}', nameEn));
+         const alertProductName = currentLanguage === 'ar' ? nameAr : nameEn;
+         showCustomAlert(getText('edit_product_success').replace('{name}', alertProductName), 'edit_product_success_title'); // Use new title key
 
          // Send update via WebSocket
          sendWebSocketMessage({
@@ -2841,7 +3215,21 @@ document.addEventListener('DOMContentLoaded', () => {
         function updatePasscodeModalLanguage() { if(passcodeModalTitle) passcodeModalTitle.textContent = getText('discovery_passcode_modal_title'); if(passcodeModalInput) passcodeModalInput.placeholder = getText('discovery_passcode_prompt'); if(passcodeModalError) passcodeModalError.textContent = getText('discovery_passcode_incorrect_message'); if(passcodeModalOk) passcodeModalOk.textContent = getText('ok_button'); if(passcodeModalCancel) passcodeModalCancel.textContent = getText('cancel_button'); }
         function showPasscodeModal() { if (!passcodeModalOverlay) return; updatePasscodeModalLanguage(); if(passcodeModalInput) passcodeModalInput.value = ''; if(passcodeModalError) passcodeModalError.style.display = 'none'; requestAnimationFrame(() => { passcodeModalOverlay.classList.add('visible'); if(passcodeModalInput) passcodeModalInput.focus(); }); }
         function hidePasscodeModal() { if (!passcodeModalOverlay) return; passcodeModalOverlay.classList.remove('visible'); }
-        function handlePasscodeSubmit() { const enteredPasscode = passcodeModalInput?.value; if (enteredPasscode === DISCOVERY_PASSCODE) { isDiscoveryModeActivated = true; localStorage.setItem(LS_KEYS.DISCOVERY_MODE, isDiscoveryModeActivated); updateDiscoveryToggleVisualState(); updateDiscoverButtonVisibility(); hidePasscodeModal(); } else { if (passcodeModalError) passcodeModalError.style.display = 'block'; if (passcodeModalInput) passcodeModalInput.value = ''; console.warn("Incorrect passcode"); } }
+        function handlePasscodeSubmit() {
+            const enteredPasscode = passcodeModalInput?.value;
+            if (passcodeModalError) passcodeModalError.style.display = 'none'; // Hide error first
+
+            if (enteredPasscode) {
+                console.log("[Client] Sending verify_discovery_passcode message.");
+                sendWebSocketMessage({ type: 'verify_discovery_passcode', payload: { passcode: enteredPasscode } });
+            } else {
+                // Should not happen if OK button is disabled for empty input, but as a fallback:
+                if (passcodeModalError) {
+                    passcodeModalError.textContent = getText('discovery_passcode_incorrect_message'); // Or a "field required" message
+                    passcodeModalError.style.display = 'block';
+                }
+            }
+        }
         // --- End Passcode Modal Functions ---
     
          // --- START: Custom Confirmation Modal Functions ---
@@ -2893,17 +3281,28 @@ document.addEventListener('DOMContentLoaded', () => {
         // --- START: Config Management Functions ---
     
         function exportConfig() {
+            // Collect all relevant translation keys from products and categories
+            const relevantTranslationKeys = new Set();
+            baseMenuData.forEach(product => {
+                if (product.name_key) relevantTranslationKeys.add(product.name_key);
+                if (product.description_key) relevantTranslationKeys.add(product.description_key);
+            });
+            categories.forEach(category => {
+                if (category.name_key) relevantTranslationKeys.add(category.name_key);
+            });
+
+            const productRelatedTranslations = {};
+            relevantTranslationKeys.forEach(key => {
+                if (translations[key]) {
+                    productRelatedTranslations[key] = translations[key];
+                }
+            });
+
             const configData = {
                 products: baseMenuData,
-                orders: allOrders, // Including orders
                 categories: categories,
-                translations: translations, // Including translations
-                settings: {
-                     language: currentLanguage,
-                     theme: currentTheme,
-                     discoveryModeActivated: isDiscoveryModeActivated
-                     // You could add more settings here later
-                }
+                productRelatedTranslations: productRelatedTranslations // MODIFIED: Export only relevant translations
+                // REMOVED: orders, settings
             };
             const jsonString = JSON.stringify(configData, null, 2); // Beautify JSON with 2 spaces
     
@@ -2911,45 +3310,41 @@ document.addEventListener('DOMContentLoaded', () => {
             const url = URL.createObjectURL(blob);
             const a = document.createElement('a');
             const dateString = new Date().toISOString().split('T')[0]; // YYYY-MM-DD
-            a.download = `canteen_config_${dateString}.json`;
+            a.download = `canteen_products_config_${dateString}.json`; // MODIFIED: filename
             a.href = url;
             document.body.appendChild(a);
             a.click();
             document.body.removeChild(a);
             URL.revokeObjectURL(url); // Clean up
     
-            console.log("Config exported.");
+            console.log("Product and Category Config exported."); // MODIFIED: log message
         }
     
         function importConfig(file) {
             if (!file) {
-                 showCustomAlert(getText('import_config_error_generic'), 'Error'); // Use Error title
+                 showCustomAlert(getText('import_config_error_generic'), 'Error');
                  if(importConfigErrorMsg) {
                      importConfigErrorMsg.textContent = getText('import_config_error_generic');
                      importConfigErrorMsg.style.display = 'block';
                  }
                 return;
             }
-            importConfigErrorMsg.style.display = 'none'; // Hide previous errors
+            if(importConfigErrorMsg) importConfigErrorMsg.style.display = 'none'; // Hide previous errors
     
             const reader = new FileReader();
             reader.onload = (event) => {
                 try {
                     const importedData = JSON.parse(event.target.result);
-                    console.log("Parsed imported data:", importedData);
+                    console.log("Parsed imported product/category data:", importedData);
     
-                    // Basic validation of the imported data structure
+                    // MODIFIED: Basic validation of the imported data structure for products/categories
                     if (!importedData || typeof importedData !== 'object' ||
                         !Array.isArray(importedData.products) ||
-                        !Array.isArray(importedData.orders) ||
                         !Array.isArray(importedData.categories) ||
-                        typeof importedData.translations !== 'object' ||
-                        typeof importedData.settings !== 'object' ||
-                        typeof importedData.settings.language === 'undefined' ||
-                        typeof importedData.settings.theme === 'undefined' ||
-                        typeof importedData.settings.discoveryModeActivated === 'undefined'
+                        typeof importedData.productRelatedTranslations !== 'object'
+                        // REMOVED: validation for orders and settings
                     ) {
-                        console.error("Imported data structure is invalid.");
+                        console.error("Imported product/category data structure is invalid.");
                         showCustomAlert(getText('import_config_error_structure'), 'Error');
                          if(importConfigErrorMsg) {
                              importConfigErrorMsg.textContent = getText('import_config_error_structure');
@@ -2958,84 +3353,79 @@ document.addEventListener('DOMContentLoaded', () => {
                         return;
                     }
     
-                    // Show confirmation dialog before applying changes
+                    // MODIFIED: Update confirm message key
                     showCustomConfirm(
-                        getText('import_config_confirm_message'),
-                        'confirm_action_title', // Title key
-                        'confirm_button', // Confirm button text key
-                        'cancel_button', // Cancel button text key
+                        getText('import_products_config_confirm_message'), // NEW Key for product-specific import
+                        'confirm_action_title', 
+                        'confirm_button', 
+                        'cancel_button',
                         () => { // onConfirm callback
-                            // Apply imported data
-                            baseMenuData = importedData.products;     // Send the newly loaded products
-                            categories = importedData.categories;     // Send the newly loaded categories
-                            translations = importedData.translations   // Send the newly loaded translations
-                            currentLanguage = importedData.settings.language;
-                            currentTheme = importedData.settings.theme;
-                            isDiscoveryModeActivated = importedData.settings.discoveryModeActivated;
+                            // Apply imported data - ONLY products, categories, and their translations
+                            baseMenuData = importedData.products;
+                            categories = importedData.categories;
+                            
+                            // Merge productRelatedTranslations into the main translations object
+                            // This will overwrite existing keys if they are present in the imported file,
+                            // and add new ones. Other translations remain untouched.
+                            if (importedData.productRelatedTranslations) {
+                                Object.assign(translations, importedData.productRelatedTranslations);
+                            }
     
                             // Save imported data to localStorage
                             saveProducts();
-                            saveOrders();
                             saveCategories();
-                            saveTranslations();
-                            localStorage.setItem(LS_KEYS.LANGUAGE, currentLanguage); // Save language
-                            localStorage.setItem(LS_KEYS.THEME, currentTheme); // Save theme
-                            localStorage.setItem(LS_KEYS.DISCOVERY_MODE, isDiscoveryModeActivated); // Save discovery mode
+                            saveTranslations(); // Save the merged translations
+                            // REMOVED: saving orders and general settings
     
-                            console.log("Configuration imported and saved successfully locally.");
+                            console.log("Product/Category configuration imported and saved successfully locally.");
 
-                            // ---> Send the imported config to the server for broadcast <---
+                            // MODIFIED: Send only product/category related data to server
                             sendWebSocketMessage({
                                 type: 'admin_config_imported',
                                 payload: {
-                                    products: baseMenuData,     // Send the newly loaded products
-                                    categories: categories,     // Send the newly loaded categories
-                                    translations: translations   // Send the newly loaded translations
+                                    products: baseMenuData,
+                                    categories: categories,
+                                    productRelatedTranslations: importedData.productRelatedTranslations 
                                 }
                             });
-                            console.log("Sent 'admin_config_imported' message to server.");
-                            // ------------------------------------------------------------
-
-                            // Refresh UI based on new data and settings (already done locally)
-                            applyTheme(currentTheme); // Apply theme first
-                            updateLanguageUI(); // Update all text content and related elements
-                            renderOrderLog(); // Refresh order log
-                            clearOrderPreview(); // Clear preview
-                            if(orderSearchInput) orderSearchInput.value = ''; // Clear search
-                            updateDiscoverButtonVisibility(); // Update discover button state
-                            updateDiscoveryToggleVisualState(); // Update settings toggle state
-                            populateSortButtons(); // Refresh sort buttons
-                            populateMenuGrid(); // Refresh menu grid
-                            updateProductCategoryDropdowns(); // Refresh dropdowns
-                             // Note: Cart is not persisted, so it remains empty after import.
-                             // User session (currentUser) is also not persisted.
+                            console.log("Sent imported product/category config to server.");
+                            
+                            // Refresh UI based on new data (orders and general settings are NOT affected)
+                            // applyTheme(currentTheme); // Theme is not part of this import
+                            updateLanguageUI(); // This will pick up new/updated product/category translations
+                            // renderOrderLog(); // Orders are not part of this import
+                            // clearOrderPreview();
+                            // if(orderSearchInput) orderSearchInput.value = '';
+                            // updateDiscoverButtonVisibility(); // Discovery settings not part of this import
+                            // updateDiscoveryToggleVisualState();
+                            populateSortButtons(); 
+                            populateMenuGrid(); 
+                            updateProductCategoryDropdowns(); 
     
-                            showCustomAlert(getText('import_config_success_message'), 'checkout_success_title'); // Use success title
-                             if(importConfigErrorMsg) importConfigErrorMsg.style.display = 'none'; // Ensure error is hidden
+                            showCustomAlert(getText('import_products_config_success_message'), 'checkout_success_title'); // NEW Key
+                             if(importConfigErrorMsg) importConfigErrorMsg.style.display = 'none';
                         },
                         () => {
-                             // onCancel callback
-                             console.log("Import cancelled by user.");
-                              if(importConfigErrorMsg) importConfigErrorMsg.style.display = 'none'; // Hide error if shown before confirm
+                             console.log("Product/Category Import cancelled by user.");
+                              if(importConfigErrorMsg) importConfigErrorMsg.style.display = 'none';
                         }
                     );
     
                 } catch (e) {
-                    console.error("Error processing imported file:", e);
-                     showCustomAlert(getText('import_config_error_json_parse'), 'Error'); // Use Error title
+                    console.error("Error processing imported product/category file:", e);
+                     showCustomAlert(getText('import_config_error_json_parse'), 'Error');
                      if(importConfigErrorMsg) {
                          importConfigErrorMsg.textContent = getText('import_config_error_json_parse');
                          importConfigErrorMsg.style.display = 'block';
                      }
                 } finally {
-                    // Clear the file input value so the same file can be selected again
                     if (importConfigInput) importConfigInput.value = '';
                 }
             };
     
             reader.onerror = (error) => {
                 console.error("Error reading file:", error);
-                 showCustomAlert(getText('import_config_error_generic'), 'Error'); // Use Error title
+                 showCustomAlert(getText('import_config_error_generic'), 'Error');
                  if(importConfigErrorMsg) {
                      importConfigErrorMsg.textContent = getText('import_config_error_generic');
                      importConfigErrorMsg.style.display = 'block';
@@ -3043,7 +3433,7 @@ document.addEventListener('DOMContentLoaded', () => {
                  if (importConfigInput) importConfigInput.value = '';
             };
     
-            reader.readAsText(file); // Read the file as text
+            reader.readAsText(file); 
         }
     
         // --- END: Config Management Functions ---
@@ -3170,7 +3560,27 @@ document.addEventListener('DOMContentLoaded', () => {
         });
         cartItemsContainer?.addEventListener('click', e => { if (e.target.classList.contains('remove-item-button')) { const c = e.target.closest('.cart-item'), id = c?.dataset.id; if (id) removeFromCart(id); } });
         checkoutButton?.addEventListener('click', () => { placeOrder(); });
-        adminLoginSubmitButton?.addEventListener('click', () => { const e = adminEmailInput.value, p = adminPasswordInput.value; if(!adminLoginErrorMsg) return; adminLoginErrorMsg.style.display = 'none'; if (e === ADMIN_EMAIL && p === ADMIN_PASSWORD) { console.log("Admin login OK"); showScreen('screen-5'); } else { console.log("Admin login FAIL"); adminLoginErrorMsg.textContent = getText('admin_login_error'); adminLoginErrorMsg.style.display = 'block'; } });
+        adminLoginSubmitButton?.addEventListener('click', () => {
+            const email = adminEmailInput.value;
+            const password = adminPasswordInput.value;
+
+            if (!adminLoginErrorMsg) return;
+            adminLoginErrorMsg.style.display = 'none';
+
+            // REMOVED: The console warning below is sufficient. No need to show a UI error message here.
+            // REMOVED: console.warn("Client-side admin login validation was removed for security. Implement server-side validation in server.js.");
+            // REMOVED: adminLoginErrorMsg.textContent = "Admin login must be verified by the server. (Not yet implemented)";
+            // REMOVED: adminLoginErrorMsg.style.display = 'block';
+
+            // Send admin login request to server via WebSocket
+            if (email && password) {
+                console.log(`[Client] Sending admin_login message for: ${email}`);
+                sendWebSocketMessage({ type: 'admin_login', payload: { email: email, password: password } });
+            } else {
+                adminLoginErrorMsg.textContent = getText('login_error_fields'); // Re-use existing translation for empty fields
+                adminLoginErrorMsg.style.display = 'block';
+            }
+        });
         mgmtBackToLoginButton?.addEventListener('click', () => { clearOrderPreview(); if(orderSearchInput) orderSearchInput.value = ''; showScreen('screen-1'); });
         orderSearchButton?.addEventListener('click', handleOrderSearch);
         orderSearchInput?.addEventListener('keypress', e => { if (e.key === 'Enter') handleOrderSearch(); });
@@ -3395,6 +3805,30 @@ document.addEventListener('DOMContentLoaded', () => {
                         });
                         // --- END: Enter Key Submit Logic ---
 
+        // Listener for order view toggle buttons (Current/Archived)
+        orderViewToggleButtons.forEach(button => {
+            button.addEventListener('click', () => {
+                const newViewMode = button.dataset.viewMode;
+                if (newViewMode !== currentOrderLogView) {
+                    currentOrderLogView = newViewMode;
+                    orderViewToggleButtons.forEach(btn => {
+                        btn.classList.toggle('active', btn.dataset.viewMode === currentOrderLogView);
+                    });
+                    clearOrderPreview(); // Clear preview when switching views
+                    renderOrderLog(); // Re-render with the new view mode
+                    handleOrderSearch(); // Also re-apply search filter to the new view
+                }
+            });
+        });
+
+        // Make sure the orderSearchInput listener for 'input' is also within DOMContentLoaded
+        orderSearchInput?.addEventListener('input', () => { 
+            // If search input is cleared, re-run search which respects current view mode
+            if (orderSearchInput.value.trim() === '') { 
+                handleOrderSearch(); 
+            }
+        });
+
         // --- Initialization ---
         loadTranslations(); // Load saved translations first
         loadProducts(); // Load saved products (may replace default baseMenuData)
@@ -3411,6 +3845,27 @@ document.addEventListener('DOMContentLoaded', () => {
         updateCanteenStatusIndicator(); // <<< Call initially to set indicator based on default/loaded state
         updateAdminStatusToggle(); // <<< Call initially to set toggle based on default/loaded state
 
-        connectWebSocket(); 
-    }); // <<< THIS IS THE END of the DOMContentLoaded listener
+        // Discovery Mode Passcode Event Listener - MOVED HERE
+        if (passcodeModalInput) {
+            passcodeModalInput.addEventListener('keypress', (e) => {
+                if (e.key === 'Enter') {
+                    handlePasscodeSubmit();
+                }
+            });
+        }
 
+        connectWebSocket(); 
+    }); // <<< ENSURE THIS IS THE ACTUAL END of the DOMContentLoaded listener
+
+    // Event listener for the new Discovery screen back button
+    discoveryBackButton?.addEventListener('click', () => {
+        console.log('[Debug] Discovery back button clicked. Current previousScreenId:', previousScreenId); // DEBUG
+        // Navigate to previousScreenId if available, otherwise default to screen-3
+        const targetScreenId = previousScreenId || 'screen-3';
+        console.log('[Debug] Discovery back button navigating to:', targetScreenId); // DEBUG
+        showScreen(targetScreenId);
+    });
+
+    initializeApplication();
+
+    console.log('[Debug] discoveryBackButton element after caching:', discoveryBackButton); // ADDED FOR DEBUGGING

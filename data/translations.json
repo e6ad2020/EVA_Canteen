@@ -143,6 +143,520 @@
     "en": "Sorry, '{name}' is out of stock!",
     "ar": "عذراً، '{name}' نفذ من المخزون!"
   },
+  "edit_category_error_generic": {
+    "en": "Please enter names in both languages.",
+    "ar": "الرجاء إدخال الأسماء باللغتين."
+  },
+  "confirm_action_title": {
+    "en": "Confirm Action",
+    "ar": "تأكيد الإجراء"
+  },
+  "confirm_button": {
+    "en": "Confirm",
+    "ar": "تأكيد"
+  },
+  "no_current_orders_message": {
+    "en": "No current orders found.",
+    "ar": "لا توجد طلبات حالية."
+  },
+  "no_archived_orders_message": {
+    "en": "No archived orders found.",
+    "ar": "لا توجد طلبات مؤرشفة."
+  },
+  "order_log_current_button": {
+    "en": "Current Orders",
+    "ar": "الطلبات الحالية"
+  },
+  "order_log_archived_button": {
+    "en": "Archived Orders",
+    "ar": "الطلبات المؤرشفة"
+  },
+  "order_id_label": {
+    "en": "Order ID",
+    "ar": "رقم الطلب"
+  },
+  "user_label": {
+    "en": "User",
+    "ar": "المستخدم"
+  },
+  "time_label": {
+    "en": "Time",
+    "ar": "الوقت"
+  },
+  "status_label": {
+    "en": "Status",
+    "ar": "الحالة"
+  },
+  "payment_method_label": {
+    "en": "Payment Method",
+    "ar": "طريقة الدفع"
+  },
+  "items_label": {
+    "en": "Items",
+    "ar": "العناصر"
+  },
+  "total_label": {
+    "en": "Total",
+    "ar": "الإجمالي"
+  },
+  "payment_method_cash": {
+    "en": "Cash",
+    "ar": "نقداً"
+  },
+  "payment_method_card": {
+    "en": "Card",
+    "ar": "بطاقة"
+  },
+  "order_preview_placeholder": {
+    "en": "Select an order from the log to view details.",
+    "ar": "اختر طلبًا من السجل لعرض التفاصيل."
+  },
+  "discount_applied_label": {
+    "en": "Discount Applied",
+    "ar": "الخصم المطبق"
+  },
+  "user_guest": {
+    "en": "Guest",
+    "ar": "زائر"
+  },
+  "total_undefined": {
+    "en": "N/A",
+    "ar": "غير متاح"
+  },
+  "import_products_config_confirm_message": {
+    "en": "Are you sure you want to import this configuration?\n\nThis will overwrite ONLY products, categories, and their related translations. Orders and general app settings will NOT be affected. This action cannot be undone.",
+    "ar": "هل أنت متأكد من رغبتك في استيراد هذا الإعداد؟\n\nسيؤدي هذا إلى الكتابة فوق المنتجات والفئات والترجمات المرتبطة بها فقط. لن تتأثر الطلبات وإعدادات التطبيق العامة. لا يمكن التراجع عن هذا الإجراء."
+  },
+  "import_products_config_success_message": {
+    "en": "Products, categories, and related translations imported successfully!",
+    "ar": "تم استيراد المنتجات والفئات والترجمات المرتبطة بها بنجاح!"
+  },
+  "admin_login_error_invalid_creds": {
+    "en": "Invalid admin email or password.",
+    "ar": "بريد إلكتروني أو كلمة مرور مسؤول غير صالحة."
+  },
+  "admin_login_attempts_singular": {
+    "en": "1 attempt remaining.",
+    "ar": "محاولة واحدة متبقية."
+  },
+  "admin_login_attempts_plural": {
+    "en": "{attempts} attempts remaining.",
+    "ar": "{attempts} محاولات متبقية."
+  },
+  "admin_login_locked": {
+    "en": "Account locked. Try again in {minutes} minute(s).",
+    "ar": "الحساب مقفل. حاول مرة أخرى خلال {minutes} دقيقة."
+  },
+  "admin_login_prefix_too_many_attempts": {
+    "en": "Too many failed attempts.",
+    "ar": "عدد المحاولات الفاشلة تجاوز الحد."
+  },
+  "admin_login_missing_details": {
+    "en": "Missing admin login details.",
+    "ar": "الرجاء إدخال بيانات اعتماد المسؤول."
+  },
+  "admin_login_server_error": {
+    "en": "Server error during admin login.",
+    "ar": "حدث خطأ في الخادم أثناء تسجيل دخول المسؤول."
+  },
+  "payment_method_balance": {
+    "en": "Balance",
+    "ar": "رصيد"
+  },
+  "manage_payment_methods_title": {
+    "en": "Manage Payment Methods",
+    "ar": "إدارة طرق الدفع"
+  },
+  "payment_method_status_label": {
+    "en": "Status",
+    "ar": "الحالة"
+  },
+  "payment_method_enabled_label": {
+    "en": "Enabled",
+    "ar": "مفعل"
+  },
+  "payment_method_disabled_label": {
+    "en": "Disabled",
+    "ar": "معطل"
+  },
+  "update_payment_method_error": {
+    "en": "Error updating payment method.",
+    "ar": "خطأ في تحديث طريقة الدفع."
+  },
+  "update_payment_method_success": {
+    "en": "Payment method updated successfully.",
+    "ar": "تم تحديث طريقة الدفع بنجاح."
+  },
+  "manage_user_balances_title": {
+    "en": "Manage User Balances",
+    "ar": "إدارة أرصدة المستخدمين"
+  },
+  "user_balance_label": {
+    "en": "Balance",
+    "ar": "الرصيد"
+  },
+  "update_balance_label": {
+    "en": "Update Balance",
+    "ar": "تحديث الرصيد"
+  },
+  "add_to_balance_label": {
+    "en": "Add to Balance",
+    "ar": "إضافة إلى الرصيد"
+  },
+  "subtract_from_balance_label": {
+    "en": "Subtract from Balance",
+    "ar": "خصم من الرصيد"
+  },
+  "set_balance_label": {
+    "en": "Set Balance",
+    "ar": "تعيين الرصيد"
+  },
+  "amount_label": {
+    "en": "Amount",
+    "ar": "المبلغ"
+  },
+  "update_balance_success": {
+    "en": "User balance updated successfully.",
+    "ar": "تم تحديث رصيد المستخدم بنجاح."
+  },
+  "update_balance_error": {
+    "en": "Error updating user balance. User not found or invalid amount.",
+    "ar": "خطأ في تحديث رصيد المستخدم. المستخدم غير موجود أو المبلغ غير صالح."
+  },
+  "insufficient_balance_error": {
+    "en": "Insufficient balance to complete the transaction.",
+    "ar": "رصيد غير كافٍ لإتمام المعاملة."
+  },
+  "en": {
+    "welcome_title": "Welcome to\nEVA Canteen",
+    "login_button": "Login",
+    "signup_button": "Sign Up",
+    "email_placeholder": "Email Address",
+    "password_placeholder": "Password",
+    "username_placeholder": "Username (optional)",
+    "login_error_generic": "Login failed. Please check your credentials.",
+    "login_error_server": "Server error during login. Please try again.",
+    "signup_error_generic": "Signup failed. Please try again.",
+    "signup_error_email_exists": "This email is already registered.",
+    "signup_error_server": "Server error during signup. Please try again.",
+    "loading_user_data": "Loading user data...",
+    "profile_pic_label": "Pick a Profile Picture",
+    "menu_title": "Canteen Menu",
+    "cart_title": "Your Cart",
+    "orders_title": "Order History",
+    "management_title": "Management Panel",
+    "discovery_title": "Discover Offers",
+    "product_management_title": "Product Management",
+    "user_button_label": "User",
+    "cart_button_label": "Cart",
+    "logout_button": "Logout",
+    "back_button": "Back",
+    "settings_button_label": "Settings",
+    "fullscreen_button_label_enter": "Full Screen",
+    "fullscreen_button_label_exit": "Exit Full Screen",
+    "settings_panel_title": "Settings",
+    "language_label": "Language",
+    "theme_label": "Theme",
+    "discovery_mode_label": "Discovery Mode",
+    "discovery_mode_hint": "Unlock special offers and suggestions.",
+    "lang_en": "English",
+    "lang_ar": "Arabic (العربية)",
+    "theme_blue": "Blue",
+    "theme_green": "Green",
+    "theme_purple": "Purple",
+    "theme_light_blue": "Light Blue",
+    "theme_mono_light": "Monochrome Light",
+    "theme_dark_grey": "Dark Grey",
+    "theme_night": "Night Mode",
+    "theme_mono_dark": "Monochrome Dark",
+    "theme_yellow": "Yellow",
+    "theme_orange": "Orange",
+    "discovery_passcode_modal_title": "Enter Passcode",
+    "discovery_passcode_prompt": "Enter passcode to activate Discovery Mode",
+    "discovery_passcode_incorrect_message": "Incorrect passcode. Please try again.",
+    "settings_export_button": "Export Config",
+    "settings_import_button": "Import Config",
+    "settings_export_success": "Configuration exported successfully!",
+    "settings_export_error": "Error exporting configuration.",
+    "settings_import_success": "Configuration imported and applied successfully!",
+    "settings_import_error": "Error importing configuration.",
+    "settings_import_invalid_file": "Invalid configuration file format.",
+    "sort_by_label": "Sort by Category:",
+    "all_items_category": "All Items",
+    "add_to_cart_button": "Add to Cart",
+    "added_to_cart_button": "Added!",
+    "item_preview_title": "Item Preview",
+    "unknown_item": "Unknown Item",
+    "item_desc_default": "Delicious item from our canteen.",
+    "empty_cart_message": "Your cart is empty. Add some items!",
+    "total_label": "Total:",
+    "le_currency": "L.E",
+    "place_order_button": "Place Order",
+    "checkout_success_title": "Order Placed!",
+    "checkout_success_message": "Your order has been placed successfully.\nOrder ID: {{orderId}}",
+    "checkout_fail_title": "Order Failed",
+    "checkout_fail_message": "Could not place your order. Please try again.",
+    "checkout_fail_canteen_closed": "The canteen is currently closed. Please try again later.",
+    "ok_button": "OK",
+    "payment_method_prompt": "Payment Method:",
+    "cash": "Cash",
+    "card": "Card",
+    "cart_original_total": "Original Total:",
+    "cart_discount_applied": "Discount Applied:",
+    "cart_new_total": "New Total:",
+    "cart_discount_item_name": "Bundle Discount",
+    "no_orders_message": "You have no past orders.",
+    "order_log_title": "Order Log",
+    "order_preview_placeholder": "Select an order from the log to view details.",
+    "select_order_placeholder": "Select an order to see details",
+    "order_id_label": "Order ID:",
+    "customer_name_label": "Customer Name:",
+    "customer_email_label": "Customer Email:",
+    "order_date_label": "Date:",
+    "order_time_label": "Time:",
+    "items_label": "Items:",
+    "total_price_label": "Total Price:",
+    "payment_method_label": "Payment Method:",
+    "status_label": "Status:",
+    "status_pending": "Pending",
+    "status_preparing": "Preparing",
+    "status_delivered": "Delivered",
+    "set_status_pending": "Set to Pending",
+    "set_status_preparing": "Set to Preparing",
+    "set_status_delivered": "Set to Delivered",
+    "not_available_short": "N/A",
+    "admin_login_prompt": "Enter Admin Credentials",
+    "admin_login_button": "Admin Login",
+    "admin_logout_button": "Logout Admin",
+    "order_search_placeholder": "Search by Order ID or Name...",
+    "category_view_title": "Categories",
+    "product_view_title_prefix": "Products in",
+    "add_category_button": "Add New Category",
+    "add_product_button": "Add New Product",
+    "edit_button": "Edit",
+    "delete_button": "Delete",
+    "drag_hint_categories": "Drag to reorder categories",
+    "drag_hint_products": "Drag to reorder products within this category",
+    "category_name_en_placeholder": "Category Name (English)",
+    "category_name_ar_placeholder": "Category Name (Arabic)",
+    "add_category_modal_title": "Add New Category",
+    "edit_category_modal_title": "Edit Category",
+    "save_button": "Save",
+    "cancel_button": "Cancel",
+    "delete_category_confirm_title": "Delete Category?",
+    "delete_category_confirm_message": "Are you sure you want to delete the category '{{categoryName}}'? This will also delete all products within it.",
+    "product_name_en_placeholder": "Product Name (English)",
+    "product_name_ar_placeholder": "Product Name (Arabic)",
+    "product_desc_en_placeholder": "Description (English)",
+    "product_desc_ar_placeholder": "Description (Arabic)",
+    "product_price_placeholder": "Price (L.E)",
+    "product_image_url_placeholder": "Image URL (e.g., https://...)",
+    "product_category_label": "Category:",
+    "select_category_placeholder": "-- Select Category --",
+    "add_product_modal_title": "Add New Product to {{categoryName}}",
+    "edit_product_modal_title": "Edit Product",
+    "delete_product_confirm_title": "Delete Product?",
+    "delete_product_confirm_message": "Are you sure you want to delete the product '{{productName}}'?",
+    "no_products_in_category": "No products in this category yet. Add some!",
+    "error_fill_all_fields": "Please fill all required fields.",
+    "error_valid_price": "Please enter a valid price.",
+    "error_valid_url": "Please enter a valid image URL.",
+    "error_category_name_exists": "A category with this English or Arabic name already exists.",
+    "error_product_name_exists": "A product with this English or Arabic name already exists in this category.",
+    "edit_category_error_generic": "Please enter names in both languages.",
+    "confirm_action_title": "Confirm Action",
+    "confirm_button": "Confirm",
+    "canteen_status_title": "Canteen Status",
+    "canteen_status_open": "Canteen is Open",
+    "canteen_status_closed": "Canteen is Closed",
+    "canteen_status_hint": "Toggle to open or close the canteen for regular users.",
+    "canteen_closed_indicator": "Canteen is currently CLOSED",
+    "force_logout_canteen_closed": "The canteen has been closed by management. You have been logged out.",
+    "order_log_current_button": "Current Orders",
+    "order_log_archived_button": "Archived Orders",
+    "no_current_orders_message": "No current orders found.",
+    "no_archived_orders_message": "No archived orders found.",
+    "search_no_results_current": "No current orders match your search.",
+    "search_no_results_archived": "No archived orders match your search.",
+    "order_history_title": "Full Order Archive",
+    "goto_product_mgmt_button": "Manage Products",
+    "goto_order_history_button": "Full Order Archive",
+    "order_history_search_placeholder": "Search all orders...",
+    "no_order_history_message": "No orders found in the entire history.",
+    "search_no_results_history": "No orders in the entire history match your search.",
+    "discover_offers_title": "Today's Special Offers!",
+    "discover_suggestions_title": "Try These Combinations!",
+    "discover_categories_title": "Explore by Category",
+    "bundle_original_price_label": "Was:",
+    "bundle_add_button": "Add Bundle to Cart",
+    "suggestion_total_label": "Total:",
+    "suggestion_add_button": "Add Suggestion to Cart"
+  },
+  "ar": {
+    "welcome_title": "مرحباً بك في\nكانتين EVA",
+    "login_button": "تسجيل الدخول",
+    "signup_button": "إنشاء حساب",
+    "email_placeholder": "البريد الإلكتروني",
+    "password_placeholder": "كلمة المرور",
+    "username_placeholder": "اسم المستخدم (اختياري)",
+    "login_error_generic": "فشل تسجيل الدخول. يرجى التحقق من بياناتك.",
+    "login_error_server": "خطأ في الخادم أثناء تسجيل الدخول. حاول مرة أخرى.",
+    "signup_error_generic": "فشل إنشاء الحساب. يرجى المحاولة مرة أخرى.",
+    "signup_error_email_exists": "هذا البريد الإلكتروني مسجل بالفعل.",
+    "signup_error_server": "خطأ في الخادم أثناء إنشاء الحساب. حاول مرة أخرى.",
+    "loading_user_data": "جاري تحميل بيانات المستخدم...",
+    "profile_pic_label": "اختر صورة شخصية",
+    "menu_title": "قائمة الكانتين",
+    "cart_title": "سلة مشترياتك",
+    "orders_title": "سجل الطلبات",
+    "management_title": "لوحة الإدارة",
+    "discovery_title": "اكتشف العروض",
+    "product_management_title": "إدارة المنتجات",
+    "user_button_label": "المستخدم",
+    "cart_button_label": "السلة",
+    "logout_button": "تسجيل الخروج",
+    "back_button": "رجوع",
+    "settings_button_label": "الإعدادات",
+    "fullscreen_button_label_enter": "ملء الشاشة",
+    "fullscreen_button_label_exit": "الخروج من ملء الشاشة",
+    "settings_panel_title": "الإعدادات",
+    "language_label": "اللغة",
+    "theme_label": "المظهر",
+    "discovery_mode_label": "وضع الاكتشاف",
+    "discovery_mode_hint": "اكتشف عروضًا واقتراحات خاصة.",
+    "lang_en": "الإنجليزية (English)",
+    "lang_ar": "العربية",
+    "theme_blue": "أزرق",
+    "theme_green": "أخضر",
+    "theme_purple": "بنفسجي",
+    "theme_light_blue": "أزرق فاتح",
+    "theme_mono_light": "أبيض وأسود فاتح",
+    "theme_dark_grey": "رمادي داكن",
+    "theme_night": "الوضع الليلي",
+    "theme_mono_dark": "أبيض وأسود داكن",
+    "theme_yellow": "أصفر",
+    "theme_orange": "برتقالي",
+    "discovery_passcode_modal_title": "أدخل رمز المرور",
+    "discovery_passcode_prompt": "أدخل رمز المرور لتفعيل وضع الاكتشاف",
+    "discovery_passcode_incorrect_message": "رمز المرور غير صحيح. يرجى المحاولة مرة أخرى.",
+    "settings_export_button": "تصدير الإعدادات",
+    "settings_import_button": "استيراد الإعدادات",
+    "settings_export_success": "تم تصدير الإعدادات بنجاح!",
+    "settings_export_error": "خطأ في تصدير الإعدادات.",
+    "settings_import_success": "تم استيراد وتطبيق الإعدادات بنجاح!",
+    "settings_import_error": "خطأ في استيراد الإعدادات.",
+    "settings_import_invalid_file": "تنسيق ملف الإعدادات غير صالح.",
+    "sort_by_label": "الترتيب حسب الفئة:",
+    "all_items_category": "جميع الأصناف",
+    "add_to_cart_button": "أضف إلى السلة",
+    "added_to_cart_button": "تمت الإضافة!",
+    "item_preview_title": "معاينة الصنف",
+    "unknown_item": "صنف غير معروف",
+    "item_desc_default": "صنف لذيذ من الكانتين الخاص بنا.",
+    "empty_cart_message": "سلتك فارغة. أضف بعض الأصناف!",
+    "total_label": "الإجمالي:",
+    "le_currency": "ج.م",
+    "place_order_button": "إتمام الطلب",
+    "checkout_success_title": "تم إرسال الطلب!",
+    "checkout_success_message": "لقد تم إرسال طلبك بنجاح.\nرقم الطلب: {{orderId}}",
+    "checkout_fail_title": "فشل الطلب",
+    "checkout_fail_message": "لم نتمكن من إرسال طلبك. يرجى المحاولة مرة أخرى.",
+    "checkout_fail_canteen_closed": "الكانتين مغلق حاليًا. يرجى المحاولة مرة أخرى لاحقًا.",
+    "ok_button": "موافق",
+    "payment_method_prompt": "طريقة الدفع:",
+    "cash": "نقداً",
+    "card": "بطاقة ائتمان",
+    "cart_original_total": "الإجمالي الأصلي:",
+    "cart_discount_applied": "الخصم المطبق:",
+    "cart_new_total": "الإجمالي الجديد:",
+    "cart_discount_item_name": "خصم الباقة",
+    "no_orders_message": "ليس لديك طلبات سابقة.",
+    "order_log_title": "سجل الطلبات",
+    "order_preview_placeholder": "اختر طلبًا من السجل لعرض التفاصيل.",
+    "select_order_placeholder": "اختر طلبًا لعرض التفاصيل",
+    "order_id_label": "رقم الطلب:",
+    "customer_name_label": "اسم العميل:",
+    "customer_email_label": "بريد العميل:",
+    "order_date_label": "التاريخ:",
+    "order_time_label": "الوقت:",
+    "items_label": "الأصناف:",
+    "total_price_label": "السعر الإجمالي:",
+    "payment_method_label": "طريقة الدفع:",
+    "status_label": "الحالة:",
+    "status_pending": "قيد الانتظار",
+    "status_preparing": "قيد التجهيز",
+    "status_delivered": "تم التوصيل",
+    "set_status_pending": "تغيير إلى قيد الانتظار",
+    "set_status_preparing": "تغيير إلى قيد التجهيز",
+    "set_status_delivered": "تغيير إلى تم التوصيل",
+    "not_available_short": "غير متوفر",
+    "admin_login_prompt": "أدخل بيانات دخول المدير",
+    "admin_login_button": "دخول المدير",
+    "admin_logout_button": "خروج المدير",
+    "order_search_placeholder": "ابحث برقم الطلب أو الاسم...",
+    "category_view_title": "الفئات",
+    "product_view_title_prefix": "منتجات في",
+    "add_category_button": "إضافة فئة جديدة",
+    "add_product_button": "إضافة منتج جديد",
+    "edit_button": "تعديل",
+    "delete_button": "حذف",
+    "drag_hint_categories": "اسحب لإعادة ترتيب الفئات",
+    "drag_hint_products": "اسحب لإعادة ترتيب المنتجات داخل هذه الفئة",
+    "category_name_en_placeholder": "اسم الفئة (إنجليزي)",
+    "category_name_ar_placeholder": "اسم الفئة (عربي)",
+    "add_category_modal_title": "إضافة فئة جديدة",
+    "edit_category_modal_title": "تعديل الفئة",
+    "save_button": "حفظ",
+    "cancel_button": "إلغاء",
+    "delete_category_confirm_title": "حذف الفئة؟",
+    "delete_category_confirm_message": "هل أنت متأكد أنك تريد حذف الفئة '{{categoryName}}'؟ سيؤدي هذا أيضًا إلى حذف جميع المنتجات بداخلها.",
+    "product_name_en_placeholder": "اسم المنتج (إنجليزي)",
+    "product_name_ar_placeholder": "اسم المنتج (عربي)",
+    "product_desc_en_placeholder": "الوصف (إنجليزي)",
+    "product_desc_ar_placeholder": "الوصف (عربي)",
+    "product_price_placeholder": "السعر (ج.م)",
+    "product_image_url_placeholder": "رابط الصورة (مثال: https://...)",
+    "product_category_label": "الفئة:",
+    "select_category_placeholder": "-- اختر الفئة --",
+    "add_product_modal_title": "إضافة منتج جديد إلى {{categoryName}}",
+    "edit_product_modal_title": "تعديل المنتج",
+    "delete_product_confirm_title": "حذف المنتج؟",
+    "delete_product_confirm_message": "هل أنت متأكد أنك تريد حذف المنتج '{{productName}}'؟",
+    "no_products_in_category": "لا توجد منتجات في هذه الفئة حتى الآن. أضف بعضها!",
+    "error_fill_all_fields": "يرجى ملء جميع الحقون المطلوبة.",
+    "error_valid_price": "يرجى إدخال سعر صالح.",
+    "error_valid_url": "يرجى إدخال رابط صورة صالح.",
+    "error_category_name_exists": "توجد فئة بهذا الاسم الإنجليزي أو العربي بالفعل.",
+    "error_product_name_exists": "يوجد منتج بهذا الاسم الإنجليزي أو العربي بالفعل في هذه الفئة.",
+    "edit_category_error_generic": "يرجى إدخال الأسماء باللغتين.",
+    "confirm_action_title": "تأكيد الإجراء",
+    "confirm_button": "تأكيد",
+    "canteen_status_title": "حالة الكانتين",
+    "canteen_status_open": "الكانتين مفتوح",
+    "canteen_status_closed": "الكانتين مغلق",
+    "canteen_status_hint": "قم بالتبديل لفتح أو إغلاق الكانتين للمستخدمين العاديين.",
+    "canteen_closed_indicator": "الكانتين مغلق حاليًا",
+    "force_logout_canteen_closed": "تم إغلاق الكانتين من قبل الإدارة. لقد تم تسجيل خروجك.",
+    "order_log_current_button": "الطلبات الحالية",
+    "order_log_archived_button": "الطلبات المؤرشفة",
+    "no_current_orders_message": "لا توجد طلبات حالية.",
+    "no_archived_orders_message": "لا توجد طلبات مؤرشفة.",
+    "search_no_results_current": "لا توجد طلبات حالية تطابق بحثك.",
+    "search_no_results_archived": "لا توجد طلبات مؤرشفة تطابق بحثك.",
+    "order_history_title": "أرشيف الطلبات الكامل",
+    "goto_product_mgmt_button": "إدارة المنتجات",
+    "goto_order_history_button": "أرشيف الطلبات الكامل",
+    "order_history_search_placeholder": "ابحث في كل الطلبات...",
+    "no_order_history_message": "لا توجد طلبات في الأرشيف الكامل.",
+    "search_no_results_history": "لا توجد طلبات في الأرشيف الكامل تطابق بحثك.",
+    "discover_offers_title": "عروض اليوم الخاصة!",
+    "discover_suggestions_title": "جرّب هذه التشكيلات!",
+    "discover_categories_title": "استكشف حسب الفئة",
+    "bundle_original_price_label": "كان:",
+    "bundle_add_button": "أضف الباقة للسلة",
+    "suggestion_total_label": "الإجمالي:",
+    "suggestion_add_button": "أضف الاقتراح للسلة"
+  },
   "item_out_of_stock_alert": {
     "en": "Sorry, {itemName} is out of stock!",
     "ar": "عذراً، {itemName} نفذ من المخزون!"
@@ -214,14 +728,6 @@
   "sort_label": {
     "en": "Sort",
     "ar": "فرز"
-  },
-  "total_label": {
-    "en": "Total",
-    "ar": "الإجمالي"
-  },
-  "payment_method_label": {
-    "en": "Payment Method",
-    "ar": "طريقة الدفع"
   },
   "payment_cash": {
     "en": "Cash",
@@ -346,14 +852,6 @@
   "order_preview_title": {
     "en": "Order Preview",
     "ar": "معاينة الطلب"
-  },
-  "order_preview_placeholder": {
-    "en": "Select an order from the log to view details.",
-    "ar": "اختر طلبًا من السجل لعرض التفاصيل."
-  },
-  "order_id_label": {
-    "en": "Order ID",
-    "ar": "رقم الطلب"
   },
   "order_placed_label": {
     "en": "Placed",
@@ -687,10 +1185,6 @@
     "en": "Edit Category",
     "ar": "تعديل الفئة"
   },
-  "edit_category_error_generic": {
-    "en": "Please enter names in both languages.",
-    "ar": "الرجاء إدخال الأسماء باللغتين."
-  },
   "edit_category_success": {
     "en": "Category '{name}' updated successfully!",
     "ar": "تم تحديث الفئة '{name}' بنجاح!"
@@ -870,14 +1364,6 @@
   "no_categories_found": {
     "en": "No categories available.",
     "ar": "لا توجد فئات متاحة."
-  },
-  "confirm_action_title": {
-    "en": "Confirm Action",
-    "ar": "تأكيد الإجراء"
-  },
-  "confirm_button": {
-    "en": "Confirm",
-    "ar": "تأكيد"
   },
   "delete_confirm_button": {
     "en": "Delete",

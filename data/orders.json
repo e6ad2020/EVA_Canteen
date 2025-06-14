@@ -1,5 +1,405 @@
 [
   {
+    "id": "ORD-1-12-06",
+    "timestamp": "2025-06-12T07:48:21.893Z",
+    "items": [
+      {
+        "id": "fries",
+        "quantity": 1,
+        "price": 35,
+        "isDiscount": false,
+        "name_key": "item_name_fries"
+      },
+      {
+        "id": "soda",
+        "quantity": 1,
+        "price": 15,
+        "isDiscount": false,
+        "name_key": "item_name_soda"
+      }
+    ],
+    "totalAmount": 50,
+    "status": "pending",
+    "paymentMethod": "cash",
+    "user": {
+      "email": "eyad@canteen.com",
+      "profilePic": "https://i.postimg.cc/XYGqh5B2/IMG.png"
+    }
+  },
+  {
+    "id": "ORD-1-10-06",
+    "timestamp": "2025-06-10T05:26:58.620Z",
+    "items": [
+      {
+        "id": "prod-1749533167376-daokuj",
+        "quantity": 1,
+        "price": 5,
+        "isDiscount": false,
+        "name_key": "item_name_prod-1749533167376-daokuj"
+      }
+    ],
+    "totalAmount": 5,
+    "status": "pending",
+    "paymentMethod": "cash",
+    "user": {
+      "email": "eyad@canteen.com",
+      "profilePic": "https://i.postimg.cc/XYGqh5B2/IMG.png"
+    }
+  },
+  {
+    "id": "ORD-1-01-06",
+    "timestamp": "2025-06-01T03:52:41.691Z",
+    "items": [
+      {
+        "id": "salad",
+        "quantity": 1,
+        "price": 45,
+        "isDiscount": false,
+        "name_key": "item_name_salad"
+      }
+    ],
+    "totalAmount": 45,
+    "status": "delivered",
+    "paymentMethod": "cash",
+    "user": {
+      "email": "t@t.t",
+      "profilePic": "https://i.postimg.cc/XYGqh5B2/IMG.png"
+    }
+  },
+  {
+    "id": "ORD-9-31-05",
+    "timestamp": "2025-05-31T04:08:40.172Z",
+    "items": [
+      {
+        "id": "pizza",
+        "quantity": 1,
+        "price": 70,
+        "isDiscount": false,
+        "name_key": "item_name_pizza"
+      },
+      {
+        "id": "burger",
+        "quantity": 1,
+        "price": 60,
+        "isDiscount": false,
+        "name_key": "item_name_burger"
+      },
+      {
+        "id": "salad",
+        "quantity": 1,
+        "price": 45,
+        "isDiscount": false,
+        "name_key": "item_name_salad"
+      }
+    ],
+    "totalAmount": 175,
+    "status": "delivered",
+    "paymentMethod": "cash",
+    "user": {
+      "email": "eyad@canteen.com",
+      "profilePic": "https://i.postimg.cc/XYGqh5B2/IMG.png"
+    }
+  },
+  {
+    "id": "ORD-8-31-05",
+    "timestamp": "2025-05-31T02:48:14.017Z",
+    "items": [
+      {
+        "id": "soda",
+        "quantity": 1,
+        "price": 15,
+        "isDiscount": false,
+        "name_key": "item_name_soda"
+      }
+    ],
+    "totalAmount": 15,
+    "status": "delivered",
+    "paymentMethod": "card",
+    "user": {
+      "email": "t@t.t",
+      "profilePic": "http://192.168.1.10:8000/IMG.png"
+    }
+  },
+  {
+    "id": "ORD-7-31-05",
+    "timestamp": "2025-05-31T02:46:59.497Z",
+    "items": [
+      {
+        "id": "soda",
+        "quantity": 1,
+        "price": 15,
+        "isDiscount": false,
+        "name_key": "item_name_soda"
+      }
+    ],
+    "totalAmount": 15,
+    "status": "pending",
+    "paymentMethod": "cash",
+    "user": {
+      "email": "t@t.t",
+      "profilePic": "http://192.168.1.10:8000/IMG.png"
+    }
+  },
+  {
+    "id": "ORD-6-31-05",
+    "timestamp": "2025-05-30T22:20:45.033Z",
+    "items": [
+      {
+        "id": "croissant",
+        "quantity": 1,
+        "price": 25,
+        "isDiscount": false,
+        "name_key": "item_name_croissant"
+      }
+    ],
+    "totalAmount": 25,
+    "status": "preparing",
+    "paymentMethod": "cash",
+    "user": {
+      "email": "eyad@canteen.com",
+      "profilePic": "https://i.postimg.cc/XYGqh5B2/IMG.png"
+    }
+  },
+  {
+    "id": "ORD-5-31-05",
+    "timestamp": "2025-05-30T22:11:09.916Z",
+    "items": [
+      {
+        "id": "croissant",
+        "quantity": 1,
+        "price": 25,
+        "isDiscount": false,
+        "name_key": "item_name_croissant"
+      }
+    ],
+    "totalAmount": 25,
+    "status": "delivered",
+    "paymentMethod": "cash",
+    "user": {
+      "email": "t@t.t",
+      "profilePic": "http://192.168.1.10:8000/IMG.png"
+    }
+  },
+  {
+    "id": "ORD-4-31-05",
+    "timestamp": "2025-05-30T21:53:51.831Z",
+    "items": [
+      {
+        "id": "croissant",
+        "quantity": 6,
+        "price": 25,
+        "isDiscount": false,
+        "name_key": "item_name_croissant"
+      },
+      {
+        "id": "coffee",
+        "quantity": 1,
+        "price": 30,
+        "isDiscount": false,
+        "name_key": "item_name_coffee"
+      },
+      {
+        "id": "cake",
+        "quantity": 1,
+        "price": 40,
+        "isDiscount": false,
+        "name_key": "item_name_cake"
+      },
+      {
+        "id": "juice",
+        "quantity": 1,
+        "price": 20,
+        "isDiscount": false,
+        "name_key": "item_name_juice"
+      },
+      {
+        "id": "muffin",
+        "quantity": 1,
+        "price": 22,
+        "isDiscount": false,
+        "name_key": "item_name_muffin"
+      },
+      {
+        "id": "cookies",
+        "quantity": 1,
+        "price": 20,
+        "isDiscount": false,
+        "name_key": "item_name_cookies"
+      },
+      {
+        "id": "burger",
+        "quantity": 1,
+        "price": 60,
+        "isDiscount": false,
+        "name_key": "item_name_burger"
+      },
+      {
+        "id": "pizza",
+        "quantity": 1,
+        "price": 70,
+        "isDiscount": false,
+        "name_key": "item_name_pizza"
+      },
+      {
+        "id": "sandwich",
+        "quantity": 1,
+        "price": 50,
+        "isDiscount": false,
+        "name_key": "item_name_sandwich"
+      },
+      {
+        "id": "soup",
+        "quantity": 1,
+        "price": 35,
+        "isDiscount": false,
+        "name_key": "item_name_soup"
+      },
+      {
+        "id": "prod-1745308960876-1j187s",
+        "quantity": 1,
+        "price": 55,
+        "isDiscount": false,
+        "name_key": "item_name_prod-1745308960876-1j187s"
+      },
+      {
+        "id": "salad",
+        "quantity": 1,
+        "price": 45,
+        "isDiscount": false,
+        "name_key": "item_name_salad"
+      },
+      {
+        "id": "pasta",
+        "quantity": 1,
+        "price": 55,
+        "isDiscount": false,
+        "name_key": "item_name_pasta"
+      },
+      {
+        "id": "chips",
+        "quantity": 1,
+        "price": 10,
+        "isDiscount": false,
+        "name_key": "item_name_chips"
+      },
+      {
+        "id": "onionrings",
+        "quantity": 1,
+        "price": 30,
+        "isDiscount": false,
+        "name_key": "item_name_onionrings"
+      },
+      {
+        "id": "soda",
+        "quantity": 1,
+        "price": 15,
+        "isDiscount": false,
+        "name_key": "item_name_soda"
+      },
+      {
+        "id": "fries",
+        "quantity": 1,
+        "price": 35,
+        "isDiscount": false,
+        "name_key": "item_name_fries"
+      }
+    ],
+    "totalAmount": 742,
+    "status": "delivered",
+    "paymentMethod": "cash",
+    "user": {
+      "email": "t@t.t",
+      "profilePic": "http://192.168.1.10:8000/IMG.png"
+    }
+  },
+  {
+    "id": "ORD-3-31-05",
+    "timestamp": "2025-05-30T21:15:09.894Z",
+    "items": [
+      {
+        "id": "coffee",
+        "quantity": 1,
+        "price": 30,
+        "isDiscount": false,
+        "name_key": "item_name_coffee"
+      }
+    ],
+    "totalAmount": 30,
+    "status": "pending",
+    "paymentMethod": "cash",
+    "user": {
+      "email": "t@t.t",
+      "profilePic": "http://192.168.1.10:8000/IMG.png"
+    }
+  },
+  {
+    "id": "ORD-2-31-05",
+    "timestamp": "2025-05-30T21:15:03.050Z",
+    "items": [
+      {
+        "id": "cake",
+        "quantity": 1,
+        "price": 40,
+        "isDiscount": false,
+        "name_key": "item_name_cake"
+      }
+    ],
+    "totalAmount": 40,
+    "status": "delivered",
+    "paymentMethod": "cash",
+    "user": {
+      "email": "t@t.t",
+      "profilePic": "http://192.168.1.10:8000/IMG.png"
+    }
+  },
+  {
+    "id": "ORD-1-31-05",
+    "timestamp": "2025-05-30T21:14:58.147Z",
+    "items": [
+      {
+        "id": "croissant",
+        "quantity": 1,
+        "price": 25,
+        "isDiscount": false,
+        "name_key": "item_name_croissant"
+      }
+    ],
+    "totalAmount": 25,
+    "status": "preparing",
+    "paymentMethod": "cash",
+    "user": {
+      "email": "t@t.t",
+      "profilePic": "http://192.168.1.10:8000/IMG.png"
+    }
+  },
+  {
+    "id": "ORD-1-30-05",
+    "timestamp": "2025-05-30T20:39:35.798Z",
+    "items": [
+      {
+        "id": "cake",
+        "quantity": 1,
+        "price": 40,
+        "isDiscount": false,
+        "name_key": "item_name_cake"
+      },
+      {
+        "id": "croissant",
+        "quantity": 1,
+        "price": 25,
+        "isDiscount": false,
+        "name_key": "item_name_croissant"
+      }
+    ],
+    "totalAmount": 65,
+    "status": "preparing",
+    "paymentMethod": "cash",
+    "user": {
+      "email": "t@t.t",
+      "profilePic": "http://192.168.1.10:8000/IMG.png"
+    }
+  },
+  {
     "id": "ORD-1-13-05",
     "timestamp": "2025-05-13T11:39:08.656Z",
     "items": [
@@ -39,7 +439,7 @@
       }
     ],
     "totalAmount": 55,
-    "status": "pending",
+    "status": "preparing",
     "paymentMethod": "cash",
     "user": {
       "email": "t@t.t",
@@ -79,7 +479,7 @@
       }
     ],
     "totalAmount": 40,
-    "status": "pending",
+    "status": "delivered",
     "paymentMethod": "cash",
     "user": {
       "email": "gg@gg.com",

@@ -12,6 +12,12 @@ const TRANSLATIONS_FILE = path.join(DATA_DIR, 'translations.json');
 const STATUS_FILE = path.join(DATA_DIR, 'canteenStatus.json');
 const USERS_FILE = path.join(DATA_DIR, 'users.json');
 
+// --- START: Admin Login Rate Limiting Variables ---
+const failedAdminLoginAttempts = new Map(); // Stores { ip: { count: number, blockUntil: timestamp | null } }
+const MAX_ADMIN_FAILED_ATTEMPTS = 5; // Max failed attempts before lockout
+const ADMIN_LOCKOUT_DURATION_MS = 5 * 60 * 1000; // 5 minutes
+// --- END: Admin Login Rate Limiting Variables ---
+
 // Ensure data directory exists
 if (!fs.existsSync(DATA_DIR)) {
     try {
@@ -169,7 +175,38 @@ const defaultTranslations = {
     canteen_status_hint: { en: "Toggle to open or close the canteen for regular users.", ar: "بدّل لفتح أو إغلاق الكانتين للمستخدمين العاديين." },
     info_title: { en: "Information", ar: "معلومات" },
     force_logout_canteen_closed: { en: "The canteen has been closed by management. You have been logged out.", ar: "تم إغلاق الكانتين من قبل الإدارة. تم تسجيل خروجك." },
-    product_out_of_stock_alert: { en: "Sorry, '{name}' is out of stock!", ar: "عذراً، '{name}' نفذ من المخزون!" }
+    product_out_of_stock_alert: { en: "Sorry, '{name}' is out of stock!", ar: "عذراً، '{name}' نفذ من المخزون!" },
+    edit_category_error_generic: { en: "Please enter names in both languages.", ar: "يرجى إدخال الأسماء باللغتين." },
+    confirm_action_title: { en: "Confirm Action", ar: "تأكيد الإجراء" },
+    confirm_button: { en: "Confirm", ar: "تأكيد" },
+    no_current_orders_message: { en: "No current orders found.", ar: "لا توجد طلبات حالية." },
+    no_archived_orders_message: { en: "No archived orders found.", ar: "لا توجد طلبات مؤرشفة." },
+    order_log_current_button: { en: "Current Orders", ar: "الطلبات الحالية" },
+    order_log_archived_button: { en: "Archived Orders", ar: "الطلبات المؤرشفة" },
+    order_id_label: { en: "Order ID", ar: "رقم الطلب" },
+    user_label: { en: "User", ar: "المستخدم" },
+    time_label: { en: "Time", ar: "الوقت" },
+    status_label: { en: "Status", ar: "الحالة" },
+    payment_method_label: { en: "Payment Method", ar: "طريقة الدفع" },
+    items_label: { en: "Items", ar: "العناصر" },
+    total_label: { en: "Total", ar: "الإجمالي" },
+    payment_method_cash: { en: "Cash", ar: "نقداً" },
+    payment_method_card: { en: "Card", ar: "بطاقة" },
+    order_preview_placeholder: { en: "Select an order to view details.", ar: "اختر طلبًا لعرض التفاصيل." },
+    discount_applied_label: { en: "Discount Applied", ar: "الخصم المطبق" },
+    user_guest: { en: "Guest", ar: "زائر" },
+    total_undefined: { en: "N/A", ar: "غير متاح" },
+    import_products_config_confirm_message: {en: "Are you sure you want to import this configuration?\n\nThis will overwrite ONLY products, categories, and their related translations. Orders and general app settings will NOT be affected. This action cannot be undone.", ar: "هل أنت متأكد من رغبتك في استيراد هذا الإعداد؟\n\nسيؤدي هذا إلى الكتابة فوق المنتجات والفئات والترجمات المرتبطة بها فقط. لن تتأثر الطلبات وإعدادات التطبيق العامة. لا يمكن التراجع عن هذا الإجراء."},
+    import_products_config_success_message: {en: "Products, categories, and related translations imported successfully!", ar: "تم استيراد المنتجات والفئات والترجمات المرتبطة بها بنجاح!"},
+    // --- START: Added Admin Login Error Translation Keys ---
+    admin_login_error_invalid_creds: { en: "Invalid admin email or password.", ar: "بريد إلكتروني أو كلمة مرور مسؤول غير صالحة." },
+    admin_login_attempts_singular: { en: "1 attempt remaining.", ar: "محاولة واحدة متبقية." },
+    admin_login_attempts_plural: { en: "{attempts} attempts remaining.", ar: "{attempts} محاولات متبقية." },
+    admin_login_locked: { en: "Account locked. Try again in {minutes} minute(s).", ar: "الحساب مقفل. حاول مرة أخرى خلال {minutes} دقيقة." },
+    admin_login_prefix_too_many_attempts: { en: "Too many failed attempts.", ar: "عدد المحاولات الفاشلة تجاوز الحد." },
+    admin_login_missing_details: { en: "Missing admin login details.", ar: "الرجاء إدخال بيانات اعتماد المسؤول." },
+    admin_login_server_error: { en: "Server error during admin login.", ar: "حدث خطأ في الخادم أثناء تسجيل دخول المسؤول." }
+    // --- END: Added Admin Login Error Translation Keys ---
 };
 const defaultStatus = { isOpen: true };
 const defaultUsers = [];
@@ -186,23 +223,60 @@ let allUsers = loadDataFromFile(USERS_FILE, defaultUsers);
 // console.log(`[Server Startup] Does translations object have 'info_title'? `, translations.hasOwnProperty('info_title'));
 // console.log(`[Server Startup] Does translations object have 'force_logout_canteen_closed'? `, translations.hasOwnProperty('force_logout_canteen_closed'));
 
+// --- Ensure critical translation keys exist and have values ---
+let translationsModified = false;
+if (!translations.user_guest || !translations.user_guest.en || !translations.user_guest.ar) {
+    translations.user_guest = { en: "Guest", ar: "زائر" };
+    console.log("Applied default 'user_guest' translation as it was missing or incomplete.");
+    translationsModified = true;
+}
+
+// You can add more critical key checks here if needed, e.g., for 'total_undefined'
+if (!translations.total_undefined || !translations.total_undefined.en || !translations.total_undefined.ar) {
+    translations.total_undefined = { en: "N/A", ar: "غير متاح" }; // Example default
+    console.log("Applied default 'total_undefined' translation as it was missing or incomplete.");
+    translationsModified = true;
+}
+
+if (translationsModified) {
+    saveDataToFile(TRANSLATIONS_FILE, translations);
+    console.log("Saved updated translations to ensure critical keys are present.");
+}
+// --- End Critical Translation Key Check ---
+
 const wss = new WebSocket.Server({ port: 8080, host: '0.0.0.0' });
 
 // Store connected clients and their roles
-const clients = new Map(); // Use Map for better client management { ws: { isManagement: false } }
+const clients = new Map(); // Use Map for better client management { ws: { isManagement: false, ip: string } }
 
 console.log('WebSocket server started on port 8080');
 
-wss.on('connection', (ws) => {
+wss.on('connection', (ws, req) => {
     console.log('Client connected');
-    const clientInfo = { isManagement: false }; // Initialize client info
+    // --- START: Get Client IP ---
+    let ip = 'unknown';
+    try {
+        ip = req.headers['x-forwarded-for']?.split(',').shift()?.trim() || req.socket.remoteAddress;
+        // For IPv6 loopback "::1", map to "127.0.0.1" for consistency if needed, or handle as is.
+        if (ip === '::1') ip = '127.0.0.1';
+         console.log(`Client connected from IP: ${ip}`);
+    } catch (e) {
+        console.error("Error getting client IP:", e);
+    }
+    // --- END: Get Client IP ---
+
+    const clientInfo = { isManagement: false, ip: ip }; // Initialize client info with IP
     clients.set(ws, clientInfo);
 
     // --- Send ONLY essential non-sensitive data immediately --- 
     // Client will request the rest when ready.
     ws.send(JSON.stringify({ type: 'initial_translations', payload: translations }));
     ws.send(JSON.stringify({ type: 'initial_canteen_status', payload: canteenStatus }));
-    console.log('Sent initial status and translations to new client.');
+    // Send all products and categories upon initial connection as well
+    // This helps if the client connects after some products/categories have been changed by an admin
+    ws.send(JSON.stringify({ type: 'initial_products', payload: baseMenuData }));
+    ws.send(JSON.stringify({ type: 'initial_categories', payload: categories }));
+    console.log('Sent initial status, translations, products, and categories to new client.');
 
     ws.on('message', (message) => {
         console.log(`[Server] Raw message received: ${message}`);
@@ -249,7 +323,35 @@ wss.on('connection', (ws) => {
                     // Also send products/categories *regardless* of canteen status for management
                     ws.send(JSON.stringify({ type: 'initial_products', payload: baseMenuData }));
                     ws.send(JSON.stringify({ type: 'initial_categories', payload: categories }));
-                    console.log('Sent orders, products, and categories to identified management client.');
+                    console.log('Sent initial orders, products, and categories to management client.');
+                    break;
+
+                case 'update_order_status':
+                    if (!clientInfo.isManagement) {
+                        console.warn('Received update_order_status from non-management client. Ignoring.');
+                        break;
+                    }
+                    const { orderId, newStatus } = parsedMessage.payload;
+                    if (!orderId || !newStatus) {
+                        console.error('Invalid payload for update_order_status:', parsedMessage.payload);
+                        break;
+                    }
+                    console.log(`Received update_order_status for order ${orderId} to ${newStatus}`);
+                    const orderIndex = allOrders.findIndex(o => o.id === orderId);
+                    if (orderIndex !== -1) {
+                        allOrders[orderIndex].status = newStatus;
+                        saveDataToFile(ORDERS_FILE, allOrders);
+                        console.log(`Order ${orderId} status updated to ${newStatus} and saved.`);
+
+                        // Broadcast the update to all management clients
+                        broadcastToManagement(JSON.stringify({
+                            type: 'order_status_updated_broadcast',
+                            payload: { orderId: orderId, newStatus: newStatus, updatedOrder: allOrders[orderIndex] }
+                        }));
+                        console.log(`Broadcasted order_status_updated_broadcast for order ${orderId}`);
+                    } else {
+                        console.warn(`Order ${orderId} not found for status update.`);
+                    }
                     break;
 
                 // --- NEW: User Registration ---
@@ -288,6 +390,145 @@ wss.on('connection', (ws) => {
                         ws.send(JSON.stringify({ type: 'register_success', payload: { email: newUser.email, profilePic: newUser.profilePic } }));
                     });
                     break;
+
+                // --- NEW: Admin Login ---
+                case 'admin_login':
+                    console.log('[Server] Received admin_login attempt.');
+                    const { email: adminEmail, password: adminPassword } = parsedMessage.payload;
+                    const clientIp = clients.get(ws)?.ip || 'unknown_ip_in_message_handler';
+
+                    if (clientIp === 'unknown_ip_in_message_handler') {
+                        console.warn("[SECURITY] Could not determine client IP for admin login attempt. Rate limiting might not be effective for this attempt.");
+                        // Optionally, you could choose to reject the login if IP is unknown,
+                        // but for now, we'll proceed with a warning.
+                    }
+
+                    // --- START: Rate Limiting Check ---
+                    const attemptInfo = failedAdminLoginAttempts.get(clientIp) || { count: 0, blockUntil: null };
+
+                    if (attemptInfo.blockUntil && Date.now() < attemptInfo.blockUntil) {
+                        const timeLeft = Math.ceil((attemptInfo.blockUntil - Date.now()) / 60000); // minutes
+                        console.log(`[SECURITY] Admin login attempt from locked IP ${clientIp}. Locked for ${timeLeft} more minutes.`);
+                        ws.send(JSON.stringify({
+                            type: 'admin_login_error',
+                            payload: {
+                                errorCode: 'ACCOUNT_LOCKED',
+                                lockoutMinutes: timeLeft,
+                                defaultMessage: `Too many failed attempts. Account locked. Try again in ${timeLeft} minute(s).`
+                            }
+                        }));
+                        break;
+                    } else if (attemptInfo.blockUntil && Date.now() >= attemptInfo.blockUntil) {
+                        // Lockout expired, reset it
+                        failedAdminLoginAttempts.delete(clientIp);
+                        attemptInfo.count = 0;
+                        attemptInfo.blockUntil = null;
+                        console.log(`[SECURITY] Lockout expired for IP ${clientIp}.`);
+                    }
+                    // --- END: Rate Limiting Check ---
+
+                    // IMPORTANT: Use environment variables for admin credentials in production
+                    const SERVER_ADMIN_EMAIL = process.env.ADMIN_EMAIL || "admin@canteen.app";
+                    const SERVER_ADMIN_PASSWORD = process.env.ADMIN_PASSWORD || "admin123";
+
+                    if (!process.env.ADMIN_EMAIL || !process.env.ADMIN_PASSWORD) {
+                        console.warn("[SECURITY WARNING] ADMIN_EMAIL or ADMIN_PASSWORD environment variables are not set. Using default credentials. This is NOT secure for production.");
+                    }
+
+                    if (!adminEmail || !adminPassword) {
+                        ws.send(JSON.stringify({
+                            type: 'admin_login_error',
+                            payload: {
+                                errorCode: 'MISSING_DETAILS',
+                                message: 'Missing admin login details.'
+                            }
+                        }));
+                        break;
+                    }
+
+                    if (adminEmail === SERVER_ADMIN_EMAIL && adminPassword === SERVER_ADMIN_PASSWORD) {
+                        const clientInfoToUpdate = clients.get(ws);
+                        if (clientInfoToUpdate) {
+                            clientInfoToUpdate.isManagement = true;
+                            clients.set(ws, clientInfoToUpdate); // Update client info in the map
+                            console.log(`Admin login successful for: ${adminEmail} from IP: ${clientIp}. Client promoted to management role.`);
+                            // --- START: Reset failed attempts on successful login ---
+                            if (failedAdminLoginAttempts.has(clientIp)) {
+                                failedAdminLoginAttempts.delete(clientIp);
+                                console.log(`[SECURITY] Cleared failed login attempts for IP ${clientIp} after successful login.`);
+                            }
+                            // --- END: Reset failed attempts ---
+                            ws.send(JSON.stringify({ type: 'admin_login_success', payload: { message: 'Admin login successful.'} }));
+                        } else {
+                            console.error('[Server] Admin login: Could not find clientInfo for ws connection.');
+                            ws.send(JSON.stringify({
+                                type: 'admin_login_error',
+                                payload: {
+                                    errorCode: 'SERVER_ERROR',
+                                    message: 'Server error during admin login.'
+                                }
+                            }));
+                        }
+                    } else {
+                        console.log(`Admin login failed for: ${adminEmail} from IP: ${clientIp}`);
+                        // --- START: Handle Failed Attempt (Rate Limiting) ---
+                        attemptInfo.count++;
+                        let remainingAttempts = MAX_ADMIN_FAILED_ATTEMPTS - attemptInfo.count;
+
+                        if (attemptInfo.count >= MAX_ADMIN_FAILED_ATTEMPTS) {
+                            attemptInfo.blockUntil = Date.now() + ADMIN_LOCKOUT_DURATION_MS;
+                            const lockoutMinutes = ADMIN_LOCKOUT_DURATION_MS / 60000;
+                            console.warn(`[SECURITY] IP ${clientIp} locked out for admin login for ${lockoutMinutes} minutes due to ${attemptInfo.count} failed attempts.`);
+                            ws.send(JSON.stringify({
+                                type: 'admin_login_error',
+                                payload: {
+                                    errorCode: 'ACCOUNT_LOCKED',
+                                    lockoutMinutes: lockoutMinutes,
+                                    defaultMessage: `Too many failed attempts. Account locked. Try again in ${lockoutMinutes} minute(s).`
+                                }
+                            }));
+                        } else {
+                            ws.send(JSON.stringify({
+                                type: 'admin_login_error',
+                                payload: {
+                                    errorCode: 'ATTEMPTS_REMAINING',
+                                    attemptsRemaining: remainingAttempts,
+                                    defaultMessage: `Invalid admin email or password. ${remainingAttempts} attempt(s) remaining.`
+                                }
+                            }));
+                        }
+                        failedAdminLoginAttempts.set(clientIp, attemptInfo);
+                        // --- END: Handle Failed Attempt ---
+                    }
+                    break;
+                // --- END NEW: Admin Login ---
+
+                // --- NEW: Discovery Passcode Verification ---
+                case 'verify_discovery_passcode':
+                    console.log('[Server] Received verify_discovery_passcode attempt.');
+                    const { passcode: enteredPasscode } = parsedMessage.payload;
+
+                    // IMPORTANT: Use environment variable for discovery passcode in production
+                    const SERVER_DISCOVERY_PASSPHRASE = process.env.DISCOVERY_PASSPHRASE || "12345"; // Default if not set
+
+                    if (!process.env.DISCOVERY_PASSPHRASE) {
+                        console.warn("[SECURITY WARNING] DISCOVERY_PASSPHRASE environment variable is not set. Using a default passcode. This is NOT secure for production.");
+                    }
+
+                    if (!enteredPasscode) {
+                        ws.send(JSON.stringify({ type: 'discovery_passcode_error', payload: { message: 'Passcode cannot be empty.' } }));
+                        break;
+                    }
+
+                    if (enteredPasscode === SERVER_DISCOVERY_PASSPHRASE) {
+                        console.log(`Discovery passcode attempt successful.`);
+                        ws.send(JSON.stringify({ type: 'discovery_passcode_success', payload: { message: 'Discovery mode activated.' } }));
+                    } else {
+                        console.log(`Discovery passcode attempt failed.`);
+                        ws.send(JSON.stringify({ type: 'discovery_passcode_error', payload: { message: 'Incorrect passcode.' } }));
+                    }
+                    break;
+                // --- END: Discovery Passcode Verification ---
 
                 // --- NEW: User Login ---
                 case 'login_user':
@@ -692,41 +933,55 @@ wss.on('connection', (ws) => {
                     }
                     break;
 
-                case 'admin_config_imported': // New case for importing config
-                    if (clientInfo.isManagement && parsedMessage.payload && parsedMessage.payload.products && parsedMessage.payload.categories && parsedMessage.payload.translations) {
-                         console.log('Admin action: Importing configuration...');
-                         const { products, categories: importedCategories, translations: importedTranslations } = parsedMessage.payload;
-                        
-                         // Basic validation (can be improved)
-                         const isValidProducts = Array.isArray(products);
-                         const isValidCategories = Array.isArray(importedCategories) && importedCategories.every(cat => cat && cat.key && cat.name_key && Array.isArray(cat.productIds));
-                         const isValidTranslations = typeof importedTranslations === 'object';
+                case 'admin_config_imported':
+                    if (isAdminClient(ws)) {
+                        console.log("Received 'admin_config_imported' from an admin client.");
+                        const { products, categories: importedCategories, productRelatedTranslations } = parsedMessage.payload;
 
-                         if (isValidProducts && isValidCategories && isValidTranslations) {
-                             // Replace server data with imported data
-                             baseMenuData = products;
-                             categories = importedCategories;
-                             translations = importedTranslations;
-                             console.log('Server data replaced with imported configuration.');
+                        if (Array.isArray(products) && Array.isArray(importedCategories) && typeof productRelatedTranslations === 'object') {
+                            console.log(`Importing ${products.length} products, ${importedCategories.length} categories.`);
+                            
+                            // Validate and Update Products
+                            baseMenuData = products.map(p => ({ // Basic validation/mapping
+                                id: p.id || `prod_imported_${Date.now()}_${Math.random().toString(36).substring(2,7)}`,
+                                price: typeof p.price === 'number' ? p.price : 0,
+                                image: typeof p.image === 'string' ? p.image : '/images/default.png',
+                                category: typeof p.category === 'string' ? p.category : 'uncategorized',
+                                quantity: typeof p.quantity === 'number' ? p.quantity : 0,
+                                name_key: typeof p.name_key === 'string' ? p.name_key : `item_name_${p.id || 'new'}`,
+                                description_key: typeof p.description_key === 'string' ? p.description_key : `item_desc_${p.id || 'new'}`
+                            }));
+                            saveDataToFile(PRODUCTS_FILE, baseMenuData);
+                            console.log('Products updated and saved from imported config.');
 
-                             // Save the new data to files
-                             saveDataToFile(PRODUCTS_FILE, baseMenuData);
-                             saveDataToFile(CATEGORIES_FILE, categories);
-                             saveDataToFile(TRANSLATIONS_FILE, translations);
-                             console.log('Imported configuration saved to files.');
+                            // Validate and Update Categories
+                            categories = importedCategories.map(c => ({ // Basic validation/mapping
+                                key: c.key || `cat_imported_${Date.now()}_${Math.random().toString(36).substring(2,7)}`,
+                                name_key: typeof c.name_key === 'string' ? c.name_key : `sort_${c.key || 'new'}`,
+                                productIds: Array.isArray(c.productIds) ? c.productIds : []
+                            }));
+                            saveDataToFile(CATEGORIES_FILE, categories);
+                            console.log('Categories updated and saved from imported config.');
 
-                             // Broadcast updates to all clients
-                             broadcast(JSON.stringify({ type: 'products_updated', payload: baseMenuData }));
-                             broadcast(JSON.stringify({ type: 'categories_updated', payload: categories }));
-                             broadcast(JSON.stringify({ type: 'translations_updated', payload: translations }));
-                             console.log('Broadcasted configuration updates to all clients.');
+                            // Merge and Update Translations
+                            if (productRelatedTranslations) {
+                                Object.assign(translations, productRelatedTranslations);
+                                saveDataToFile(TRANSLATIONS_FILE, translations);
+                                console.log('Product-related translations merged and saved from imported config.');
+                            }
 
-                         } else {
-                             console.warn('Invalid payload structure for admin_config_imported.');
-                             // Optionally notify the admin client about the error
-                         }
+                            // Broadcast updates to all clients
+                            broadcast({ type: 'products_updated', payload: baseMenuData });
+                            broadcast({ type: 'categories_updated', payload: categories });
+                            broadcast({ type: 'translations_updated', payload: translations }); // Send all translations
+
+                            ws.send(JSON.stringify({ type: 'admin_action_success', message: 'Product configuration imported successfully.' }));
+                        } else {
+                            console.warn("Invalid payload for 'admin_config_imported'.");
+                            ws.send(JSON.stringify({ type: 'admin_action_error', message: 'Invalid configuration data received for import.' }));
+                        }
                     } else {
-                         console.warn('Unauthorized or invalid admin_config_imported attempt.');
+                        console.warn("Received 'admin_config_imported' from non-admin client.");
                     }
                     break;
 
@@ -758,24 +1013,25 @@ wss.on('connection', (ws) => {
     });
 
     ws.on('close', () => {
-        console.log(`Client disconnected (Was Management: ${clients.get(ws)?.isManagement})`);
+        const closedClientInfo = clients.get(ws);
+        console.log(`Client disconnected (Was Management: ${closedClientInfo ? closedClientInfo.isManagement : 'N/A'})`);
         clients.delete(ws); // Remove client from map
     });
 
     ws.on('error', (error) => {
         console.error('WebSocket error:', error);
-        if (clients.has(ws)) {
-             console.log(`Removing client due to error (Was Management: ${clients.get(ws)?.isManagement})`);
+        const errorClientInfo = clients.get(ws);
+        if (errorClientInfo) {
+             console.log(`Removing client due to error (Was Management: ${errorClientInfo.isManagement})`);
              clients.delete(ws); // Clean up on error
         }
     });
 });
 
 // --- Broadcast Functions ---
-function broadcast(message) {
-    // console.log(`Broadcasting to ${clients.size} clients`); // Can be noisy
-    clients.forEach((info, client) => {
-        if (client.readyState === WebSocket.OPEN) {
+function broadcast(message, excludeWs = null) {
+    wss.clients.forEach(client => {
+        if (client.readyState === WebSocket.OPEN && client !== excludeWs) {
             try {
                 client.send(message);
             } catch (error) {
@@ -787,12 +1043,11 @@ function broadcast(message) {
     });
 }
 
-function broadcastToManagement(message) {
-    // console.log(`Broadcasting to management clients`); // Can be noisy
-    clients.forEach((info, client) => {
-        if (info.isManagement && client.readyState === WebSocket.OPEN) {
+function broadcastToManagement(message, excludeWs = null) {
+    clients.forEach((info, clientWs) => {
+        if (info.isManagement && clientWs.readyState === WebSocket.OPEN && clientWs !== excludeWs) {
              try {
-                client.send(message);
+                clientWs.send(message);
              } catch (error) {
                   console.error(`Failed to send message to management client: ${error}`);
                   // Optionally remove client
@@ -844,4 +1099,9 @@ process.on('SIGINT', () => {
         });
         process.exit(1);
     }, 5000); // Wait 5 seconds before force closing
-}); 
+});
+
+function isAdminClient(ws) {
+    const clientInfo = clients.get(ws);
+    return clientInfo && clientInfo.isManagement;
+} 
