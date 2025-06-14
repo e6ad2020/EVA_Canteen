@@ -25,9 +25,6 @@ app.use(express.static(path.join(__dirname, '../public')));
 wss.on('connection', (ws) => {
     console.log('New WebSocket connection');
 
-    // Send initial status
-    ws.send(JSON.stringify({ type: 'canteen_status', isOpen: true }));
-
     ws.on('message', (message) => {
         try {
             const data = JSON.parse(message);
@@ -35,6 +32,11 @@ wss.on('connection', (ws) => {
 
             // Handle different message types
             switch (data.type) {
+                case 'get_status':
+                    // Send current status
+                    ws.send(JSON.stringify({ type: 'canteen_status', isOpen: true }));
+                    break;
+
                 case 'admin_login':
                     // Handle admin login
                     if (data.email === 'admin@canteen.app' && data.password === 'admin123') {
@@ -46,7 +48,7 @@ wss.on('connection', (ws) => {
 
                 case 'canteen_status':
                     // Handle canteen status updates
-                    ws.send(JSON.stringify({ type: 'canteen_status', isOpen: true }));
+                    ws.send(JSON.stringify({ type: 'canteen_status', isOpen: data.isOpen }));
                     break;
 
                 default:

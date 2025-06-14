@@ -108,20 +108,44 @@ function updateCanteenStatus() {
 // Handle WebSocket messages
 function handleWebSocketMessage(data) {
     console.log('Received message:', data);
-    switch (data.type) {
-        case 'canteen_status':
-            isCanteenOpen = data.isOpen;
-            updateCanteenStatus();
-            break;
-        case 'admin_login_success':
-            isManagementClient = true;
-            // Add your admin login success logic here
-            break;
-        case 'admin_login_error':
-            // Add your admin login error logic here
-            break;
-        default:
-            console.log('Unknown message type:', data.type);
+    try {
+        switch (data.type) {
+            case 'canteen_status':
+                isCanteenOpen = data.isOpen;
+                updateCanteenStatus();
+                break;
+            case 'admin_login_success':
+                isManagementClient = true;
+                showAdminPanel();
+                break;
+            case 'admin_login_error':
+                showError('Invalid admin credentials');
+                break;
+            default:
+                console.log('Unknown message type:', data.type);
+        }
+    } catch (error) {
+        console.error('Error handling WebSocket message:', error);
+    }
+}
+
+// Show admin panel
+function showAdminPanel() {
+    const adminPanel = document.querySelector('.admin-panel');
+    if (adminPanel) {
+        adminPanel.style.display = 'block';
+    }
+}
+
+// Show error message
+function showError(message) {
+    const errorElement = document.querySelector('.error-message');
+    if (errorElement) {
+        errorElement.textContent = message;
+        errorElement.style.display = 'block';
+        setTimeout(() => {
+            errorElement.style.display = 'none';
+        }, 3000);
     }
 }
 
@@ -132,20 +156,22 @@ function connectWebSocket() {
     
     ws.onopen = () => {
         console.log('WebSocket connected');
-        isCanteenOpen = true;
-        updateCanteenStatus();
+        // Request initial status
+        ws.send(JSON.stringify({ type: 'get_status' }));
     };
     
     ws.onerror = (error) => {
         console.error('WebSocket error:', error);
         isCanteenOpen = false;
         updateCanteenStatus();
+        showError('Connection error. Retrying...');
     };
     
     ws.onclose = () => {
         console.log('WebSocket disconnected. Attempting to reconnect...');
         isCanteenOpen = false;
         updateCanteenStatus();
+        showError('Connection lost. Reconnecting...');
         setTimeout(connectWebSocket, 5000);
     };
     
@@ -155,6 +181,7 @@ function connectWebSocket() {
             handleWebSocketMessage(data);
         } catch (error) {
             console.error('Error parsing WebSocket message:', error);
+            showError('Error processing server response');
         }
     };
 }
