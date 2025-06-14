@@ -26,7 +26,7 @@ document.addEventListener('DOMContentLoaded', () => {
 
 // WebSocket connection
 function connectWebSocket() {
-    const wsUrl = 'wss://pebble-incredible-strawflower.glitch.me/ws';
+    const wsUrl = 'wss://jet-rigorous-baseball.glitch.me/ws';
     ws = new WebSocket(wsUrl);
     
     ws.onopen = () => {
