@@ -1,21 +1,16 @@
 {
-  "name": "eva-canteen",
+  "name": "eva-canteen-api",
   "version": "1.0.0",
-  "description": "EVA Canteen Management System",
+  "description": "EVA Canteen API Server",
   "main": "api/index.js",
   "scripts": {
-    "start": "node api/index.js",
-    "dev": "nodemon api/index.js",
-    "vercel-build": "echo 'Building...'"
+    "start": "node api/index.js"
   },
   "dependencies": {
     "express": "^4.18.2",
     "ws": "^8.13.0",
     "cors": "^2.8.5",
     "compression": "^1.7.4"
-  },
-  "devDependencies": {
-    "nodemon": "^2.0.22"
   },
   "engines": {
     "node": ">=18.0.0"

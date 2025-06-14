@@ -80,7 +80,7 @@ document.addEventListener('DOMContentLoaded', () => {
     // --- WebSocket Setup ---
     let ws = null;
     function connectWebSocket() {
-        const wsUrl = 'wss://dynamic-spot-pressure.glitch.me/ws';
+        const wsUrl = 'wss://pebble-incredible-strawflower.glitch.me/ws';
         ws = new WebSocket(wsUrl);
         
         ws.onopen = () => {
