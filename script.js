@@ -3482,19 +3482,19 @@ document.addEventListener('DOMContentLoaded', () => {
             // Perform client-side validation first
             if (!email || !password || !passwordConfirm) {
                 console.error("[Register Check] Failed: Missing fields."); // LOG ERROR
-                registerErrorMsg.textContent = 'Error: Please fill all fields.'; // Direct text
+                registerErrorMsg.textContent = getText('register_error_fields'); // Use translation key
                 registerErrorMsg.style.display = 'block';
                 return;
             }
             if (password !== passwordConfirm) {
                 console.error("[Register Check] Failed: Passwords don\'t match."); // LOG ERROR
-                registerErrorMsg.textContent = 'Error: Passwords don\'t match.'; // Direct text
+                registerErrorMsg.textContent = getText('register_error_match'); // Use translation key
                 registerErrorMsg.style.display = 'block';
                 return;
             }
             if (!activePhoto) {
                 console.error("[Register Check] Failed: No photo selected."); // LOG ERROR
-                registerErrorMsg.textContent = 'Error: Please select a profile picture.'; // Direct text
+                registerErrorMsg.textContent = getText('register_error_photo'); // Use translation key
                 registerErrorMsg.style.display = 'block';
                 return;
             }
@@ -3504,7 +3504,7 @@ document.addEventListener('DOMContentLoaded', () => {
             console.log(`[Register Button Click] Is email valid format? ${isEmailValid}`);
             if (!isEmailValid) {
                 console.error("[Register Check] Failed: Invalid email format."); // LOG ERROR
-                registerErrorMsg.textContent = 'Error: Please enter a valid email address.'; // Direct text
+                registerErrorMsg.textContent = getText('register_error_invalid_email'); // Use translation key
                 registerErrorMsg.style.display = 'block';
                 console.log(`[Register Check] Set error display to: ${registerErrorMsg.style.display}`); // LOG DISPLAY STYLE
                 return;
