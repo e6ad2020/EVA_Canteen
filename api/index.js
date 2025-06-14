@@ -1,29 +1,69 @@
 const express = require('express');
-const { createServer } = require('http');
-const { initWebSocket } = require('./ws');
+const http = require('http');
+const WebSocket = require('ws');
 const path = require('path');
+const cors = require('cors');
+const compression = require('compression');
 
 const app = express();
-const server = createServer(app);
+const server = http.createServer(app);
+const wss = new WebSocket.Server({ server });
 
-// Initialize WebSocket
-initWebSocket(server);
+// Enable CORS and compression
+app.use(cors());
+app.use(compression());
 
-// Serve static files from the public directory
+// Serve static files from public directory
 app.use(express.static(path.join(__dirname, '../public')));
 
-// Serve static files from the root directory
-app.use(express.static(path.join(__dirname, '..')));
+// WebSocket connection handling
+wss.on('connection', (ws) => {
+    console.log('New WebSocket connection');
 
-// Main route - serve index.html
-app.get('/', (req, res) => {
-  res.sendFile(path.join(__dirname, '../index.html'));
+    ws.on('message', (message) => {
+        try {
+            const data = JSON.parse(message);
+            console.log('Received:', data);
+
+            // Handle different message types
+            switch (data.type) {
+                case 'admin_login':
+                    // Handle admin login
+                    if (data.email === 'admin@canteen.app' && data.password === 'admin123') {
+                        ws.send(JSON.stringify({ type: 'admin_login_success' }));
+                    } else {
+                        ws.send(JSON.stringify({ type: 'admin_login_error' }));
+                    }
+                    break;
+
+                case 'canteen_status':
+                    // Handle canteen status updates
+                    ws.send(JSON.stringify({ type: 'canteen_status', isOpen: true }));
+                    break;
+
+                default:
+                    console.log('Unknown message type:', data.type);
+            }
+        } catch (error) {
+            console.error('Error processing message:', error);
+        }
+    });
+
+    ws.on('close', () => {
+        console.log('Client disconnected');
+    });
 });
 
-// Start server
+// Main route
+app.get('/', (req, res) => {
+    res.sendFile(path.join(__dirname, '../public/index.html'));
+});
+
+// Get port from environment variable or use default
 const PORT = process.env.PORT || 3000;
+
 server.listen(PORT, () => {
-  console.log(`Server running on port ${PORT}`);
+    console.log(`Server is running on port ${PORT}`);
 });
 
 module.exports = app; 
