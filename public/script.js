@@ -53,6 +53,13 @@ document.addEventListener('DOMContentLoaded', () => {
 
     // Show the initial screen (e.g., screen-1 for login)
     showScreen('screen-1');
+
+    // Add event listeners for buttons
+    document.getElementById('login-submit').addEventListener('click', handleLogin);
+    document.querySelector('.register-button').addEventListener('click', () => showScreen('screen-2'));
+    document.getElementById('goto-admin-login-button').addEventListener('click', () => showScreen('screen-6'));
+    document.getElementById('register-submit').addEventListener('click', handleRegister);
+    document.querySelector('#screen-2 .back-button').addEventListener('click', () => showScreen('screen-1'));
 });
 
 // Function to show a specific screen
@@ -259,5 +266,47 @@ function updateProductsDisplay(products) {
                 <button onclick="addToCart(${product.id})">Add to Cart</button>
             </div>
         `).join('');
+    }
+}
+
+function handleLogin() {
+    // Dummy login logic for now
+    const email = document.getElementById('login-email').value;
+    const password = document.getElementById('login-password').value;
+    const loginError = document.getElementById('login-error');
+
+    if (email && password) {
+        // Replace with actual authentication logic
+        if (email === 'user@canteen.app' && password === 'user123') {
+            loginError.style.display = 'none';
+            showScreen('screen-3'); // Go to menu screen
+        } else {
+            loginError.textContent = 'Invalid credentials (use any user@canteen.app / user123)';
+            loginError.style.display = 'block';
+        }
+    } else {
+        loginError.textContent = 'Please enter email and password';
+        loginError.style.display = 'block';
+    }
+}
+
+function handleRegister() {
+    // Dummy register logic for now
+    const email = document.getElementById('register-email').value;
+    const password = document.getElementById('register-password').value;
+    const confirmPassword = document.getElementById('register-password-confirm').value;
+    const registerError = document.getElementById('register-error');
+
+    if (password !== confirmPassword) {
+        registerError.textContent = 'Passwords do not match';
+        registerError.style.display = 'block';
+    } else if (!email || !password) {
+        registerError.textContent = 'Please fill all fields';
+        registerError.style.display = 'block';
+    } else {
+        // Replace with actual registration logic
+        registerError.style.display = 'none';
+        alert('Registration successful (dummy)! Please login.');
+        showScreen('screen-1'); // Go back to login screen
     }
 }
