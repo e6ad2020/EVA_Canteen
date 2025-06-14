@@ -80,8 +80,7 @@ document.addEventListener('DOMContentLoaded', () => {
     // --- WebSocket Setup ---
     let ws = null;
     function connectWebSocket() {
-        const protocol = window.location.protocol === 'https:' ? 'wss:' : 'ws:';
-        const wsUrl = `${protocol}//dynamic-spot-pressure.glitch.me/ws`;
+        const wsUrl = 'wss://dynamic-spot-pressure.glitch.me/ws';
         ws = new WebSocket(wsUrl);
         
         ws.onopen = () => {

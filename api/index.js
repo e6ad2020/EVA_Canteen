@@ -9,8 +9,13 @@ const app = express();
 const server = http.createServer(app);
 const wss = new WebSocket.Server({ server });
 
-// Enable CORS and compression
-app.use(cors());
+// Enable CORS for Vercel
+app.use(cors({
+    origin: ['https://eva-canteen.vercel.app', 'http://localhost:3000'],
+    methods: ['GET', 'POST'],
+    credentials: true
+}));
+
 app.use(compression());
 
 // Serve static files from public directory
