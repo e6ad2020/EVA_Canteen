@@ -20,6 +20,9 @@ app.use(express.static(path.join(__dirname, '../public')));
 wss.on('connection', (ws) => {
     console.log('New WebSocket connection');
 
+    // Send initial status
+    ws.send(JSON.stringify({ type: 'canteen_status', isOpen: true }));
+
     ws.on('message', (message) => {
         try {
             const data = JSON.parse(message);
