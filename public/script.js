@@ -79,9 +79,6 @@ document.addEventListener('DOMContentLoaded', () => {
 
     // --- WebSocket Setup ---
     let ws = null;
-    // *** Using Local Network IP for testing on the same LAN ***
-    // Ensure server.js is running on the machine with this IP (192.168.1.14)
-    // and the firewall allows connections on port 8080.
     const WS_URL = window.location.protocol === 'https:' 
         ? `wss://${window.location.host}/ws`
         : `ws://${window.location.host}/ws`;
