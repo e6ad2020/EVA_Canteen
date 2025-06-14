@@ -50,7 +50,22 @@ document.addEventListener('DOMContentLoaded', () => {
     loadTranslations();
     loadProducts();
     loadOrders();
+
+    // Show the initial screen (e.g., screen-1 for login)
+    showScreen('screen-1');
 });
+
+// Function to show a specific screen
+function showScreen(screenId) {
+    const screens = document.querySelectorAll('.screen');
+    screens.forEach(screen => {
+        screen.classList.remove('active');
+    });
+    const targetScreen = document.getElementById(screenId);
+    if (targetScreen) {
+        targetScreen.classList.add('active');
+    }
+}
 
 // Load translations
 function loadTranslations() {
