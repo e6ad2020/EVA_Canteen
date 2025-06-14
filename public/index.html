@@ -16,7 +16,7 @@
     <link rel="stylesheet" href="/style.css">
 
     <!-- Add defer to ensure script loads after HTML -->
-    <script src="script.js" defer></script>
+    <script src="/script.js" defer></script>
 
 </head>
 <body data-theme="blue"> <!-- Default theme set here -->
@@ -31,7 +31,7 @@
              <div class="screen-content">
                  <h2 class="screen-title" data-lang-key="welcome_title">Welcome to<br>EVA Canteen</h2>
                  <!-- START: Canteen Status Indicator -->
-                 <div id="canteen-status-indicator" class="status-indicator" style="display: none;" data-lang-key="canteen_closed_indicator">Canteen is currently CLOSED</div>
+                 <div id="canteen-status-indicator" class="canteen-status status-indicator" style="display: none;" data-lang-key="canteen_closed_indicator">Canteen is currently CLOSED</div>
                  <!-- END: Canteen Status Indicator -->
                  <div class="form-box">
                      <h3 data-lang-key="sign_in_label">sign in</h3>
@@ -63,7 +63,7 @@
                      <p class="pick-photo-label" data-lang-key="pick_photo_label">pick photo</p>
                      <div class="photo-picker" id="register-photo-picker">
                          <img src="https://i.postimg.cc/6pkqNQdB/file-000000005f5052309370194ce0d09274-conversation-id-67e85992-b064-8005-abf6-a96aee541aaf-message-i.png" alt="Profile Pic 1" class="profile-pic">
-                         <img src="IMG.png" alt="Profile Pic 2" class="profile-pic active">
+                         <img src="/IMG.png" alt="Profile Pic 2" class="profile-pic active">
                          <img src="https://i.postimg.cc/sXy2v068/file-000000000cb852309a865637b17bf852-conversation-id-67e85992-b064-8005-abf6-a96aee541aaf-message-i.png" alt="Profile Pic 3" class="profile-pic">
                      </div>
                  </div>
@@ -94,7 +94,7 @@
                      <i class="fas fa-compass"></i> <span data-lang-key="discover_button">Discover</span>
                 </button>
 
-                 <div class="menu-grid" id="menu-grid"></div>
+                 <div class="products-container menu-grid" id="menu-grid"></div>
              </div>
         </div>
 
