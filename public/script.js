@@ -4,6 +4,34 @@ let isCanteenOpen = false;
 let isManagementClient = false;
 let discoveryBackButton = null;
 
+// Default data
+const defaultProducts = [
+    {
+        id: 1,
+        name: { en: "Burger", ar: "برجر" },
+        description: { en: "Delicious burger with cheese", ar: "برجر لذيذ مع الجبن" },
+        price: 50,
+        image: "https://images.unsplash.com/photo-1568901346375-23c9450c58cd?w=220&h=165&fit=crop",
+        category: "Fast Food"
+    },
+    {
+        id: 2,
+        name: { en: "Pizza", ar: "بيتزا" },
+        description: { en: "Classic margherita pizza", ar: "بيتزا مارغريتا كلاسيكية" },
+        price: 60,
+        image: "https://images.unsplash.com/photo-1513104890138-7c749659a591?w=220&h=165&fit=crop",
+        category: "Fast Food"
+    }
+];
+
+const defaultTranslations = {
+    welcome: { en: "Welcome to EVA Canteen", ar: "مرحباً بك في مطعم إيفا" },
+    menu: { en: "Menu", ar: "القائمة" },
+    cart: { en: "Cart", ar: "السلة" },
+    total: { en: "Total", ar: "المجموع" },
+    currency: { en: "L.E", ar: "ج.م" }
+};
+
 // Initialize UI elements
 document.addEventListener('DOMContentLoaded', () => {
     // Initialize back button
@@ -33,7 +61,8 @@ function loadTranslations() {
             updateTranslations(translations);
         } else {
             console.log('Using default translations');
-            // Add default translations here if needed
+            updateTranslations(defaultTranslations);
+            localStorage.setItem('translations', JSON.stringify(defaultTranslations));
         }
     } catch (error) {
         console.error('Error loading translations:', error);
@@ -42,8 +71,29 @@ function loadTranslations() {
 
 // Update translations
 function updateTranslations(translations) {
-    // Add your translation update logic here
-    console.log('Updating translations:', translations);
+    // Update welcome message
+    const welcomeElement = document.querySelector('.welcome-message');
+    if (welcomeElement) {
+        welcomeElement.textContent = translations.welcome.en;
+    }
+
+    // Update menu text
+    const menuElement = document.querySelector('.menu-text');
+    if (menuElement) {
+        menuElement.textContent = translations.menu.en;
+    }
+
+    // Update cart text
+    const cartElement = document.querySelector('.cart-text');
+    if (cartElement) {
+        cartElement.textContent = translations.cart.en;
+    }
+
+    // Update total text
+    const totalElement = document.querySelector('.total-text');
+    if (totalElement) {
+        totalElement.textContent = translations.total.en;
+    }
 }
 
 // Update canteen status
@@ -124,8 +174,17 @@ function loadOrders() {
 
 // Update orders display
 function updateOrdersDisplay(orders) {
-    // Add your orders display logic here
-    console.log('Updating orders display:', orders);
+    const ordersContainer = document.querySelector('.orders-container');
+    if (ordersContainer) {
+        ordersContainer.innerHTML = orders.length ? 
+            orders.map(order => `
+                <div class="order-item">
+                    <h3>Order #${order.id}</h3>
+                    <p>Total: ${order.total} L.E</p>
+                </div>
+            `).join('') : 
+            '<p>No orders yet</p>';
+    }
 }
 
 // Load products
@@ -137,7 +196,8 @@ function loadProducts() {
             updateProductsDisplay(products);
         } else {
             console.log('Using default products');
-            // Add default products here if needed
+            updateProductsDisplay(defaultProducts);
+            localStorage.setItem('products', JSON.stringify(defaultProducts));
         }
     } catch (error) {
         console.error('Error loading products:', error);
@@ -146,6 +206,16 @@ function loadProducts() {
 
 // Update products display
 function updateProductsDisplay(products) {
-    // Add your products display logic here
-    console.log('Updating products display:', products);
+    const productsContainer = document.querySelector('.products-container');
+    if (productsContainer) {
+        productsContainer.innerHTML = products.map(product => `
+            <div class="product-card">
+                <img src="${product.image}" alt="${product.name.en}" onerror="this.src='https://images.unsplash.com/photo-1568901346375-23c9450c58cd?w=220&h=165&fit=crop'">
+                <h3>${product.name.en}</h3>
+                <p>${product.description.en}</p>
+                <p class="price">${product.price} L.E</p>
+                <button onclick="addToCart(${product.id})">Add to Cart</button>
+            </div>
+        `).join('');
+    }
 }
