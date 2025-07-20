@@ -26,7 +26,7 @@
         <!-- Screen 1: Login -->
         <div class="screen" id="screen-1">
              <div class="screen-content">
-                 <h2 class="screen-title" data-lang-key="welcome_title">Welcome to<br>EVA Canteen</h2>
+                 <div class="liquid-glass-title-bg main-title-glass" data-lang-key="welcome_title">Welcome to<br>EVA Canteen</div>
                  <!-- START: Canteen Status Indicator -->
                  <div id="canteen-status-indicator" class="status-indicator" style="display: none;" data-lang-key="canteen_closed_indicator">Canteen is currently CLOSED</div>
                  <!-- END: Canteen Status Indicator -->
@@ -50,7 +50,7 @@
         <!-- Screen 2: Register -->
         <div class="screen" id="screen-2">
              <div class="screen-content">
-                 <h2 class="screen-title" data-lang-key="welcome_title">Welcome to<br>EVA Canteen</h2>
+                 <div class="liquid-glass-title-bg main-title-glass" data-lang-key="welcome_title">Welcome to<br>EVA Canteen</div>
                  <div class="form-box">
                      <h3 data-lang-key="register_button">Register</h3>
                      <input type="email" id="register-email" data-lang-placeholder-key="email_placeholder" placeholder="email.....">
@@ -78,8 +78,8 @@
                      <button class="header-button logout-button" id="logout-button">
                          <span data-lang-key="logout_button">Log out</span> <i class="fas fa-arrow-left"></i>
                      </button>
-                     <h3 class="screen-title" data-lang-key="canteen_name">EVA Canteen</h3>
-                     <div class="cart-icon-container" data-target="screen-4"> <div class="cart-icon"><i class="fas fa-shopping-cart"></i><span class="cart-badge" id="cart-badge">0</span></div> <span data-lang-key="cart_label">Cart</span> </div>
+                     <div class="liquid-glass-title-bg main-title-glass canteen-oval" data-lang-key="canteen_name">EVA Canteen</div>
+                     <div class="cart-icon-container" data-target="screen-4"> <div class="cart-icon"><i class="fas fa-shopping-cart"></i><span class="cart-badge" id="cart-badge">0</span></div> <span data-lang-key="cart_label" class="user-display-glass">Cart</span> </div>
                  </div>
                 <div class="sort-options">
                     <p data-lang-key="sort_label">Sort</p>
@@ -102,8 +102,8 @@
                      <button class="header-button" data-target="screen-3">
                          <span data-lang-key="menu_label">Menu</span> <i class="fas fa-utensils"></i>
                      </button>
-                     <h3 class="screen-title" data-lang-key="canteen_name">EVA Canteen</h3>
-                     <div class="user-icon-container"> <div class="user-icon"> <img id="user-profile-image-display" src="" alt="User Profile" style="display: none;"> <i id="guest-user-icon" class="fas fa-user" style="display: block;"></i> </div> <span id="user-display-name">@guest</span> </div>
+                     <div class="liquid-glass-title-bg main-title-glass canteen-oval" data-lang-key="canteen_name">EVA Canteen</div>
+                     <div class="user-icon-container"> <div class="user-icon"> <img id="user-profile-image-display" src="" alt="User Profile" style="display: none;"> <i id="guest-user-icon" class="fas fa-user" style="display: block;"></i> </div> <span id="user-display-name" class="user-display-glass">@guest</span> </div>
                  </div>
                  <h4 data-lang-key="cart_label">Cart</h4>
                  <div class="cart-items" id="cart-items-container"></div>
@@ -228,7 +228,7 @@
                  </div>
                  <img id="preview-item-image" src="https://via.placeholder.com/220x165/eee?text=Loading..." alt="Item Image" class="preview-image">
                  <h3 id="preview-item-name" class="preview-name" data-lang-key="item_name_placeholder">Item Name</h3>
-                 <p id="preview-item-description" class="preview-description" data-lang-key="item_description_placeholder">Item description loading...</p>
+                 <p id="preview-item-description" class="preview-description liquid-glass-title-bg" data-lang-key="item_description_placeholder">Item description loading...</p>
                  <p id="preview-item-price" class="preview-price">0 L.E</p>
                  <button class="button add-to-cart-preview-button" id="add-to-cart-preview-button">
                      <i class="fas fa-cart-plus"></i> <span data-lang-key="add_to_cart_button">Add to Cart</span>

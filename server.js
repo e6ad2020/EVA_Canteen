@@ -1,7 +1,29 @@
+const express = require('express');
+const app = express();
+
+// يخدم كل الملفات من المجلد الرئيسي (index.html, script.js, style.css)
+app.use(express.static(__dirname));
+
 const WebSocket = require('ws');
 const fs = require('fs');
 const path = require('path');
 const bcrypt = require('bcrypt');
+const https = require('https');
+const selfsigned = require('selfsigned');
+
+const keyPath = path.join(__dirname, 'server.key');
+const certPath = path.join(__dirname, 'server.cert');
+
+// احذف شرط التحقق من وجود الشهادة بالكامل:
+// if (!fs.existsSync(keyPath) || !fs.existsSync(certPath)) {
+//   console.error('SSL certificate or key not found! Please generate server.key and server.cert and place them in the project directory.');
+//   process.exit(1);
+// }
+
+const sslOptions = {
+  key: fs.readFileSync(keyPath),
+  cert: fs.readFileSync(certPath)
+};
 
 // --- Data Persistence Setup ---
 const DATA_DIR = path.join(__dirname, 'data');
@@ -244,12 +266,19 @@ if (translationsModified) {
 }
 // --- End Critical Translation Key Check ---
 
+const server = https.createServer(sslOptions, app);
+
+// عدل WebSocket ليعمل على بورت 8080 مباشرة
 const wss = new WebSocket.Server({ port: 8080, host: '0.0.0.0' });
+
+const PORT = 3000;
+server.listen(PORT, '0.0.0.0', () => {
+  console.log(`HTTPS server and WebSocket running on port ${PORT}`);
+});
 
 // Store connected clients and their roles
 const clients = new Map(); // Use Map for better client management { ws: { isManagement: false, ip: string } }
 
-console.log('WebSocket server started on port 8080');
 
 wss.on('connection', (ws, req) => {
     console.log('Client connected');
@@ -376,11 +405,13 @@ wss.on('connection', (ws, req) => {
                             return;
                         }
 
-                        // Add new user
+                        // Only allow profilePic to be one of the allowed keys
+                        const allowedPics = ["pic1", "pic2", "pic3"];
+                        let safeProfilePic = allowedPics.includes(regProfilePic) ? regProfilePic : "pic2";
                         const newUser = {
                             email: regEmail,
                             passwordHash: hashedPassword, // Store the hash, NOT the password
-                            profilePic: regProfilePic
+                            profilePic: safeProfilePic
                         };
                         allUsers.push(newUser);
                         saveDataToFile(USERS_FILE, allUsers); // Save updated user list

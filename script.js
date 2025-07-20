@@ -1,4 +1,44 @@
 document.addEventListener('DOMContentLoaded', () => {
+    // --- Cookie Helpers ---
+    function setCookie(name, value, days) {
+        let expires = '';
+        if (days) {
+            const date = new Date();
+            date.setTime(date.getTime() + (days*24*60*60*1000));
+            expires = '; expires=' + date.toUTCString();
+        }
+        document.cookie = name + '=' + encodeURIComponent(value) + expires + '; path=/';
+        console.log('[setCookie]', name, value, days, '->', document.cookie);
+    }
+    function getCookie(name) {
+        const nameEQ = name + '=';
+        const ca = document.cookie.split(';');
+        for(let i=0;i < ca.length;i++) {
+            let c = ca[i];
+            while (c.charAt(0)==' ') c = c.substring(1,c.length);
+            if (c.indexOf(nameEQ) == 0) return decodeURIComponent(c.substring(nameEQ.length,c.length));
+        }
+        return null;
+    }
+    function eraseCookie(name) {
+        document.cookie = name+'=; Max-Age=-99999999; path=/';
+    }
+
+    // --- On page load, check for user cookie ---
+    let currentUser = null;
+    let previousScreenId = null;
+    const userCookie = getCookie('canteenUser');
+    console.log('[auto-login] userCookie:', userCookie);
+    if (userCookie) {
+        try {
+            const userObj = JSON.parse(userCookie);
+            if (userObj && userObj.email) {
+                currentUser = userObj;
+                console.log('[auto-login] currentUser set from cookie:', currentUser);
+            }
+        } catch (e) { console.log('[auto-login] error parsing cookie', e); }
+    }
+
     // --- Constants & State ---
     const LS_KEYS = {
         LANGUAGE: 'canteenAppLanguage',
@@ -14,15 +54,17 @@ document.addEventListener('DOMContentLoaded', () => {
         DISCOVERY_MODE: 'canteenDiscoveryMode',
         CANTEEN_OPEN: 'canteenIsOpen_v2' // For server-driven status
     };
-    // REMOVED: const DISCOVERY_PASSCODE = '1234'; // Simple passcode for discovery
-    // Re-add constants that were likely removed during previous refactoring
-    const DEFAULT_PROFILE_PIC = 'https://i.postimg.cc/XYGqh5B2/IMG.png';
+    // --- User Profile Pictures Mapping ---
+    const PROFILE_PICS = {
+      pic1: "https://i.postimg.cc/6pkqNQdB/file-000000005f5052309370194ce0d09274-conversation-id-67e85992-b064-8005-abf6-a96aee541aaf-message-i.png",
+      pic2: "IMG.png",
+      pic3: "https://i.postimg.cc/sXy2v068/file-000000000cb852309a865637b17bf852-conversation-id-67e85992-b064-8005-abf6-a96aee541aaf-message-i.png"
+    };
+    const DEFAULT_PROFILE_PIC = PROFILE_PICS.pic2;
     // REMOVED: Hardcoded admin credentials
     // const ADMIN_EMAIL = "admin@canteen.app";
-    // const ADMIN_PASSWORD = "admin123";
 
     let currentScreen = null; // Initialize as null, not string
-    let currentUser = null;
     let currentLanguage = localStorage.getItem(LS_KEYS.LANGUAGE) || 'en'; // Default to English
     let currentTheme = localStorage.getItem(LS_KEYS.THEME) || 'blue';     // Default to blue
     let cart = []; // { id: productId, quantity: n }
@@ -82,7 +124,8 @@ document.addEventListener('DOMContentLoaded', () => {
     // *** Using Local Network IP for testing on the same LAN ***
     // Ensure server.js is running on the machine with this IP (192.168.1.14)
     // and the firewall allows connections on port 8080.
-    const WS_URL = 'ws://192.168.1.11:8080'; // <-- Local Network IP
+    // const WS_URL = 'ws://192.168.1.10:8080'; // <-- Local Network IP
+    const WS_URL = 'ws://' + location.hostname + ':8080/';
     let reconnectInterval = 5000; // Reconnect every 5 seconds
     let isManagementClient = false; // Flag to track if this instance is management
 
@@ -90,6 +133,7 @@ document.addEventListener('DOMContentLoaded', () => {
         ws = new WebSocket(WS_URL);
 
         ws.onopen = () => {
+            isWebSocketConnected = true;
             console.log('WebSocket connected');
             // Request initial data from server upon connection
             sendWebSocketMessage({ type: 'request_initial_data' });
@@ -101,6 +145,11 @@ document.addEventListener('DOMContentLoaded', () => {
             }
             // Reset reconnect interval on successful connection
             reconnectInterval = 5000;
+            // If user is auto-logged-in and on loading screen, show main menu now
+            if (currentUser && currentScreen && currentScreen.id === 'screen-0') {
+                updateUserInfoUI();
+                showScreen('screen-3');
+            }
         };
 
         ws.onmessage = (event) => {
@@ -389,7 +438,16 @@ document.addEventListener('DOMContentLoaded', () => {
                     // --- NEW: Handle Auth Responses ---
                     case 'register_success':
                         console.log('Registration successful:', message.payload);
-                        currentUser = message.payload; // Server sends back { email, profilePic }
+                        currentUser = message.payload;
+                        // Convert profilePic to key if it's a URL
+                        if(currentUser.profilePic && currentUser.profilePic.startsWith('http')) {
+                          // Try to find the key by value
+                          const foundKey = Object.keys(PROFILE_PICS).find(k => PROFILE_PICS[k] === currentUser.profilePic);
+                          if(foundKey) currentUser.profilePic = foundKey;
+                          else currentUser.profilePic = 'pic1';
+                        }
+                        setCookie('canteenUser', JSON.stringify(currentUser), 7);
+                        console.log('[register_success] setCookie called', currentUser);
                         // Clear registration form fields
                         if(registerEmailInput) registerEmailInput.value = '';
                         if(registerPasswordInput) registerPasswordInput.value = '';
@@ -410,7 +468,14 @@ document.addEventListener('DOMContentLoaded', () => {
                         break;
                     case 'login_success':
                         console.log('Login successful:', message.payload);
-                        currentUser = message.payload; // Server sends back { email, profilePic }
+                        currentUser = message.payload;
+                        if(currentUser.profilePic && currentUser.profilePic.startsWith('http')) {
+                          const foundKey = Object.keys(PROFILE_PICS).find(k => PROFILE_PICS[k] === currentUser.profilePic);
+                          if(foundKey) currentUser.profilePic = foundKey;
+                          else currentUser.profilePic = 'pic1';
+                        }
+                        setCookie('canteenUser', JSON.stringify(currentUser), 7);
+                        console.log('[login_success] setCookie called', currentUser);
                         // Clear login form fields
                         if(loginEmailInput) loginEmailInput.value = '';
                         if(loginPasswordInput) loginPasswordInput.value = '';
@@ -437,6 +502,7 @@ document.addEventListener('DOMContentLoaded', () => {
                         if(adminLoginErrorMsg) adminLoginErrorMsg.style.display = 'none';
                         // Clear admin login fields on success
                         if(adminPasswordInput) adminPasswordInput.value = '';
+                        eraseCookie('canteenUser'); // Remove user cookie for admin
                         showScreen('screen-5'); // Navigate to the admin screen
                         break;
                     case 'admin_login_error':
@@ -531,9 +597,14 @@ document.addEventListener('DOMContentLoaded', () => {
                         setTimeout(() => {
                              const alertMsg = getText('server_connection_lost_logout'); // Get text first
                              console.log(`[onclose] Alert text to show: "${alertMsg}"`); // LOG the text
-                             showCustomAlert(alertMsg, 'error_title', 5000); // Pass text and timeout
+                             showCustomAlert(alertMsg, 'error_title', 5000); // Pass text and timeout (5s)
                         }, 100); 
                     }
+                } else {
+                    // If user is auto-logged-in from cookie but server is down, force logout
+                    eraseCookie('canteenUser');
+                    currentUser = null;
+                    showScreen('screen-1');
                 }
             }
             // --- End Force logout ---
@@ -563,9 +634,14 @@ document.addEventListener('DOMContentLoaded', () => {
                         setTimeout(() => {
                              const alertMsg = getText('server_connection_lost_logout'); // Get text first
                              console.log(`[onerror] Alert text to show: "${alertMsg}"`); // LOG the text
-                             showCustomAlert(alertMsg, 'error_title', 5000); // Pass text and timeout
+                             showCustomAlert(alertMsg, 'error_title', 5000); // Pass text and timeout (5s)
                         }, 100); 
                     }
+                } else {
+                    // If user is auto-logged-in from cookie but server is down, force logout
+                    eraseCookie('canteenUser');
+                    currentUser = null;
+                    showScreen('screen-1');
                 }
             }
             // --- End Force logout ---
@@ -1405,7 +1481,10 @@ document.addEventListener('DOMContentLoaded', () => {
                  if (id === 'screen-9') {
                      showScreen9View('categories'); // Always start at category view
                  }
-                 if (id === 'screen-6') { if(adminLoginErrorMsg) adminLoginErrorMsg.style.display = 'none'; }
+                 if (id === 'screen-6') { 
+                    if(adminLoginErrorMsg) adminLoginErrorMsg.style.display = 'none'; 
+                    if(adminPasswordInput) adminPasswordInput.focus(); // Focus password input
+                 }
                  if (id === 'screen-3' || id === 'screen-7' || id === 'screen-8' || id === 'screen-9') updateCartBadge();
                  if (id === 'screen-8') { populateDiscoveryMode(); }
                  if (id === 'screen-3') { updateDiscoverButtonVisibility(); }
@@ -1435,7 +1514,26 @@ document.addEventListener('DOMContentLoaded', () => {
      }
 
     // --- User and Profile Functions ---
-    function updateUserInfoUI() { if (currentUser) { const n = currentUser.email.split('@')[0]; if(userDisplayName) userDisplayName.textContent = `@${n}`; if(userProfileImage) { userProfileImage.src = currentUser.profilePic; userProfileImage.alt = `${n}'s PP`; userProfileImage.style.display = 'block'; } if(guestUserIcon) guestUserIcon.style.display = 'none'; } else { if(userDisplayName) userDisplayName.textContent = '@guest'; if(userProfileImage) { userProfileImage.src = ''; userProfileImage.alt = 'User Profile'; userProfileImage.style.display = 'none'; } if(guestUserIcon) guestUserIcon.style.display = 'block'; } }
+    function updateUserInfoUI() {
+      if (currentUser) {
+        const n = currentUser.email.split('@')[0];
+        if(userDisplayName) userDisplayName.textContent = `@${n}`;
+        if(userProfileImage) {
+          userProfileImage.src = PROFILE_PICS[currentUser.profilePic] || DEFAULT_PROFILE_PIC;
+          userProfileImage.alt = `${n}'s PP`;
+          userProfileImage.style.display = 'block';
+        }
+        if(guestUserIcon) guestUserIcon.style.display = 'none';
+      } else {
+        if(userDisplayName) userDisplayName.textContent = '@guest';
+        if(userProfileImage) {
+          userProfileImage.src = '';
+          userProfileImage.alt = 'User Profile';
+          userProfileImage.style.display = 'none';
+        }
+        if(guestUserIcon) guestUserIcon.style.display = 'block';
+      }
+    }
 
     // --- Menu and Filtering Functions ---
     function getProductData(productId) { return baseMenuData.find(p => p.id === productId); }
@@ -3531,6 +3629,7 @@ document.addEventListener('DOMContentLoaded', () => {
             currentUser = null;
             cart = [];
             selectedPaymentMethod = 'cash'; // Reset on logout
+            eraseCookie('canteenUser'); // <-- Add this
             updateCartUI();
             updateUserInfoUI();
             // Use the correct variable name: paymentMethods
@@ -3836,9 +3935,15 @@ document.addEventListener('DOMContentLoaded', () => {
     
         applyTheme(currentTheme); // Apply theme based on loaded state
         updateLanguageUI(); // Update UI based on loaded language and data
-        showScreen('screen-1'); // Show initial screen
+        if (currentUser) {
+            updateUserInfoUI();
+            console.log('[auto-login] Navigating to screen-3');
+            showScreen('screen-3');
+        } else {
+            console.log('[auto-login] Navigating to screen-1');
+            showScreen('screen-1'); // Show initial screen
+        }
         updateCartUI(); // Initial cart render (might validate empty cart)
-        updateUserInfoUI();
         updateDiscoverButtonVisibility();
         updateDiscoveryToggleVisualState();
         updateCanteenStatusIndicator(); // <<< Call initially to set indicator based on default/loaded state
@@ -3868,3 +3973,14 @@ document.addEventListener('DOMContentLoaded', () => {
     initializeApplication();
 
     console.log('[Debug] discoveryBackButton element after caching:', discoveryBackButton); // ADDED FOR DEBUGGING
+
+    // Add a loading/connecting screen if not present
+    if (!document.getElementById('screen-0')) {
+        const loadingScreen = document.createElement('div');
+        loadingScreen.className = 'screen';
+        loadingScreen.id = 'screen-0';
+        loadingScreen.innerHTML = '<div class="screen-content"><h2>Connecting...</h2><p>Please wait while connecting to the server.</p></div>';
+        document.querySelector('.app-container').prepend(loadingScreen);
+    }
+
+    let isWebSocketConnected = false;
