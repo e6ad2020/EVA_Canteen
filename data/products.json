@@ -2,7 +2,7 @@
   {
     "id": "coffee",
     "price": 30,
-    "image": "https://media.elwatannews.com/media/img/mediaarc/large/20237496061663046251.jpg",
+    "image": "https://i.postimg.cc/T1sCP7Zf/coffee.webp",
     "category": "sweet",
     "quantity": 999,
     "name_key": "item_name_coffee",
@@ -47,7 +47,7 @@
   {
     "id": "soda",
     "price": 15,
-    "image": "https://jx.sa/8860-large_default/soda-star-water-300-ml-x-24.jpg",
+    "image": "https://i.postimg.cc/d1tBjcFJ/soda.webp",
     "category": "snacks",
     "quantity": 999,
     "name_key": "item_name_soda",
@@ -56,7 +56,7 @@
   {
     "id": "salad",
     "price": 45,
-    "image": "https://encrypted-tbn0.gstatic.com/images?q=tbn:ANd9GcQ5sqfCpGLeoxFBPGxFxzmygHlKJgDnU-SJHEx9hVIyhnrpGmldu20OirA&s=10",
+    "image": "https://i.postimg.cc/FKxpSs2P/salad.webp",
     "category": "lunch",
     "quantity": 999,
     "name_key": "item_name_salad",
@@ -65,7 +65,7 @@
   {
     "id": "cake",
     "price": 40,
-    "image": "https://encrypted-tbn0.gstatic.com/images?q=tbn:ANd9GcRvFIIgqKfBgFotly6OrxXqxBGO_jLh-DIINS_e-_o4gaKlk3I9tvobZaKk&s=10",
+    "image": "https://i.postimg.cc/k4fT0XsV/cake-slice.webp",
     "category": "sweet",
     "quantity": 999,
     "name_key": "item_name_cake",
@@ -83,7 +83,7 @@
   {
     "id": "pasta",
     "price": 55,
-    "image": "https://images.services.kitchenstories.io/eT6sd87C6s0sOmsM8S2IDw96_Xs=/1080x0/filters:quality(85)/images.kitchenstories.io/wagtailOriginalImages/R131-final-photo-3-sg.jpg",
+    "image": "https://i.postimg.cc/52D5FQ7q/pasta.webp",
     "category": "lunch",
     "quantity": 999,
     "name_key": "item_name_pasta",

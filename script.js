@@ -1,4 +1,10 @@
+let connectingScreenEverTimedOut = false;
 document.addEventListener('DOMContentLoaded', () => {
+
+    setTimeout(() => {
+        const loader = document.getElementById('loader-overlay');
+        if (loader) loader.remove();
+    }, 5000);
     // --- Cookie Helpers ---
     function setCookie(name, value, days) {
         let expires = '';
@@ -100,6 +106,9 @@ document.addEventListener('DOMContentLoaded', () => {
     // Moved inside DOMContentLoaded scope to access flags
     function renderInitialUIIfNeeded() {
         if (isInitialProductsLoaded && isInitialCategoriesLoaded && isInitialTranslationsLoaded) {
+            // إخفاء مؤشر التحميل إذا كان موجود
+            const loader = document.getElementById('loader-overlay');
+            if(loader) loader.style.display = 'none';
             console.log("All initial data received, rendering main UI...");
             // Now we can safely render UI elements that depend on this data
             populateSortButtons();
@@ -133,7 +142,9 @@ document.addEventListener('DOMContentLoaded', () => {
         ws = new WebSocket(WS_URL);
 
         ws.onopen = () => {
+            console.log('[DEBUG] ws.onopen - connection established');
             isWebSocketConnected = true;
+            hideConnectingScreen();
             console.log('WebSocket connected');
             // Request initial data from server upon connection
             sendWebSocketMessage({ type: 'request_initial_data' });
@@ -576,6 +587,8 @@ document.addEventListener('DOMContentLoaded', () => {
         };
 
         ws.onclose = () => {
+            console.log('[DEBUG] ws.onclose - connection lost');
+            showConnectingScreen();
             console.log('WebSocket disconnected. Attempting to reconnect...');
             ws = null; // Ensure ws is nullified
             isManagementClient = false; // Reset flag on disconnect
@@ -3686,7 +3699,16 @@ document.addEventListener('DOMContentLoaded', () => {
     
         itemPreviewBackButton?.addEventListener('click', () => { const targetScreenId = previousScreenId || 'screen-3'; showScreen(targetScreenId); previousScreenId = null; });
         addToCartPreviewButton?.addEventListener('click', e => { const b = e.target.closest('button'), id = b?.dataset.itemId; if (id) { addToCart(id); if (previewButtonTimeout) { clearTimeout(previewButtonTimeout); } setPreviewButtonState(true); previewButtonTimeout = setTimeout(() => { if (currentScreen && currentScreen.id === 'screen-7' && addToCartPreviewButton.dataset.itemId === id) { setPreviewButtonState(false); } previewButtonTimeout = null; }, 1500); } });
-        toggleFullScreenButton?.addEventListener('click', () => { bodyElement.classList.toggle('full-screen-mode'); const f = bodyElement.classList.contains('full-screen-mode'); toggleFullScreenButton.innerHTML = f ? '<i class="fas fa-compress"></i>' : '<i class="fas fa-expand"></i>'; toggleFullScreenButton.title = f ? 'Exit Full Screen' : 'Enter Full Screen'; });
+        toggleFullScreenButton?.addEventListener('click', () => {
+            bodyElement.classList.toggle('full-screen-mode');
+            const f = bodyElement.classList.contains('full-screen-mode');
+            toggleFullScreenButton.innerHTML = f ? '<i class="fas fa-compress"></i>' : '<i class="fas fa-expand"></i>';
+            toggleFullScreenButton.title = f ? 'Exit Full Screen' : 'Enter Full Screen';
+            // حفظ الحالة في Local Storage
+            localStorage.setItem('canteenAppFullScreen', f ? '1' : '0');
+            // إعادة الصفحة للأعلى عند تفعيل full screen
+            if (f) window.scrollTo(0, 0);
+        });
         discoverButton?.addEventListener('click', () => { if (isDiscoveryModeActivated) { showScreen('screen-8'); } else { console.warn("Discover button clicked but Discovery Mode is not activated."); } });
         discoveryBundlesScroller?.addEventListener('click', (e) => { const bundleButton = e.target.closest('.add-bundle-button'); if (bundleButton) { const card = bundleButton.closest('.offer-card'); const bundleId = card?.dataset.bundleId; if (bundleId) { addBundleToCart(bundleId, bundleButton); } } });
         discoverySuggestionsGrid?.addEventListener('click', (e) => { const suggestionButton = e.target.closest('.add-suggestion-button'); if (suggestionButton) { const card = suggestionButton.closest('.suggestion-grid-item'); const suggestionId = card?.dataset.suggestionId; if (suggestionId) { addSuggestionToCart(suggestionId, suggestionButton); } } });
@@ -3935,6 +3957,14 @@ document.addEventListener('DOMContentLoaded', () => {
     
         applyTheme(currentTheme); // Apply theme based on loaded state
         updateLanguageUI(); // Update UI based on loaded language and data
+        // --- استرجاع حالة الـ Full Screen عند تحميل الصفحة ---
+        if (localStorage.getItem('canteenAppFullScreen') === '1') {
+            bodyElement.classList.add('full-screen-mode');
+            if (toggleFullScreenButton) {
+                toggleFullScreenButton.innerHTML = '<i class="fas fa-compress"></i>';
+                toggleFullScreenButton.title = 'Exit Full Screen';
+            }
+        }
         if (currentUser) {
             updateUserInfoUI();
             console.log('[auto-login] Navigating to screen-3');
@@ -3984,3 +4014,134 @@ document.addEventListener('DOMContentLoaded', () => {
     }
 
     let isWebSocketConnected = false;
+
+    // --- إخفاء شاشة التحميل بعد 5 ثواني مهما كان ---
+    setTimeout(() => {
+        const loader = document.getElementById('loader-overlay');
+        if(loader) loader.remove();
+    }, 5000);
+
+    // --- إخفاء شاشة connecting (screen-0) بعد 5 ثواني ---
+    setTimeout(() => {
+        const connectingScreen = document.getElementById('screen-0');
+        if (connectingScreen) connectingScreen.style.display = 'none';
+    }, 5000);
+
+    // --- حذف جميع عناصر screen-0 بعد 5 ثواني ---
+    setTimeout(() => {
+        document.querySelectorAll('#screen-0').forEach(el => el.remove());
+    }, 5000);
+
+    // --- منع إعادة إنشاء شاشة connecting بعد 5 ثواني ---
+    setTimeout(() => {
+        window.disableConnectingScreen = true;
+        document.querySelectorAll('#screen-0').forEach(el => el.remove());
+    }, 5000);
+
+    // عند إنشاء شاشة connecting في نهاية الملف:
+    if (!window.disableConnectingScreen && !document.getElementById('screen-0')) {
+        const loadingScreen = document.createElement('div');
+        loadingScreen.className = 'screen';
+        loadingScreen.id = 'screen-0';
+        loadingScreen.innerHTML = '<div class="screen-content"><h2>Connecting...</h2><p>Please wait while connecting to the server.</p></div>';
+        document.querySelector('.app-container').prepend(loadingScreen);
+    }
+
+    // --- مراقبة مستمرة لحذف screen-0 إذا ظهرت بعد 5 ثواني ---
+    setInterval(() => {
+        if (window.disableConnectingScreen) {
+            document.querySelectorAll('#screen-0').forEach(el => el.remove());
+        }
+    }, 1000);
+
+    // بعد DOMContentLoaded مباشرة:
+    setTimeout(() => {
+        window.disableConnectingScreen = true;
+        document.querySelectorAll('#screen-0').forEach(el => el.remove());
+    }, 5000);
+    // ... existing code ...
+    // عند أي محاولة لإنشاء شاشة connecting:
+    if (!window.disableConnectingScreen && !document.getElementById('screen-0')) {
+        const loadingScreen = document.createElement('div');
+        loadingScreen.className = 'screen';
+        loadingScreen.id = 'screen-0';
+        loadingScreen.innerHTML = '<div class="screen-content"><h2>Connecting...</h2><p>Please wait while connecting to the server.</p></div>';
+        document.querySelector('.app-container').prepend(loadingScreen);
+    }
+    // ... existing code ...
+
+    // بعد DOMContentLoaded مباشرة:
+    const connectingScreenTimeout = Date.now() + 5000;
+    setInterval(() => {
+        if (Date.now() > connectingScreenTimeout) {
+            document.querySelectorAll('#screen-0').forEach(el => el.remove());
+            window.disableConnectingScreen = true;
+        }
+    }, 500);
+    // ... existing code ...
+    // عند أي محاولة لإنشاء شاشة connecting:
+    if (!window.disableConnectingScreen && !document.getElementById('screen-0')) {
+        const loadingScreen = document.createElement('div');
+        loadingScreen.className = 'screen';
+        loadingScreen.id = 'screen-0';
+        loadingScreen.innerHTML = '<div class="screen-content"><h2>Connecting...</h2><p>Please wait while connecting to the server.</p></div>';
+        document.querySelector('.app-container').prepend(loadingScreen);
+    }
+    // ... existing code ...
+
+    // ... existing code ...
+    // عند أي محاولة لإنشاء شاشة connecting:
+    if ((Date.now() - connectingScreenStart) < 5000 && !document.getElementById('screen-0')) {
+        const loadingScreen = document.createElement('div');
+        loadingScreen.className = 'screen';
+        loadingScreen.id = 'screen-0';
+        loadingScreen.innerHTML = '<div class="screen-content"><h2>Connecting...</h2><p>Please wait while connecting to the server.</p></div>';
+        document.querySelector('.app-container').prepend(loadingScreen);
+    }
+    // ... existing code ...
+
+    // دالة لإظهار شاشة connecting
+    function showConnectingScreen() {
+        if (connectingScreenEverTimedOut) return;
+        console.log('[DEBUG] showConnectingScreen called');
+        if (!document.getElementById('screen-0')) {
+            const loadingScreen = document.createElement('div');
+            loadingScreen.className = 'screen';
+            loadingScreen.id = 'screen-0';
+            loadingScreen.innerHTML = '<div class="screen-content"><h2>Connecting...</h2><p>Please wait while connecting to the server.</p></div>';
+            document.querySelector('.app-container').prepend(loadingScreen);
+            console.log('[DEBUG] screen-0 created');
+        }
+        // فقط أول مرة: شغل التايمر
+        if (!window.connectingScreenTimeout) {
+            window.connectingScreenTimeout = setTimeout(() => {
+                connectingScreenEverTimedOut = true;
+                hideConnectingScreen();
+                console.log('[DEBUG] 5 seconds passed, auto-hiding connecting screen');
+            }, 5000);
+        }
+    }
+    // دالة لإخفاء شاشة connecting
+    function hideConnectingScreen() {
+        console.log('[DEBUG] hideConnectingScreen called');
+        const els = document.querySelectorAll('#screen-0');
+        for (const el of els) {
+            el.remove();
+            console.log('[DEBUG] screen-0 removed');
+        }
+        if (window.connectingScreenTimeout) clearTimeout(window.connectingScreenTimeout);
+        window.connectingScreenTimeout = null;
+    }
+    // ... existing code ...
+    // في connectWebSocket:
+    ws.onopen = () => {
+        console.log('[DEBUG] ws.onopen - connection established');
+        isWebSocketConnected = true;
+        hideConnectingScreen();
+        // ... باقي الكود ...
+    };
+    ws.onclose = () => {
+        console.log('[DEBUG] ws.onclose - connection lost');
+        showConnectingScreen();
+        // ... باقي الكود ...
+    };

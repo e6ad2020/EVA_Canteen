@@ -5,24 +5,58 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <link rel="icon" type="image/png" href="logo.png">
     <title>EVA Canteen</title> <!-- Updated Title -->
-    <!-- Font Awesome -->
-    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css">
-    <!-- Google Fonts -->
-    <link rel="preconnect" href="https://fonts.googleapis.com">
-    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-    <link href="https://fonts.googleapis.com/css2?family=Nunito:wght@400;600;700&family=Cairo:wght@400;600;700&display=swap" rel="stylesheet">
+    <!-- Font Awesome (محلي) -->
+    <link rel="stylesheet" href="fonts/fontawesome-free-6.0.0-web/fontawesome-free-6.0.0-web/css/all.min.css">
+    <!-- Google Fonts (محلي) -->
+    <link rel="stylesheet" href="fonts/fonts.css">
+    <!-- (احذف أو علق الروابط القديمة للـ CDN) -->
+    <!-- <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css"> -->
+    <!-- <link rel="preconnect" href="https://fonts.googleapis.com"> -->
+    <!-- <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin> -->
+    <!-- <link href="https://fonts.googleapis.com/css2?family=Nunito:wght@400;600;700&family=Cairo:wght@400;600;700&display=swap" rel="stylesheet"> -->
 
     <!-- Link to your external CSS file -->
     <link rel="stylesheet" href="style.css">
 
 </head>
 <body data-theme="blue"> <!-- Default theme set here -->
+    <div class="app-container">
+        <div id="loader-overlay" style="position:absolute;z-index:9999;top:0;left:0;width:100%;height:100%;background:rgba(255,255,255,0.85);display:flex;align-items:center;justify-content:center;transition:opacity 0.3s;">
+            <div class="loader-spinner"></div>
+        </div>
+    <style>
+        @keyframes spin { 0% { transform: rotate(0deg);} 100% { transform: rotate(360deg);} }
+        #loader-overlay .loader-spinner {
+            border:6px solid #eee;
+            border-top:6px solid #3498db;
+            border-radius:50%;
+            width:48px;
+            height:48px;
+            animation:spin 1s linear infinite;
+        }
+        /* حجم أصغر للموبايل */
+        @media (max-width: 600px) {
+            #loader-overlay .loader-spinner {
+                width:32px;
+                height:32px;
+                border-width:4px;
+            }
+        }
+        /* حجم أكبر في وضع Full Screen */
+        body.full-screen-mode #loader-overlay .loader-spinner {
+            width:80px;
+            height:80px;
+            border-width:8px;
+        }
+        /* غطاء التحميل يغطي فقط app-container */
+        .app-container { position: relative; }
+        #loader-overlay { position: absolute; top: 0; left: 0; width: 100%; height: 100%; }
+    </style>
 
     <!-- MOVED Fixed Buttons Outside App Container -->
     <button id="toggle-fullscreen-btn" class="fixed-button" title="Enter Full Screen"><i class="fas fa-expand"></i></button>
     <button id="settings-btn" class="fixed-button" title="Settings"><i class="fas fa-cog"></i></button>
 
-    <div class="app-container">
         <!-- Screen 1: Login -->
         <div class="screen" id="screen-1">
              <div class="screen-content">
