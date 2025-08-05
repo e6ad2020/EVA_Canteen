@@ -1,1 +1,246 @@
-[]
+[
+  {
+    "id": "ORD-3-05-08",
+    "timestamp": "2025-08-05T00:34:54.878Z",
+    "items": [
+      {
+        "id": "pasta",
+        "quantity": 1,
+        "price": 55,
+        "isDiscount": false,
+        "name_key": "item_name_pasta"
+      },
+      {
+        "id": "pizza",
+        "quantity": 1,
+        "price": 70,
+        "isDiscount": false,
+        "name_key": "item_name_pizza"
+      },
+      {
+        "id": "burger",
+        "quantity": 1,
+        "price": 60,
+        "isDiscount": false,
+        "name_key": "item_name_burger"
+      },
+      {
+        "id": "salad",
+        "quantity": 26,
+        "price": 45,
+        "isDiscount": false,
+        "name_key": "item_name_salad"
+      }
+    ],
+    "totalAmount": 1355,
+    "status": "pending",
+    "paymentMethod": "cash",
+    "user": {
+      "email": "t@t.t",
+      "profilePic": "pic3"
+    }
+  },
+  {
+    "id": "ORD-2-05-08",
+    "timestamp": "2025-08-04T23:48:10.132Z",
+    "items": [
+      {
+        "id": "pizza",
+        "quantity": 1,
+        "price": 70,
+        "isDiscount": false,
+        "name_key": "item_name_pizza"
+      },
+      {
+        "id": "pasta",
+        "quantity": 2,
+        "price": 55,
+        "isDiscount": false,
+        "name_key": "item_name_pasta"
+      },
+      {
+        "id": "salad",
+        "quantity": 1,
+        "price": 45,
+        "isDiscount": false,
+        "name_key": "item_name_salad"
+      }
+    ],
+    "totalAmount": 225,
+    "status": "pending",
+    "paymentMethod": "cash",
+    "user": {
+      "email": "t@t.t",
+      "profilePic": "pic3"
+    }
+  },
+  {
+    "id": "ORD-1-05-08",
+    "timestamp": "2025-08-04T22:17:01.563Z",
+    "items": [
+      {
+        "id": "cake",
+        "quantity": 1,
+        "price": 40,
+        "isDiscount": false,
+        "name_key": "item_name_cake"
+      },
+      {
+        "id": "coffee",
+        "quantity": 1,
+        "price": 30,
+        "isDiscount": false,
+        "name_key": "item_name_coffee"
+      },
+      {
+        "id": "cookies",
+        "quantity": 1,
+        "price": 20,
+        "isDiscount": false,
+        "name_key": "item_name_cookies"
+      },
+      {
+        "id": "juice",
+        "quantity": 1,
+        "price": 20,
+        "isDiscount": false,
+        "name_key": "item_name_juice"
+      }
+    ],
+    "totalAmount": 110,
+    "status": "preparing",
+    "paymentMethod": "cash",
+    "user": {
+      "email": "t@t.t",
+      "profilePic": "pic3"
+    }
+  },
+  {
+    "id": "ORD-1-04-08",
+    "timestamp": "2025-08-04T20:06:59.778Z",
+    "items": [
+      {
+        "id": "salad",
+        "quantity": 1,
+        "price": 45,
+        "isDiscount": false,
+        "name_key": "item_name_salad"
+      },
+      {
+        "id": "pasta",
+        "quantity": 1,
+        "price": 55,
+        "isDiscount": false,
+        "name_key": "item_name_pasta"
+      }
+    ],
+    "totalAmount": 100,
+    "status": "delivered",
+    "paymentMethod": "cash",
+    "user": {
+      "email": "t@t.t",
+      "profilePic": "pic3"
+    }
+  },
+  {
+    "id": "ORD-1-30-07",
+    "timestamp": "2025-07-30T07:52:05.263Z",
+    "items": [
+      {
+        "id": "soda",
+        "quantity": 1,
+        "price": 15,
+        "isDiscount": false,
+        "name_key": "item_name_soda"
+      },
+      {
+        "id": "fries",
+        "quantity": 1,
+        "price": 35,
+        "isDiscount": false,
+        "name_key": "item_name_fries"
+      }
+    ],
+    "totalAmount": 50,
+    "status": "pending",
+    "paymentMethod": "cash",
+    "user": {
+      "email": "t@t.t",
+      "profilePic": "pic3"
+    }
+  },
+  {
+    "id": "ORD-3-22-07",
+    "timestamp": "2025-07-21T21:47:57.271Z",
+    "items": [
+      {
+        "id": "pasta",
+        "quantity": 1,
+        "price": 55,
+        "isDiscount": false,
+        "name_key": "item_name_pasta"
+      }
+    ],
+    "totalAmount": 55,
+    "status": "pending",
+    "paymentMethod": "cash",
+    "user": {
+      "email": "t@t.t",
+      "profilePic": "pic3"
+    }
+  },
+  {
+    "id": "ORD-2-22-07",
+    "timestamp": "2025-07-21T21:42:55.960Z",
+    "items": [
+      {
+        "id": "pizza",
+        "quantity": 1,
+        "price": 70,
+        "isDiscount": false,
+        "name_key": "item_name_pizza"
+      }
+    ],
+    "totalAmount": 70,
+    "status": "pending",
+    "paymentMethod": "cash",
+    "user": {
+      "email": "t@t.t",
+      "profilePic": "pic3"
+    }
+  },
+  {
+    "id": "ORD-1-22-07",
+    "timestamp": "2025-07-21T21:42:39.343Z",
+    "items": [
+      {
+        "id": "salad",
+        "quantity": 1,
+        "price": 45,
+        "isDiscount": false,
+        "name_key": "item_name_salad"
+      },
+      {
+        "id": "pasta",
+        "quantity": 1,
+        "price": 55,
+        "isDiscount": false,
+        "name_key": "item_name_pasta"
+      },
+      {
+        "id": "pizza",
+        "quantity": 1,
+        "price": 70,
+        "isDiscount": false,
+        "name_key": "item_name_pizza"
+      }
+    ],
+    "totalAmount": 170,
+    "status": "pending",
+    "paymentMethod": "cash",
+    "user": {
+      "email": "t@t.t",
+      "profilePic": "pic3"
+    }
+  }
+]
