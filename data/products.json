@@ -142,5 +142,14 @@
     "quantity": 999,
     "name_key": "item_name_soup",
     "description_key": "item_desc_soup"
+  },
+  {
+    "id": "prod-1754423802712-v3u2oi",
+    "price": 250,
+    "image": "https://www.kikkoman.de/fileadmin/_processed_/9/0/csm_1414_Vegan_Tempura_Sushi_Desktop_Header_148b8761b6.jpg",
+    "category": "lunch",
+    "quantity": 48,
+    "name_key": "item_name_prod-1754423802712-v3u2oi",
+    "description_key": "item_desc_prod-1754423802712-v3u2oi"
   }
 ]

@@ -1432,5 +1432,13 @@
   "checkout_error_empty": {
     "en": "Your cart is empty!",
     "ar": "سلتك فارغة!"
+  },
+  "item_name_prod-1754423802712-v3u2oi": {
+    "en": "Sushi",
+    "ar": "سوشي"
+  },
+  "item_desc_prod-1754423802712-v3u2oi": {
+    "en": "A good sushi, 10 pices",
+    "ar": "انه سوشي جيد وجبة مكونة من 10 قطع"
   }
 }
