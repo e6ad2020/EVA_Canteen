@@ -1,6 +1,12 @@
+# Run server
+
+# Terminal 1: WebSocket Server (Port 8080)
 node server.js
 
-python3 -m http.server 8000
+# Terminal 2: HTTP Server للملفات (Port 8000)  
+python -m http.server 8000
+
+# Site: http://localhost:8000   ---> localhost means the host of the server
 
 
 

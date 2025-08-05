@@ -438,6 +438,14 @@
         </div>
         <!-- End Discovery Mode Toggle Section -->
 
+        <!-- About Project Button -->
+        <div class="settings-group" id="about-project-group">
+            <button class="button small-button" id="about-project-button" style="width: 100%; margin-top: 10px; background-color: var(--lighter-blue-bg); border-color: var(--border-color);">
+                <i class="fas fa-info-circle"></i> <span data-lang-key="about_project_button">About Project</span>
+            </button>
+        </div>
+        <!-- End About Project Button -->
+
     </div>
     <!-- End Floating Settings Panel -->
 
@@ -550,6 +558,18 @@
     </div>
     <!-- END: Custom Confirmation Modal -->
 
+    <!-- About Project Modal -->
+    <div id="about-project-overlay" class="modal-overlay">
+        <div id="about-project-box" class="modal-box">
+            <h3 data-lang-key="about_project_title">About Project</h3>
+            <div class="about-project-image-container">
+                <img src="https://i.postimg.cc/jdTC3Sq2/Whats-App-Image-2024-12-10-at-13-31-40-da111f53.jpg" alt="Project Team" class="about-project-image">
+            </div>
+            <p data-lang-key="about_project_description">This project was developed by students at EVA International School for Applied Technology: Ayad Jaber, Anwar Qasem, Dina Mahmoud, and Ahmed Mohamed.</p>
+            <button id="about-project-close" class="button" data-lang-key="ok_button">OK</button>
+        </div>
+    </div>
+    <!-- End About Project Modal -->
 
     <!-- Link to your external JavaScript file -->
     <script src="script.js"></script>

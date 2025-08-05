@@ -1,29 +1,11 @@
-const express = require('express');
-const app = express();
-
-// يخدم كل الملفات من المجلد الرئيسي (index.html, script.js, style.css)
-app.use(express.static(__dirname));
+// تم إزالة Express server لأننا نستخدم Python HTTP server بدلاً منه
 
 const WebSocket = require('ws');
 const fs = require('fs');
 const path = require('path');
 const bcrypt = require('bcrypt');
-const https = require('https');
-const selfsigned = require('selfsigned');
 
-const keyPath = path.join(__dirname, 'server.key');
-const certPath = path.join(__dirname, 'server.cert');
-
-// احذف شرط التحقق من وجود الشهادة بالكامل:
-// if (!fs.existsSync(keyPath) || !fs.existsSync(certPath)) {
-//   console.error('SSL certificate or key not found! Please generate server.key and server.cert and place them in the project directory.');
-//   process.exit(1);
-// }
-
-const sslOptions = {
-  key: fs.readFileSync(keyPath),
-  cert: fs.readFileSync(certPath)
-};
+// تم إزالة SSL certificates لأننا نستخدم Python HTTP server
 
 // --- Data Persistence Setup ---
 const DATA_DIR = path.join(__dirname, 'data');
@@ -266,15 +248,12 @@ if (translationsModified) {
 }
 // --- End Critical Translation Key Check ---
 
-const server = https.createServer(sslOptions, app);
+// WebSocket server يعمل على بورت 8080 مباشرة
+const WEBSOCKET_PORT = 8080;
+const wss = new WebSocket.Server({ port: WEBSOCKET_PORT, host: '0.0.0.0' });
 
-// عدل WebSocket ليعمل على بورت 8080 مباشرة
-const wss = new WebSocket.Server({ port: 8080, host: '0.0.0.0' });
-
-const PORT = 3000;
-server.listen(PORT, '0.0.0.0', () => {
-  console.log(`HTTPS server and WebSocket running on port ${PORT}`);
-});
+console.log(`🚀 WebSocket server running on port ${WEBSOCKET_PORT}`);
+console.log(`📁 Use: python -m http.server 8000 to serve files`);
 
 // Store connected clients and their roles
 const clients = new Map(); // Use Map for better client management { ws: { isManagement: false, ip: string } }
@@ -1102,29 +1081,29 @@ setInterval(() => {
     }
 }, 60000); // Check every 60 seconds
 
-// --- Graceful Shutdown (Example) ---
+// --- Graceful Shutdown ---
 process.on('SIGINT', () => {
-    console.log('\nShutting down WebSocket server...');
-    console.log('Saving final data state...');
+    console.log('\n🛑 Shutting down WebSocket server...');
+    console.log('💾 Saving final data state...');
     saveDataToFile(ORDERS_FILE, allOrders);
     saveDataToFile(PRODUCTS_FILE, baseMenuData);
     saveDataToFile(CATEGORIES_FILE, categories);
     saveDataToFile(TRANSLATIONS_FILE, translations);
     saveDataToFile(STATUS_FILE, canteenStatus);
-    console.log('Data saving complete.');
+    console.log('✅ Data saving complete.');
 
     wss.close((err) => {
         if (err) {
-            console.error('Error closing WebSocket server:', err);
+            console.error('❌ Error closing WebSocket server:', err);
         } else {
-            console.log('WebSocket server closed.');
+            console.log('✅ WebSocket server closed.');
         }
         process.exit(err ? 1 : 0);
     });
 
     // Force close connections if server close hangs
     setTimeout(() => {
-        console.log('Forcing remaining connections to close.');
+        console.log('⚡ Forcing remaining connections to close.');
         clients.forEach((info, client) => {
             client.terminate();
         });

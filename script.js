@@ -1108,7 +1108,12 @@ document.addEventListener('DOMContentLoaded', () => {
         import_products_config_success_message: {en: "Products, categories, and related translations imported successfully!", ar: "تم استيراد المنتجات والفئات والترجمات المرتبطة بها بنجاح!"},
         // --- END ADDED ---
         item_out_of_stock_alert: { en: "Sorry, '{itemName}' is out of stock!", ar: "عذراً، '{itemName}' نفذ من المخزون حالياً!" },
-        edit_product_success_title: { en: "Product Updated", ar: "تم تحديث المنتج" } // New title key
+        edit_product_success_title: { en: "Product Updated", ar: "تم تحديث المنتج" }, // New title key
+        // --- ADDED: About Project Translations ---
+        about_project_button: { en: "About Project", ar: "عن المشروع" },
+        about_project_title: { en: "About Project", ar: "عن المشروع" },
+        about_project_description: { en: "This project was developed by students at EVA International Applied Technology School:\n\nEyad Gaber • Anwar Qasem • Dina Mahmoud • Ahmed Mohamed", ar: "تم تطوير هذا المشروع من قبل طلاب في مدرسة إيفا الدولية للتكنولوجيا التطبيقية:\n\nإياد جابر • أنور قاسم • دينا محمود • أحمد محمد" }
+        // --- END ADDED ---
     };
 
 
@@ -3740,8 +3745,43 @@ document.addEventListener('DOMContentLoaded', () => {
                             }
                         });
                     }
-        customAlertCloseBtn?.addEventListener('click', hideCustomAlert);
-        customAlertOverlay?.addEventListener('click', (e) => { if (e.target === customAlertOverlay) { hideCustomAlert(); } });
+            customAlertCloseBtn?.addEventListener('click', hideCustomAlert);
+    customAlertOverlay?.addEventListener('click', (e) => { if (e.target === customAlertOverlay) { hideCustomAlert(); } });
+
+    // --- ADDED: About Project Modal Event Listeners ---
+    const aboutProjectButton = document.getElementById('about-project-button');
+    const aboutProjectOverlay = document.getElementById('about-project-overlay');
+    const aboutProjectClose = document.getElementById('about-project-close');
+
+    if (aboutProjectButton) {
+        console.log('[DEBUG] About Project button found and event listener added');
+        aboutProjectButton.addEventListener('click', () => {
+            console.log('[DEBUG] About Project button clicked');
+            if (aboutProjectOverlay) {
+                aboutProjectOverlay.classList.add('visible');
+                console.log('[DEBUG] About Project modal should be visible now');
+            } else {
+                console.error('[ERROR] About Project overlay not found');
+            }
+        });
+    } else {
+        console.error('[ERROR] About Project button not found');
+    }
+
+    if (aboutProjectClose) {
+        aboutProjectClose.addEventListener('click', () => {
+            aboutProjectOverlay.classList.remove('visible');
+        });
+    }
+
+    if (aboutProjectOverlay) {
+        aboutProjectOverlay.addEventListener('click', (e) => {
+            if (e.target === aboutProjectOverlay) {
+                aboutProjectOverlay.classList.remove('visible');
+            }
+        });
+    }
+    // --- END ADDED ---
         // --- Passcode Modal Event Listeners ---
         passcodeModalOk?.addEventListener('click', handlePasscodeSubmit);
         passcodeModalCancel?.addEventListener('click', hidePasscodeModal);
@@ -3988,21 +4028,24 @@ document.addEventListener('DOMContentLoaded', () => {
             });
         }
 
+        // --- Discovery Back Button Event Listener ---
+        if (discoveryBackButton) {
+            discoveryBackButton.addEventListener('click', () => {
+                console.log('[Debug] Discovery back button clicked. Current previousScreenId:', previousScreenId);
+                // Navigate to previousScreenId if available, otherwise default to screen-3
+                const targetScreenId = previousScreenId || 'screen-3';
+                console.log('[Debug] Discovery back button navigating to:', targetScreenId);
+                showScreen(targetScreenId);
+            });
+        } else {
+            console.error('[ERROR] Discovery back button not found');
+        }
+        // --- End Discovery Back Button ---
+
         connectWebSocket(); 
     }); // <<< ENSURE THIS IS THE ACTUAL END of the DOMContentLoaded listener
 
-    // Event listener for the new Discovery screen back button
-    discoveryBackButton?.addEventListener('click', () => {
-        console.log('[Debug] Discovery back button clicked. Current previousScreenId:', previousScreenId); // DEBUG
-        // Navigate to previousScreenId if available, otherwise default to screen-3
-        const targetScreenId = previousScreenId || 'screen-3';
-        console.log('[Debug] Discovery back button navigating to:', targetScreenId); // DEBUG
-        showScreen(targetScreenId);
-    });
-
     initializeApplication();
-
-    console.log('[Debug] discoveryBackButton element after caching:', discoveryBackButton); // ADDED FOR DEBUGGING
 
     // Add a loading/connecting screen if not present
     if (!document.getElementById('screen-0')) {
