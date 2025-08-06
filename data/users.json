@@ -23,5 +23,10 @@
     "email": "eyad@canteen.app",
     "passwordHash": "$2b$10$dkka4nGkRn6VwbVBvxpOMegVfwoi3fVh/fVSyENHxNSM6dfUCe//a",
     "profilePic": "pic2"
+  },
+  {
+    "email": "tttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttt@tttttttttt.tt",
+    "passwordHash": "$2b$10$L/4mjrj2CPTwU9hic3bgFOm/y9t/KAZBCiByYFS1Z7jNcl1mcdZIu",
+    "profilePic": "pic2"
   }
 ]

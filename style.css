@@ -2112,12 +2112,19 @@ body[data-theme="light-red"] .liquid-glass-title-bg:hover {
   font-weight: 700;
   font-size: 1rem;
   transition: background 0.3s, border-color 0.3s;
+  /* Text truncation for long usernames */
+  max-width: 120px;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
 }
 @media (max-width: 600px) {
   .user-display-glass {
     font-size: 0.85rem;
     padding: 0.12em 0.4em;
     border-radius: 10px;
+    /* Smaller max-width for mobile screens */
+    max-width: 80px;
   }
 }
 
