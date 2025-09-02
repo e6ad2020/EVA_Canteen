@@ -3073,6 +3073,8 @@ body[data-theme="blue"] .liquid-glass-title-bg.main-title-glass:hover {
   font-size: 1rem !important;
   border-radius: 8px !important;
   font-family: inherit !important;
+  display: block !important;
+  margin: 40px auto 0 auto !important; /* Increased top margin to avoid overlap */
 }
 
 #about-project-box .button:hover:not(:active) {
@@ -3107,6 +3109,39 @@ body[data-theme="blue"] .liquid-glass-title-bg.main-title-glass:hover {
   box-shadow: 0 6px 16px rgba(0, 0, 0, 0.4) !important;
 }
 
+/* License Information Styles */
+.license-info {
+  background-color: rgba(0, 0, 0, 0.2) !important;
+  border-radius: 8px !important;
+  padding: 15px !important;
+  margin: 20px 0 !important;
+  text-align: left !important;
+  font-size: 0.85rem !important;
+  line-height: 1.5 !important;
+}
+
+.license-info h4 {
+  color: #e0e0e0 !important;
+  margin-top: 0 !important;
+  margin-bottom: 10px !important;
+  text-align: center !important;
+}
+
+.license-info p {
+  color: #d0d0d0 !important;
+  margin: 8px 0 !important;
+  text-align: justify !important;
+}
+
+.license-info a {
+  color: #64b5f6 !important;
+  text-decoration: underline !important;
+}
+
+.license-info a:hover {
+  color: #90caf9 !important;
+}
+
 /* تكيف مع الشاشات الصغيرة */
 @media (max-width: 480px) {
   .about-project-image {
@@ -3127,6 +3162,43 @@ body[data-theme="blue"] .liquid-glass-title-bg.main-title-glass:hover {
   #about-project-box {
     width: 450px !important;
   }
+}
+
+/* Copyright Icon Button Styles */
+.copyright-icon-container {
+  position: absolute !important;
+  bottom: 20px !important;
+  right: 20px !important;
+}
+
+.copyright-icon-button {
+  width: 36px !important;
+  height: 36px !important;
+  border-radius: 50% !important;
+  background-color: #5f5f5f !important;
+  border: 2px solid #777 !important;
+  color: #e0e0e0 !important;
+  font-size: 1rem !important;
+  cursor: pointer !important;
+  display: flex !important;
+  align-items: center !important;
+  justify-content: center !important;
+  transition: all 0.2s ease !important;
+}
+
+.copyright-icon-button:hover {
+  background-color: #6a6a6a !important;
+  transform: scale(1.1) !important;
+}
+
+.copyright-icon-button:active {
+  transform: scale(0.95) !important;
+  background-color: #555 !important;
+}
+
+/* Adjust the modal box to accommodate the absolute positioned button */
+#about-project-box {
+  position: relative !important;
 }
 
 /* --- Currency Management Styling --- */
@@ -3260,4 +3332,101 @@ body[data-theme="light-red"] .currency-management-section {
 body[data-theme="light-blue"] .currency-management-section:hover,
 body[data-theme="light-red"] .currency-management-section:hover {
     background: rgba(255, 255, 255, 0.6) !important;
+}
+
+/* Copyright Modal Styles */
+#copyright-overlay {
+  z-index: 1200 !important;
+}
+
+#copyright-box {
+  background-color: #4a4a4a !important;
+  border: 1px solid #666 !important;
+  color: #e0e0e0 !important;
+  max-width: 95% !important;
+  width: 420px !important;
+  border-radius: 12px !important;
+  box-shadow: 0 5px 20px rgba(0, 0, 0, 0.4) !important;
+  padding: 25px 30px !important;
+}
+
+#copyright-box h3 {
+  color: #e0e0e0 !important;
+  font-weight: 600 !important;
+  text-align: center !important;
+  font-size: 1.2rem !important;
+  margin-top: 0 !important;
+  margin-bottom: 15px !important;
+}
+
+#copyright-box h4 {
+  color: #e0e0e0 !important;
+  font-weight: 600 !important;
+  margin-top: 15px !important;
+  margin-bottom: 8px !important;
+  border-bottom: 1px solid #666 !important;
+  padding-bottom: 4px !important;
+}
+
+.copyright-content {
+  max-height: 60vh;
+  overflow-y: auto;
+  margin-bottom: 20px;
+}
+
+.copyright-content p {
+  color: #d0d0d0 !important;
+  line-height: 1.6 !important;
+  margin-bottom: 12px !important;
+  text-align: justify !important;
+  font-size: 0.9rem !important;
+}
+
+.copyright-content p[data-lang-key] {
+  direction: ltr !important;
+  text-align: left !important;
+}
+
+[lang="ar"] .copyright-content p[data-lang-key] {
+  direction: rtl !important;
+  text-align: right !important;
+  font-size: 1rem !important;
+}
+
+.copyright-content a {
+  color: #64b5f6 !important;
+  text-decoration: underline !important;
+}
+
+.copyright-content a:hover {
+  color: #90caf9 !important;
+}
+
+#copyright-box .button {
+  background-color: #5f5f5f !important;
+  border-color: #777 !important;
+  color: #e0e0e0 !important;
+  font-weight: 700 !important;
+  padding: 10px 15px !important;
+  font-size: 1rem !important;
+  border-radius: 8px !important;
+  font-family: inherit !important;
+  display: block;
+  margin: 0 auto;
+}
+
+#copyright-box .button:hover:not(:active) {
+  background-color: #6a6a6a !important;
+}
+
+#copyright-box .button:active {
+  transform: scale(0.96) !important;
+  background-color: #555 !important;
+}
+
+/* تكيف مع الشاشات الصغيرة */
+@media (max-width: 480px) {
+  #copyright-box {
+    width: 350px !important;
+  }
 }

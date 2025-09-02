@@ -956,6 +956,26 @@ document.addEventListener('DOMContentLoaded', () => {
         admin_enter_creds: { en: "Enter Credentials", ar: "أدخل بيانات الاعتماد" },
         admin_email_placeholder: { en: "admin email.....", ar: "بريد المدير....." },
         admin_password_placeholder: { en: "admin password*****", ar: "كلمة مرور المدير*****" },
+        
+        // Copyright and License translations
+        copyright_title: { en: "License & Copyright", ar: "الترخيص وحقوق النشر" },
+        copyright_info_title: { en: "Copyright Information", ar: "معلومات حقوق النشر" },
+        copyright_info_text: { en: "Copyright (C) 2025 EVA International School", ar: "حقوق النشر (C) 2025 مدرسة إيفا الدولية للتكنولوچيا التطبيقية" },
+        license_info_title: { en: "License Information", ar: "معلومات الترخيص" },
+        license_info_text: { en: "This project is licensed under the GNU General Public License v3.0 or later.", ar: "هذا المشروع مرخص بموجب رخصة جنو العمومية العامة الإصدار 3.0 أو أحدث." },
+        gpl_license_title: { en: "GNU General Public License", ar: "رخصة جنو العمومية العامة" },
+        gpl_license_text_1: { 
+            en: "This program is free software: you can redistribute it and/or modify it under the terms of the GNU General Public License as published by the Free Software Foundation, either version 3 of the License, or (at your option) any later version.", 
+            ar: "هذا البرنامج هو برنامج حر؛ يمكنك إعادة توزيعه و/أو تعديله تحت شروط رخصة جنو العمومية العامة كما نشرتها مؤسسة البرمجيات الحرة؛ سواء الإصدار 3 من الرخصة، أو (حسب اختيارك) أي إصدار لاحق." 
+        },
+        gpl_license_text_2: { 
+            en: "This program is distributed in the hope that it will be useful, but WITHOUT ANY WARRANTY; without even the implied warranty of MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE. See the GNU General Public License for more details.", 
+            ar: "يُوزَّع هذا البرنامج على أمل أن يكون مفيداً، ولكن دون أية ضمانات؛ دون حتى ضمان المبيعية أو الملاءمة لغرض معين. انظر رخصة جنو العمومية العامة لمزيد من التفاصيل." 
+        },
+        gpl_license_text_3: { 
+            en: "You should have received a copy of the GNU General Public License along with this program. If not, see <a href=\"https://www.gnu.org/licenses/\" target=\"_blank\">https://www.gnu.org/licenses/</a>.", 
+            ar: "من المفترض أن تكون قد استلمت نسخة من رخصة جنو العمومية العامة مع هذا البرنامج؛ وإن لم يحدث، فاذهب إلى <a href=\"https://www.gnu.org/licenses/\" target=\"_blank\">https://www.gnu.org/licenses/</a>." 
+        },
         admin_login_error: { en: "Invalid admin credentials.", ar: "بيانات اعتماد المدير غير صالحة." },
         exit_button: { en: "Exit", ar: "خروج" },
         order_management_title: { en: "Order Management", ar: "إدارة الطلبات" },
@@ -1427,7 +1447,7 @@ document.addEventListener('DOMContentLoaded', () => {
              }
 
 
-             if (['welcome_title', 'admin_login_title'].includes(key)) { el.innerHTML = translation; }
+             if (['welcome_title', 'admin_login_title', 'gpl_license_text_1', 'gpl_license_text_2', 'gpl_license_text_3'].includes(key)) { el.innerHTML = translation; }
              else if (el.tagName === 'INPUT' || el.tagName === 'TEXTAREA') {
                  if (el.dataset.langValueTarget) { el.setAttribute(el.dataset.langValueTarget, translation); }
              }
@@ -4131,6 +4151,42 @@ document.addEventListener('DOMContentLoaded', () => {
         });
     }
     // --- END ADDED ---
+    
+    // --- Copyright Icon Button Event Listener ---
+    const copyrightInfoButton = document.getElementById('copyright-info-button');
+    const copyrightOverlay = document.getElementById('copyright-overlay');
+    
+    if (copyrightInfoButton && copyrightOverlay) {
+        copyrightInfoButton.addEventListener('click', () => {
+            // Close the about project modal first
+            const aboutProjectOverlay = document.getElementById('about-project-overlay');
+            if (aboutProjectOverlay) {
+                aboutProjectOverlay.classList.remove('visible');
+            }
+            // Open the copyright modal
+            copyrightOverlay.classList.add('visible');
+        });
+    }
+    // --- END Copyright Icon Button Event Listener ---
+    
+    // --- Copyright Modal Event Listeners ---
+    const copyrightClose = document.getElementById('copyright-close');
+
+    if (copyrightClose) {
+        copyrightClose.addEventListener('click', () => {
+            copyrightOverlay.classList.remove('visible');
+        });
+    }
+
+    if (copyrightOverlay) {
+        copyrightOverlay.addEventListener('click', (e) => {
+            if (e.target === copyrightOverlay) {
+                copyrightOverlay.classList.remove('visible');
+            }
+        });
+    }
+    // --- END Copyright Modal Event Listeners ---
+    
         // --- Passcode Modal Event Listeners ---
         passcodeModalOk?.addEventListener('click', handlePasscodeSubmit);
         passcodeModalCancel?.addEventListener('click', hidePasscodeModal);
