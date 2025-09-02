@@ -1,3 +1,21 @@
+/**
+ * EVA Canteen - Client Application
+ * Copyright (C) 2025 EVA International School
+ * 
+ * This program is free software: you can redistribute it and/or modify
+ * it under the terms of the GNU General Public License as published by
+ * the Free Software Foundation, either version 3 of the License, or
+ * (at your option) any later version.
+ * 
+ * This program is distributed in the hope that it will be useful,
+ * but WITHOUT ANY WARRANTY; without even the implied warranty of
+ * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+ * GNU General Public License for more details.
+ * 
+ * You should have received a copy of the GNU General Public License
+ * along with this program.  If not, see <https://www.gnu.org/licenses/>.
+ */
+
 let connectingScreenEverTimedOut = false;
 document.addEventListener('DOMContentLoaded', () => {
 
@@ -911,6 +929,7 @@ document.addEventListener('DOMContentLoaded', () => {
         sort_sweet: { en: "Sweet", ar: "حلويات" },
         sort_lunch: { en: "Lunch", ar: "غداء" },
         sort_snacks: { en: "Snacks", ar: "خفيف" },
+        sort_archive: { en: "Archive", ar: "أرشيف" }, // Added Archive category translation
         total_label: { en: "Total", ar: "الإجمالي" },
         payment_method_label: { en: "Payment Method", ar: "طريقة الدفع" },
         payment_cash: { en: "Cash", ar: "نقداً" },
@@ -1032,7 +1051,7 @@ document.addEventListener('DOMContentLoaded', () => {
         product_name_ar_placeholder: { en: "e.g., ساندويتش خاص", ar: "مثال: ساندويتش خاص" },
         product_desc_en_placeholder: { en: "e.g., Chicken, lettuce, tomato...", ar: "مثال: Chicken, lettuce, tomato..." },
         product_desc_ar_placeholder: { en: "e.g., دجاج، خس، طماطم...", ar: "مثال: دجاج، خس، طماطم..." },
-        product_price_label: { en: "Price ({currency}):", ar: "السعر ({currency}):" },
+        product_price_label: { en: "Price:", ar: "السعر:" },
         product_price_placeholder: { en: "e.g., 55.50", ar: "مثال: 55.50" },
         product_quantity_label: { en: "Quantity:", ar: "الكمية:" }, // Consistent Label
         product_quantity_placeholder: { en: "e.g., 50 (999 for unlimited)", ar: "مثال: 50 (999 للمتاح دائماً)" },
@@ -1109,6 +1128,17 @@ document.addEventListener('DOMContentLoaded', () => {
         // --- END ADDED ---
         item_out_of_stock_alert: { en: "Sorry, '{itemName}' is out of stock!", ar: "عذراً، '{itemName}' نفذ من المخزون حالياً!" },
         edit_product_success_title: { en: "Product Updated", ar: "تم تحديث المنتج" }, // New title key
+        // --- ADDED: Currency Management Translations ---
+        currency_management_title: { en: "Currency Management", ar: "إدارة العملة" },
+        currency_symbol_en_label: { en: "Currency Symbol (English):", ar: "رمز العملة (الإنجليزية):" },
+        currency_symbol_ar_label: { en: "Currency Symbol (Arabic):", ar: "رمز العملة (العربية):" },
+        currency_symbol_en_placeholder: { en: "e.g., $, €, £, L.E, USD, EUR", ar: "مثال: $، €، £، L.E، USD، EUR" },
+        currency_symbol_ar_placeholder: { en: "e.g., $, €, £, ج.م, USD, EUR", ar: "مثال: $، €، £، ج.م، USD، EUR" },
+        currency_customization_hint: { en: "You can use symbols ($, €, £) or currency codes (USD, EUR, GBP) or any custom text.", ar: "يمكنك استخدام الرموز ($، €، £) أو رموز العملات (USD، EUR، GBP) أو أي نص مخصص." },
+        update_currency_button: { en: "Update Currency", ar: "تحديث العملة" },
+        currency_update_success: { en: "Currency updated successfully!", ar: "تم تحديث العملة بنجاح!" },
+        currency_update_error: { en: "Please enter currency symbols for both languages.", ar: "الرجاء إدخال رموز العملة للغتين." },
+        // --- END ADDED ---
         // --- ADDED: About Project Translations ---
         about_project_button: { en: "About Project", ar: "عن المشروع" },
         about_project_title: { en: "About Project", ar: "عن المشروع" },
@@ -1308,7 +1338,31 @@ document.addEventListener('DOMContentLoaded', () => {
     // saveCategories function already exists below initializeCategories.
 
     // --- Theme Switching Function ---
-    function applyTheme(themeName) { console.log("Applying theme:", themeName); bodyElement.dataset.theme = themeName; currentTheme = themeName; localStorage.setItem(LS_KEYS.THEME, themeName); if (settingsPanel) updateThemeDisplay(); }
+    function applyTheme(themeName) {
+    console.log("Applying theme:", themeName);
+    bodyElement.dataset.theme = themeName;
+    currentTheme = themeName;
+    localStorage.setItem(LS_KEYS.THEME, themeName);
+
+    const currencyManagementSection = document.querySelector('.currency-management-section');
+    if (currencyManagementSection) {
+        if (themeName === 'light-blue' || themeName === 'light-red') {
+            currencyManagementSection.style.background = 'rgba(255, 255, 255, 0.45)';
+            currencyManagementSection.style.backdropFilter = 'blur(12px)';
+            currencyManagementSection.style.webkitBackdropFilter = 'blur(12px)';
+            currencyManagementSection.style.border = '2.5px solid var(--border-color)';
+            currencyManagementSection.style.boxShadow = '0 4px 24px 0 rgba(0,0,0,0.10)';
+        } else {
+            currencyManagementSection.style.background = '';
+            currencyManagementSection.style.backdropFilter = '';
+            currencyManagementSection.style.webkitBackdropFilter = '';
+            currencyManagementSection.style.border = '';
+            currencyManagementSection.style.boxShadow = '';
+        }
+    }
+
+    if (settingsPanel) updateThemeDisplay();
+}
 
     // --- Settings Panel Logic ---
     function toggleSettingsPanel(show) { if (!settingsPanel) return; const i = settingsPanel.classList.contains('visible'); if (typeof show === 'boolean') { if (show && !i) { settingsPanel.classList.add('visible'); document.addEventListener('click', handleOutsideSettingsClick, true); updateSettingsDisplays(); } else if (!show && i) { closeAllSettingsDropdowns(); settingsPanel.classList.remove('visible'); document.removeEventListener('click', handleOutsideSettingsClick, true); } } else { toggleSettingsPanel(!i); } }
@@ -1565,8 +1619,11 @@ document.addEventListener('DOMContentLoaded', () => {
         console.log("[Debug] Populating Sort Buttons. Translations:", JSON.stringify(translations));
         // *** END LOGS ***
 
+        // Filter out archive category for regular users
+        const displayCategories = categories.filter(cat => cat.key !== 'archive');
+
         let firstCategoryKey = null;
-        categories.forEach((cat, index) => {
+        displayCategories.forEach((cat, index) => {
             if (index === 0) firstCategoryKey = cat.key; // Get the first category key
             const button = document.createElement('button');
             button.className = 'sort-button';
@@ -1602,9 +1659,10 @@ document.addEventListener('DOMContentLoaded', () => {
         }
 
         // Filter baseMenuData to include only products in the current category's order list
+        // Exclude archive items for regular users
         const productsToShow = category.productIds
             .map(productId => getProductData(productId)) // Get product data
-            .filter(product => product && product.category === category.key); // Ensure product exists and is still in this category
+            .filter(product => product && product.category === category.key && product.category !== 'archive'); // Ensure product exists, is still in this category, and not in archive
 
         // Re-render the grid using the ordered and filtered list
         productsToShow.forEach((item, index) => {
@@ -2153,7 +2211,13 @@ document.addEventListener('DOMContentLoaded', () => {
     function buildInitialCategories() {
         console.log("Building initial category structure...");
         const categoryKeys = [...new Set(baseMenuData.map(p => p.category))];
-        const defaultCategoryOrder = ['sweet', 'lunch', 'snacks'];
+        
+        // Ensure archive category exists
+        if (!categoryKeys.includes('archive')) {
+            categoryKeys.push('archive');
+        }
+        
+        const defaultCategoryOrder = ['sweet', 'lunch', 'snacks', 'archive'];
         const orderedKeys = defaultCategoryOrder.filter(k => categoryKeys.includes(k)).concat(categoryKeys.filter(k => !defaultCategoryOrder.includes(k)));
         // ** Create a local variable for the new categories array **
         const builtCategories = orderedKeys.map(catKey => ({
@@ -2161,11 +2225,12 @@ document.addEventListener('DOMContentLoaded', () => {
             name_key: `sort_${catKey}`,
             productIds: baseMenuData.filter(p => p.category === catKey).map(p => p.id)
         }));
-         // Ensure default categories like 'sweet', 'lunch', 'snacks' exist in translations
+         // Ensure default categories like 'sweet', 'lunch', 'snacks', 'archive' exist in translations
          const defaultCategoryTranslations = {
               sort_sweet: { en: "Sweet", ar: "حلويات" },
               sort_lunch: { en: "Lunch", ar: "غداء" },
-              sort_snacks: { en: "Snacks", ar: "خفيف" }
+              sort_snacks: { en: "Snacks", ar: "خفيف" },
+              sort_archive: { en: "Archive", ar: "أرشيف" }
          };
          Object.keys(defaultCategoryTranslations).forEach(key => {
              if (!translations[key]) {
@@ -2180,10 +2245,16 @@ document.addEventListener('DOMContentLoaded', () => {
     function syncCategoriesWithBaseData() {
         const allProductIds = new Set(baseMenuData.map(p => p.id));
         const categoryKeysInBase = new Set(baseMenuData.map(p => p.category));
+        
+        // Ensure archive category always exists
+        categoryKeysInBase.add('archive');
         const newCategoriesToAdd = [];
 
         // 1. Add any new categories found in baseMenuData but not in categories array
         categoryKeysInBase.forEach(catKey => {
+             // Skip archive category as it's handled separately
+             if (catKey === 'archive') return;
+             
              if (!categories.some(c => c.key === catKey)) {
                  console.log(`Sync: Adding missing category key '${catKey}'`);
                  // Attempt to find a name_key if it exists in translations (e.g., loaded from config)
@@ -2201,12 +2272,28 @@ document.addEventListener('DOMContentLoaded', () => {
              }
         });
 
-        // Append new categories to the end
-        categories.push(...newCategoriesToAdd);
+        // Append new categories to the end (before archive)
+        const archiveCategory = categories.find(c => c.key === 'archive');
+        if (archiveCategory) {
+            // Remove archive category temporarily
+            categories = categories.filter(c => c.key !== 'archive');
+            // Add new categories
+            categories.push(...newCategoriesToAdd);
+            // Add archive category back at the end
+            categories.push(archiveCategory);
+        } else {
+            // If archive category doesn't exist, add it
+            categories.push(...newCategoriesToAdd);
+            categories.push({ key: 'archive', name_key: 'sort_archive', productIds: [] });
+        }
 
-        // 2. Remove categories from the categories array that no longer exist in baseMenuData
+        // 2. Remove categories from the categories array that no longer exist in baseMenuData (except archive)
         const initialCategoryCount = categories.length;
         categories = categories.filter(c => {
+            // Never remove the archive category
+            if (c.key === 'archive') {
+                return true;
+            }
             const existsInBase = categoryKeysInBase.has(c.key);
             if (!existsInBase) {
                 console.log(`Sync: Removing category key '${c.key}' (not found in products data).`);
@@ -2219,8 +2306,22 @@ document.addEventListener('DOMContentLoaded', () => {
              console.log(`Sync: Removed ${initialCategoryCount - categories.length} categories.`);
         }
 
+        // 3. Ensure archive category is at the end and has correct properties
+        const archiveCategoryIndex = categories.findIndex(c => c.key === 'archive');
+        if (archiveCategoryIndex !== -1 && archiveCategoryIndex !== categories.length - 1) {
+            const [archiveCategory] = categories.splice(archiveCategoryIndex, 1);
+            // Ensure archive category has correct properties
+            archiveCategory.name_key = 'sort_archive';
+            archiveCategory.productIds = archiveCategory.productIds || [];
+            categories.push(archiveCategory);
+            console.log("Sync: Moved archive category to the end.");
+        } else if (archiveCategoryIndex === -1) {
+            // Add archive category if it doesn't exist
+            categories.push({ key: 'archive', name_key: 'sort_archive', productIds: [] });
+            console.log("Sync: Added archive category to the end.");
+        }
 
-        // 3. Sync productIds within each category in the categories array
+        // 4. Sync productIds within each category in the categories array
         categories.forEach(category => {
              // --- ADD CHECK: Ensure category.productIds is an array --- 
              if (!Array.isArray(category.productIds)) {
@@ -2228,6 +2329,22 @@ document.addEventListener('DOMContentLoaded', () => {
                  category.productIds = [];
              }
              // --- END CHECK ---
+
+             // For archive category, we don't automatically sync productIds from baseMenuData
+             // Products are manually moved to archive
+             if (category.key === 'archive') {
+                 // Only keep products that actually exist in baseMenuData and are in the archive category
+                 const currentProductsInArchive = baseMenuData.filter(p => p.category === 'archive');
+                 const currentProductIdsInArchive = new Set(currentProductsInArchive.map(p => p.id));
+                 const initialProductIdsCount = category.productIds.length;
+                 category.productIds = category.productIds.filter(id => currentProductIdsInArchive.has(id));
+                 if (category.productIds.length < initialProductIdsCount) {
+                     console.log(`Sync: Removed ${initialProductIdsCount - category.productIds.length} orphaned product IDs from archive category.`);
+                 }
+                 // Ensure archive category name_key is always correct
+                 category.name_key = 'sort_archive';
+                 return;
+             }
 
              const currentProductsInCategory = baseMenuData.filter(p => p.category === category.key);
              const currentProductIdsInCategory = new Set(currentProductsInCategory.map(p => p.id));
@@ -2262,6 +2379,9 @@ document.addEventListener('DOMContentLoaded', () => {
         if (viewType === 'categories') { categoryContainer.classList.add('active'); productContainer.classList.remove('active'); mgmtTitle.textContent = getText('product_management_title'); backButton.dataset.target = 'screen-5'; backButtonSpan.textContent = getText('back_to_orders_button'); renderCategoryList(); }
         else if (viewType === 'products' && categoryKey) { categoryContainer.classList.remove('active'); productContainer.classList.add('active'); const categoryData = categories.find(c => c.key === categoryKey); const categoryName = categoryData ? getText(categoryData.name_key) : categoryKey; mgmtTitle.textContent = categoryName; productViewCategoryTitle.textContent = `${categoryName} ${getText('products_label') || 'Products'}`; backButton.dataset.target = ''; /* Clear target */ backButtonSpan.textContent = getText('back_to_categories_button') || 'Back to Categories'; renderProductGridForCategory(categoryKey); setupAddProductFormForCategory(categoryKey); }
         else { console.error("Invalid view type or missing key"); showScreen9View('categories'); }
+        
+        // Ensure currency form is populated when showing Screen 9
+        populateCurrencyForm();
     }
 
     function renderCategoryList() {
@@ -2273,39 +2393,68 @@ document.addEventListener('DOMContentLoaded', () => {
             return;
         }
 
-        categories.forEach((category) => {
+        // Ensure archive category is at the end
+        let displayCategories = [...categories];
+        const archiveCategoryIndex = displayCategories.findIndex(cat => cat.key === 'archive');
+        
+        // If archive category exists, move it to the end
+        if (archiveCategoryIndex !== -1) {
+            const [archiveCategory] = displayCategories.splice(archiveCategoryIndex, 1);
+            displayCategories.push(archiveCategory);
+        }
+
+        displayCategories.forEach((category) => {
             const catItem = document.createElement('div');
             catItem.className = 'category-list-item';
             catItem.dataset.categoryKey = category.key;
-            catItem.draggable = true; // Keep draggable
+            
+            // Archive category is not draggable
+            const isArchiveCategory = category.key === 'archive';
+            catItem.draggable = !isArchiveCategory;
 
             const categoryName = getText(category.name_key) || category.key;
             const editButtonText = getText('edit_button') || 'Edit';
             const deleteButtonText = getText('delete_button') || 'Delete';
             const dragHintText = getText('drag_to_reorder') || 'Drag to reorder';
 
-            // Add Edit and Delete buttons
-            catItem.innerHTML = `
-                <span class="category-name">${categoryName}</span>
-                <div class="category-actions">
-                     <button class="button small-button action-button edit-category-button" data-key="${category.key}" title="${editButtonText}">
-                        <i class="fas fa-edit"></i>
-                     </button>
-                     <button class="button small-button action-button delete-category-button" data-key="${category.key}" title="${deleteButtonText}">
-                        <i class="fas fa-trash"></i>
-                     </button>
-                    <span class="drag-handle" title="${dragHintText}">
-                        <i class="fas fa-grip-vertical"></i>
-                    </span>
-                </div>
-            `;
+            // For archive category, don't show edit/delete buttons and add gray styling
+            if (isArchiveCategory) {
+                catItem.innerHTML = `
+                    <span class="category-name">${categoryName}</span>
+                    <div class="category-actions">
+                        <span class="archive-indicator" title="Archive category - read only">
+                            <i class="fas fa-archive"></i>
+                        </span>
+                    </div>
+                `;
+                // Add CSS class for archive styling
+                catItem.classList.add('archive-category');
+            } else {
+                // Regular categories with edit/delete buttons
+                catItem.innerHTML = `
+                    <span class="category-name">${categoryName}</span>
+                    <div class="category-actions">
+                         <button class="button small-button action-button edit-category-button" data-key="${category.key}" title="${editButtonText}">
+                            <i class="fas fa-edit"></i>
+                         </button>
+                         <button class="button small-button action-button delete-category-button" data-key="${category.key}" title="${deleteButtonText}">
+                            <i class="fas fa-trash"></i>
+                         </button>
+                         <span class="drag-handle" title="${dragHintText}">
+                            <i class="fas fa-grip-vertical"></i>
+                         </span>
+                    </div>
+                `;
+            }
 
-            // Add event listeners
-            catItem.addEventListener('dragstart', handleCategoryDragStart);
-            catItem.addEventListener('dragover', handleDragOver);
-            catItem.addEventListener('dragleave', handleDragLeave);
-            catItem.addEventListener('drop', handleCategoryDrop);
-            catItem.addEventListener('dragend', handleDragEnd);
+            // Add event listeners only for non-archive categories
+            if (!isArchiveCategory) {
+                catItem.addEventListener('dragstart', handleCategoryDragStart);
+                catItem.addEventListener('dragover', handleDragOver);
+                catItem.addEventListener('dragleave', handleDragLeave);
+                catItem.addEventListener('drop', handleCategoryDrop);
+                catItem.addEventListener('dragend', handleDragEnd);
+            }
 
             // Click listener: navigate if not clicking actions or drag handle
             catItem.addEventListener('click', (e) => {
@@ -2314,21 +2463,43 @@ document.addEventListener('DOMContentLoaded', () => {
                 }
             });
 
-            // Add listeners for new buttons *within* this loop iteration
-            const editBtn = catItem.querySelector('.edit-category-button');
-            const deleteBtn = catItem.querySelector('.delete-category-button');
-            editBtn?.addEventListener('click', (e) => {
-                e.stopPropagation(); // Prevent category navigation
-                openEditCategoryModal(category.key);
-            });
-            deleteBtn?.addEventListener('click', (e) => {
-                e.stopPropagation(); // Prevent category navigation
-                handleDeleteCategory(category.key); // Calls custom confirm now
-            });
-
+            // Add listeners for new buttons *within* this loop iteration (only for non-archive categories)
+            if (!isArchiveCategory) {
+                const editBtn = catItem.querySelector('.edit-category-button');
+                const deleteBtn = catItem.querySelector('.delete-category-button');
+                editBtn?.addEventListener('click', (e) => {
+                    e.stopPropagation(); // Prevent category navigation
+                    openEditCategoryModal(category.key);
+                });
+                deleteBtn?.addEventListener('click', (e) => {
+                    e.stopPropagation(); // Prevent category navigation
+                    handleDeleteCategory(category.key); // Calls custom confirm now
+                });
+            }
 
             categoryListContainer.appendChild(catItem);
         });
+        
+        // Populate currency form with current values
+        populateCurrencyForm();
+    }
+
+    function populateCurrencyForm() {
+        // Populate currency form fields with current values
+        const currencySymbolEnInput = document.getElementById('currency-symbol-en');
+        const currencySymbolArInput = document.getElementById('currency-symbol-ar');
+        
+        if (currencySymbolEnInput && currencySymbolArInput) {
+            // Get the current currency for both languages
+            if (translations.currency_symbol && typeof translations.currency_symbol === 'object') {
+                currencySymbolEnInput.value = translations.currency_symbol.en || '';
+                currencySymbolArInput.value = translations.currency_symbol.ar || '';
+            } else {
+                // Fallback to empty values
+                currencySymbolEnInput.value = '';
+                currencySymbolArInput.value = '';
+            }
+        }
     }
 
     function renderProductGridForCategory(categoryKey) {
@@ -2468,6 +2639,11 @@ document.addEventListener('DOMContentLoaded', () => {
     }
 
     function openEditCategoryModal(categoryKey) {
+        // Prevent editing of archive category
+        if (categoryKey === 'archive') {
+            return;
+        }
+        
         if (!editCategoryModalOverlay || !categoryKey) return;
 
         const category = categories.find(c => c.key === categoryKey);
@@ -2500,6 +2676,20 @@ document.addEventListener('DOMContentLoaded', () => {
         updateEditCategoryModalLanguage(); // Ensure modal text is correct lang
         editCategoryModalOverlay.classList.add('visible');
         editCategoryNameEnInput.focus();
+        
+        // Ensure modal stays within viewport
+        requestAnimationFrame(() => {
+            if (editCategoryModalBox) {
+                const rect = editCategoryModalBox.getBoundingClientRect();
+                const viewportHeight = window.innerHeight;
+                if (rect.bottom > viewportHeight) {
+                    editCategoryModalBox.style.maxHeight = (viewportHeight - 20) + 'px';
+                }
+                // Scroll to top of modal
+                const formBox = editCategoryModalBox.querySelector('.form-box');
+                if (formBox) formBox.scrollTop = 0;
+            }
+        });
     }
 
     function handleSaveCategoryEdit() {
@@ -2571,6 +2761,10 @@ document.addEventListener('DOMContentLoaded', () => {
             if(editCategoryNameEnInput) editCategoryNameEnInput.value = '';
             if(editCategoryNameArInput) editCategoryNameArInput.value = '';
             if(editCategoryErrorMsg) editCategoryErrorMsg.style.display = 'none';
+            // Reset modal height
+            if (editCategoryModalBox) {
+                editCategoryModalBox.style.maxHeight = '';
+            }
         }, 300);
     }
 
@@ -2585,6 +2779,11 @@ document.addEventListener('DOMContentLoaded', () => {
 
 
     function handleDeleteCategory(categoryKey) {
+        // Prevent deletion of archive category
+        if (categoryKey === 'archive') {
+            return;
+        }
+        
         if (!categoryKey) return;
 
         const categoryIndex = categories.findIndex(c => c.key === categoryKey);
@@ -2665,6 +2864,73 @@ document.addEventListener('DOMContentLoaded', () => {
         // --- End Custom Confirm ---
     }
     // --- END: Category Management Functions ---
+
+    // --- START: Currency Management Functions ---
+    function handleUpdateCurrency() {
+        console.log("handleUpdateCurrency function started"); // <<< ADD LOG
+        
+        const currencySymbolEnInput = document.getElementById('currency-symbol-en');
+        const currencySymbolArInput = document.getElementById('currency-symbol-ar');
+        
+        if (!currencySymbolEnInput || !currencySymbolArInput) {
+            console.error("Currency form elements missing."); // <<< ADD LOG
+            return;
+        }
+
+        const symbolEn = currencySymbolEnInput.value.trim();
+        const symbolAr = currencySymbolArInput.value.trim();
+
+        console.log(`Updating currency: EN='${symbolEn}', AR='${symbolAr}'`); // <<< ADD LOG
+
+        if (!symbolEn || !symbolAr) {
+            console.log("Validation Failed: Missing currency symbols"); // <<< ADD LOG
+            showCustomAlert(getText('currency_update_error'));
+            return; // EXIT POINT 1
+        }
+
+        console.log("Validation passed. Updating currency data..."); // <<< ADD LOG
+        
+        // Update translations
+        translations.currency_symbol = { en: symbolEn, ar: symbolAr };
+        saveTranslations(); // *** SAVE TRANSLATIONS ***
+        
+        // Update language UI to reflect changes
+        updateLanguageUI();
+        
+        // Update all price labels that use {currency} placeholder
+        updateCurrencyInPriceLabels();
+        
+        // Clear form
+        currencySymbolEnInput.value = '';
+        currencySymbolArInput.value = '';
+
+        console.log(`Currency updated successfully: EN='${symbolEn}', AR='${symbolAr}'`); // <<< ADD LOG
+        showCustomAlert(getText('currency_update_success'));
+
+        // Send update via WebSocket
+        sendWebSocketMessage({
+            type: 'admin_currency_updated',
+            payload: { currency: { en: symbolEn, ar: symbolAr } }
+        });
+        console.log("Sent 'admin_currency_updated' message via WebSocket.");
+    }
+
+    function updateCurrencyInPriceLabels() {
+        // Update all price labels that contain {currency} placeholder
+        const priceLabels = document.querySelectorAll('[data-lang-key="product_price_label"]');
+        priceLabels.forEach(label => {
+            const translation = getText('product_price_label');
+            label.textContent = translation.replace('{currency}', getCurrency());
+        });
+        
+        // Update placeholders in price inputs
+        const priceInputs = document.querySelectorAll('#new-product-price, #edit-product-price');
+        priceInputs.forEach(input => {
+            const placeholder = getText('product_price_placeholder');
+            input.placeholder = placeholder;
+        });
+    }
+    // --- END: Currency Management Functions ---
 
 
     // --- START: Product Management Functions (Screen 9) ---
@@ -2893,6 +3159,14 @@ document.addEventListener('DOMContentLoaded', () => {
              // Reset scroll position of the form-box
              const formBox = editProductModalBox?.querySelector('.form-box');
              if (formBox) formBox.scrollTop = 0;
+             // Ensure modal stays within viewport
+             if (editProductModalBox) {
+                 const rect = editProductModalBox.getBoundingClientRect();
+                 const viewportHeight = window.innerHeight;
+                 if (rect.bottom > viewportHeight) {
+                     editProductModalBox.style.maxHeight = (viewportHeight - 20) + 'px';
+                 }
+             }
         });
     }
 
@@ -2912,6 +3186,10 @@ document.addEventListener('DOMContentLoaded', () => {
             if(editProductCategorySelect) editProductCategorySelect.value = categories[0]?.key || ''; // Reset to first available category
             if(editProductErrorMsg) editProductErrorMsg.style.display = 'none';
             if(editProductModalBox) delete editProductModalBox.dataset.editingProductId; // Clear dataset
+            // Reset modal height
+            if (editProductModalBox) {
+                editProductModalBox.style.maxHeight = '';
+            }
         }, 300);
     }
 
@@ -3218,7 +3496,8 @@ document.addEventListener('DOMContentLoaded', () => {
             discoveryBundlesScroller.innerHTML = ''; discoverySuggestionsGrid.innerHTML = ''; discoveryCategoriesContainer.innerHTML = ''; const MAX_IMAGES_SHOWN = 4;
             bundleOffers.forEach(bundle => { const card = document.createElement('div'); card.className = 'offer-card bundle-offer'; card.dataset.bundleId = bundle.id; const bundleName = getText(bundle.name_key); const bundleDesc = getText(bundle.description_key); let itemsHtml = `<p class="offer-items"><strong>${getText('includes_items')}</strong> `; let imageGridHtml = ''; let originalTotalPrice = 0; let allItemsFound = true; let imageCount = 0; bundle.itemIds.forEach(itemId => { const itemData = getProductData(itemId); if (itemData) { itemsHtml += `<span>${getText(itemData.name_key)}</span>`; originalTotalPrice += itemData.price; if (imageCount < MAX_IMAGES_SHOWN) { imageGridHtml += `<img src="${itemData.image}" alt="${getText(itemData.name_key)}">`; imageCount++; } } else { allItemsFound = false; console.warn(`Item ${itemId} not found for bundle ${bundle.id}`); } }); itemsHtml += '</p>'; let gridClass = 'offer-image-grid'; if (imageCount === 1) gridClass += ' count-1'; else if (imageCount === 3) gridClass += ' count-3'; const imageGridContainer = `<div class="${gridClass}">${imageGridHtml}</div>`; if (allItemsFound && originalTotalPrice > 0) { const discountMultiplier = (100 - bundle.discountPercent) / 100; const finalPrice = Math.round(originalTotalPrice * discountMultiplier); const discountTag = `<span class="bundle-discount-tag" data-lang-key="discount_tag" data-percent="${bundle.discountPercent}">${getText('discount_tag').replace('{percent}', bundle.discountPercent)}</span>`; card.innerHTML = ` ${discountTag} <h5>${bundleName}</h5> ${imageCount > 0 ? imageGridContainer : ''} <p class="offer-description">${bundleDesc}</p> ${itemsHtml} <div class="offer-actions"> <div class="bundle-pricing"> <span class="bundle-original-price">${getText('original_price')} ${formatPrice(originalTotalPrice)}</span> <span class="bundle-final-price">${getText('bundle_price')} ${formatPrice(finalPrice)}</span> </div> <button class="button rect-button add-bundle-button"> <i class="fas fa-cart-plus"></i> <span data-lang-key="add_bundle_button">${getText('add_bundle_button')}</span> </button> </div>`; discoveryBundlesScroller.appendChild(card); } });
             mealSuggestions.forEach(suggestion => { const gridItem = document.createElement('div'); gridItem.className = 'suggestion-grid-item'; gridItem.dataset.suggestionId = suggestion.id; const suggName = getText(suggestion.name_key); let itemsHtml = `<div class="suggestion-items">`; let itemImagesHtml = ''; let allItemsFound = true; let suggestionTotalPrice = 0; suggestion.itemIds.forEach((itemId, index) => { const itemData = getProductData(itemId); if (itemData) { itemsHtml += `<span>${getText(itemData.name_key)}</span>`; suggestionTotalPrice += itemData.price; itemImagesHtml += `<img src="${itemData.image}" alt="${getText(itemData.name_key)}" title="${getText(itemData.name_key)}">`; if (index < suggestion.itemIds.length - 1) { itemImagesHtml += ` <span class="plus-separator">+</span> `; } } else { allItemsFound = false; console.warn(`Item ${itemId} not found.`); } }); itemsHtml += '</div>'; const itemImagesContainer = `<div class="suggestion-item-images">${itemImagesHtml}</div>`; const totalPriceHtml = `<p class="suggestion-total-price"><strong>${getText('suggestion_total_price')}</strong> ${formatPrice(suggestionTotalPrice)}</p>`; if (allItemsFound) { const buttonHtml = ` <button class="button rect-button add-suggestion-button"> <i class="fas fa-cart-plus"></i> <span data-lang-key="add_suggestion_button">${getText('add_suggestion_button')}</span> </button>`; gridItem.innerHTML = `${itemImagesContainer}<h5>${suggName}</h5>${itemsHtml}${totalPriceHtml}${buttonHtml}`; discoverySuggestionsGrid.appendChild(gridItem); } });
-            categories.forEach(category => { const categorySection = document.createElement('div'); categorySection.className = 'discovery-category-section'; const categoryTitle = document.createElement('h5'); categoryTitle.textContent = getText(category.name_key) || category.key; categorySection.appendChild(categoryTitle); const categoryGrid = document.createElement('div'); categoryGrid.className = 'discovery-category-grid';
+            // Filter out archive category for discovery mode
+            categories.filter(category => category.key !== 'archive').forEach(category => { const categorySection = document.createElement('div'); categorySection.className = 'discovery-category-section'; const categoryTitle = document.createElement('h5'); categoryTitle.textContent = getText(category.name_key) || category.key; categorySection.appendChild(categoryTitle); const categoryGrid = document.createElement('div'); categoryGrid.className = 'discovery-category-grid';
                  // Filter baseMenuData for items in this category's productIds list for discovery view
                  const productsToDisplay = category.productIds
                      .map(productId => getProductData(productId))
@@ -3554,7 +3833,77 @@ document.addEventListener('DOMContentLoaded', () => {
         // --- END: Config Management Functions ---
     
     
-        // --- Event Listeners ---
+        // --- Password Toggle Functionality ---
+    function togglePasswordVisibility(inputId) {
+        const input = document.getElementById(inputId);
+        const toggle = document.querySelector(`.password-toggle[data-target="${inputId}"]`);
+        const icon = toggle?.querySelector('i');
+        
+        if (input && icon) {
+            if (input.type === 'password') {
+                input.type = 'text';
+                icon.classList.remove('fa-eye');
+                icon.classList.add('fa-eye-slash');
+            } else {
+                input.type = 'password';
+                icon.classList.remove('fa-eye-slash');
+                icon.classList.add('fa-eye');
+            }
+        }
+    }
+    
+    // Simpler password toggle initialization
+    function initializePasswordToggles() {
+        // Handle input events to show/hide toggle icon
+        document.querySelectorAll('input[type="password"]').forEach(input => {
+            // Create MutationObserver to watch for value changes
+            const observer = new MutationObserver(mutations => {
+                mutations.forEach(mutation => {
+                    if (mutation.type === 'attributes' && mutation.attributeName === 'value') {
+                        updateToggleVisibility(input);
+                    }
+                });
+            });
+            
+            // Watch for value attribute changes
+            observer.observe(input, { attributes: true });
+            
+            // Also handle input events
+            input.addEventListener('input', function() {
+                updateToggleVisibility(this);
+            });
+            
+            // Check initial state
+            updateToggleVisibility(input);
+        });
+        
+        // Handle clicks on toggle icons
+        document.addEventListener('click', function(e) {
+            const toggle = e.target.closest('.password-toggle');
+            if (toggle) {
+                e.preventDefault();
+                e.stopImmediatePropagation();
+                const targetId = toggle.dataset.target;
+                if (targetId) {
+                    togglePasswordVisibility(targetId);
+                }
+            }
+        }, true); // Use capture phase to ensure we catch the event first
+    }
+    
+    // Helper function to show/hide toggle based on input value
+    function updateToggleVisibility(input) {
+        const toggle = input.parentNode.querySelector('.password-toggle');
+        if (toggle) {
+            if (input.value.length > 0) {
+                toggle.style.display = 'block';
+            } else {
+                toggle.style.display = 'none';
+            }
+        }
+    }
+    
+    // --- Event Listeners ---
         // General Navigation
         navigationElements.forEach(e => {
              const targetId = e.dataset.target;
@@ -3834,6 +4183,14 @@ document.addEventListener('DOMContentLoaded', () => {
     
             // --- Category View Actions ---
             if (categoryContainer?.classList.contains('active')) {
+                // *** REFINED CHECK FOR UPDATE CURRENCY BUTTON ***
+                const updateCurrencyButtonTarget = e.target.id === 'update-currency-button' ? e.target : e.target.closest('#update-currency-button');
+                if (updateCurrencyButtonTarget) {
+                    console.log("Update Currency Button Click Detected in Listener"); // <<< ADD LOG
+                    handleUpdateCurrency();
+                    return; // Prevent other actions
+                }
+                
                 const addCategoryForm = categoryContainer.querySelector('#add-category-form'); // Scope search
                  // *** REFINED CHECK FOR ADD CATEGORY BUTTON ***
                  const addCategoryButtonTarget = e.target.id === 'add-new-category-button' ? e.target : e.target.closest('#add-new-category-button');
@@ -3995,6 +4352,9 @@ document.addEventListener('DOMContentLoaded', () => {
         loadOrders(); // Load saved orders
         initializeCategories(); // Load/build categories order and sync with current baseMenuData
     
+        // Initialize password toggle functionality
+        initializePasswordToggles();
+
         applyTheme(currentTheme); // Apply theme based on loaded state
         updateLanguageUI(); // Update UI based on loaded language and data
         // --- استرجاع حالة الـ Full Screen عند تحميل الصفحة ---
@@ -4041,11 +4401,13 @@ document.addEventListener('DOMContentLoaded', () => {
             console.error('[ERROR] Discovery back button not found');
         }
         // --- End Discovery Back Button ---
+        
+        // --- Password Toggle Event Listeners ---
+        // Direct event listeners are attached in initializePasswordToggles function
+        // --- End Password Toggle Event Listeners ---
 
         connectWebSocket(); 
     }); // <<< ENSURE THIS IS THE ACTUAL END of the DOMContentLoaded listener
-
-    initializeApplication();
 
     // Add a loading/connecting screen if not present
     if (!document.getElementById('screen-0')) {
@@ -4132,16 +4494,7 @@ document.addEventListener('DOMContentLoaded', () => {
     }
     // ... existing code ...
 
-    // ... existing code ...
-    // عند أي محاولة لإنشاء شاشة connecting:
-    if ((Date.now() - connectingScreenStart) < 5000 && !document.getElementById('screen-0')) {
-        const loadingScreen = document.createElement('div');
-        loadingScreen.className = 'screen';
-        loadingScreen.id = 'screen-0';
-        loadingScreen.innerHTML = '<div class="screen-content"><h2>Connecting...</h2><p>Please wait while connecting to the server.</p></div>';
-        document.querySelector('.app-container').prepend(loadingScreen);
-    }
-    // ... existing code ...
+    // ... existing code ...\n    // عند أي محاولة لإنشاء شاشة connecting:\n    // if ((Date.now() - connectingScreenStart) < 5000 && !document.getElementById('screen-0')) {\n    //     const loadingScreen = document.createElement('div');\n    //     loadingScreen.className = 'screen';\n    //     loadingScreen.id = 'screen-0';\n    //     loadingScreen.innerHTML = '<div class=\"screen-content\"><h2>Connecting...</h2><p>Please wait while connecting to the server.</p></div>';\n    //     document.querySelector('.app-container').prepend(loadingScreen);\n    // }\n    // ... existing code ...
 
     // دالة لإظهار شاشة connecting
     function showConnectingScreen() {

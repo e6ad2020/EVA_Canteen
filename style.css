@@ -1,3 +1,21 @@
+/**
+ * EVA Canteen - Stylesheet
+ * Copyright (C) 2025 EVA International School
+ * 
+ * This program is free software: you can redistribute it and/or modify
+ * it under the terms of the GNU General Public License as published by
+ * the Free Software Foundation, either version 3 of the License, or
+ * (at your option) any later version.
+ * 
+ * This program is distributed in the hope that it will be useful,
+ * but WITHOUT ANY WARRANTY; without even the implied warranty of
+ * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+ * GNU General Public License for more details.
+ * 
+ * You should have received a copy of the GNU General Public License
+ * along with this program.  If not, see <https://www.gnu.org/licenses/>.
+ */
+
 :root {
     /* --- Theme Variables --- */
      /* Blue Theme (Original - Base) */
@@ -438,6 +456,52 @@ input[type="email"], input[type="password"], input[type="text"], input[type="num
 input:focus, select:focus { outline: none; box-shadow: 0 0 0 2px var(--active-green); }
 input::placeholder { color: #555; text-align: left; }
  body[data-theme="yellow"] input::placeholder, body[data-theme="orange"] input::placeholder { color: #777; }
+
+/* Password container and toggle styles */
+.password-container {
+    position: relative;
+    width: 100%;
+    margin-bottom: 15px;
+}
+
+.password-container input {
+    margin-bottom: 0;
+    padding-right: 40px; /* Add padding to accommodate the eye icon */
+}
+
+.password-toggle {
+    position: absolute;
+    right: 15px;
+    left: auto;
+    top: 50%;
+    transform: translateY(-50%);
+    cursor: pointer;
+    color: var(--text-color-dark);
+    z-index: 2;
+    user-select: none; /* Prevent text selection when clicking */
+    display: none; /* Hidden by default */
+}
+
+.password-toggle i {
+    font-size: 1.2rem;
+    transition: color var(--fast-transition-speed) ease;
+}
+
+.password-toggle:hover i {
+    color: var(--active-green);
+}
+
+/* RTL support for Arabic */
+html[lang="ar"] .password-toggle {
+    right: auto;
+    left: 15px;
+}
+
+/* Adjust padding for RTL */
+html[lang="ar"] .password-container input {
+    padding-right: 15px;
+    padding-left: 40px;
+}
 .error-message { color: red; font-size: 0.9rem; display: none; margin-top: -10px; margin-bottom: 10px; text-align: center; }
 .button { border: var(--border-thickness) solid var(--border-color); border-radius: var(--pill-border-radius); padding: 10px 25px; cursor: pointer; font-size: 1.1rem; font-weight: 600; text-align: center; background-color: var(--lighter-blue-bg); color: var(--text-color-dark); transition: background-color var(--fast-transition-speed) ease, transform var(--fast-transition-speed) ease, border-color var(--view-change-speed) ease, color var(--view-change-speed) ease; width: 70%; margin-top: 15px; box-sizing: border-box; user-select: none; max-width: 350px; font-family: inherit; }
 .button:hover:not(:active) { background-color: color-mix(in srgb, var(--lighter-blue-bg) 80%, white); }
@@ -725,15 +789,7 @@ html[lang="ar"] .settings-current-display span:first-child:not(.theme-swatch):no
   bottom: calc(100% + 5px) !important; 
 }
 
-/* تعديل اتجاه السهم لtheme dropdown عندما يكون مفتوح */
-#theme-group.open .settings-current-display .fa-chevron-down { 
-  transform: rotate(0deg) !important; 
-}
-
-/* السهم العادي لtheme dropdown (مغلق) */
-#theme-group .settings-current-display .fa-chevron-down { 
-  transform: rotate(180deg) !important; 
-}
+/* إزالة القواعد الثابتة للسهم - سيستخدم القواعد العامة */
 .settings-group.open .settings-options-list { max-height: 200px; opacity: 1; visibility: visible; overflow-y: auto; transition: max-height 0.25s ease-out, opacity 0.25s ease-out; z-index: 1102; }
 .option-item { display: flex; align-items: center; gap: 8px; padding: 10px 15px; cursor: pointer; color: #e0e0e0; transition: background-color 0.15s ease; text-align: left; } html[lang="ar"] .option-item { text-align: right; flex-direction: row-reverse; }
 .option-item:hover { background-color: #555; }
@@ -834,7 +890,7 @@ body[data-theme="dark-grey"] #custom-confirm-modal-box .confirm-button:hover:not
 
 /* --- START: Edit Product Modal Styles (REVISED FOR SCROLLING) --- */
 #edit-product-modal-overlay { z-index: 1150; align-items: center; }
-#edit-product-modal-box { width: 380px; max-width: 95%; max-height: 85vh; display: flex; flex-direction: column; padding: 0; overflow: hidden; background-color: var(--main-bg-color); border: var(--border-thickness) solid var(--border-color); border-radius: var(--element-border-radius); box-shadow: 0 5px 15px rgba(0,0,0,0.3); color: var(--text-color-dark); transition: background-color var(--view-change-speed) ease, border-color var(--view-change-speed) ease, color var(--view-change-speed) ease; }
+#edit-product-modal-box { width: 380px; max-width: 95%; max-height: 85vh; display: flex; flex-direction: column; padding: 0; overflow: hidden; background-color: var(--main-bg-color); border: var(--border-thickness) solid var(--border-color); border-radius: var(--element-border-radius); box-shadow: 0 5px 15px rgba(0,0,0,0.3); color: var(--text-color-dark); transition: background-color var(--view-change-speed) ease, border-color var(--view-change-speed) ease, color var(--view-change-speed) ease; margin: 10px; box-sizing: border-box; }
 #edit-product-modal-box h3 { padding: 20px 25px 15px 25px; margin: 0; flex-shrink: 0; border-bottom: 1px solid color-mix(in srgb, var(--border-color) 50%, transparent); text-align: center !important; font-size: 1.4rem; color: var(--text-color-dark); font-weight: 700; -webkit-text-stroke: 0; text-stroke: 0; transition: color var(--view-change-speed) ease, border-color var(--view-change-speed) ease; }
 body[data-theme="dark-grey"] #edit-product-modal-box h3, body[data-theme="night"] #edit-product-modal-box h3, body[data-theme="mono-dark"] #edit-product-modal-box h3 { color: var(--text-color-light); border-bottom-color: color-mix(in srgb, var(--border-color) 50%, transparent); }
 #edit-product-modal-box .form-box { max-width: none; width: 100%; overflow-y: auto; flex-grow: 1; padding: 20px 25px 10px 25px; margin-bottom: 0; scrollbar-width: thin; scrollbar-color: color-mix(in srgb, var(--border-color) 50%, transparent) color-mix(in srgb, var(--main-bg-color) 50%, transparent); }
@@ -847,17 +903,18 @@ body[data-theme="dark-grey"] #edit-product-modal-box select, body[data-theme="ni
 #edit-product-modal-box input:focus, #edit-product-modal-box select:focus { outline: none; box-shadow: 0 0 0 2px var(--active-green); border-color: var(--active-green); }
 html[lang="ar"] #edit-product-modal-box label { text-align: right; } html[lang="ar"] #edit-product-modal-box select { background-position: left 10px top 50%; padding-left: 30px; padding-right: 10px; }
 #edit-product-error { order: 2; padding: 0 25px 10px 25px; margin: 0; font-size: 0.85rem; flex-shrink: 0; color: red; display: none; text-align: center !important; }
-#edit-product-modal-box .passcode-modal-buttons { order: 3; padding: 15px 25px 20px 25px; flex-shrink: 0; border-top: 1px solid color-mix(in srgb, var(--border-color) 50%, transparent); margin-top: 0; background-color: inherit; transition: border-color var(--view-change-speed) ease; }
+#edit-product-modal-box .passcode-modal-buttons { order: 3; padding: 15px 25px 20px 25px; flex-shrink: 0; border-top: 1px solid color-mix(in srgb, var(--border-color) 50%, transparent); margin-top: 0; background-color: inherit; transition: border-color var(--view-change-speed) ease; display: flex; justify-content: space-between; }
 body[data-theme="dark-grey"] #edit-product-modal-box label, body[data-theme="night"] #edit-product-modal-box label, body[data-theme="mono-dark"] #edit-product-modal-box label { color: #ccc; } body[data-theme="dark-grey"] #edit-product-modal-box input, body[data-theme="night"] #edit-product-modal-box input, body[data-theme="mono-dark"] #edit-product-modal-box input, body[data-theme="dark-grey"] #edit-product-modal-box select, body[data-theme="night"] #edit-product-modal-box select, body[data-theme="mono-dark"] #edit-product-modal-box select { background-color: #555; border: 1px solid #777; color: #eee; } body[data-theme="dark-grey"] #edit-product-modal-box input::placeholder, body[data-theme="night"] #edit-product-modal-box input::placeholder, body[data-theme="mono-dark"] #edit-product-modal-box input::placeholder { color: #aaa; }
-#edit-product-modal-box #edit-product-save { background-color: var(--active-green); color: var(--text-color-dark); border-color: var(--border-color); }
+#edit-product-modal-box #edit-product-save { background-color: var(--active-green); color: var(--text-color-dark); border-color: var(--border-color); width: 45%; padding: 12px 20px; }
 body[data-theme="green"] #edit-product-save, body[data-theme="yellow"] #edit-product-save, body[data-theme="orange"] #edit-product-save { color: var(--text-color-dark); } body[data-theme="dark-grey"] #edit-product-save { color: #000; } body[data-theme="night"] #edit-product-save { color: #000; } body[data-theme="mono-dark"] #edit-product-save { color: var(--main-bg-color-mono-dark); }
+#edit-product-modal-box #edit-product-cancel { width: 45%; padding: 12px 20px; }
 body[data-theme="dark-grey"] #edit-product-modal-box .button, body[data-theme="night"] #edit-product-modal-box .button, body[data-theme="mono-dark"] #edit-product-modal-box .button { background-color: #5f5f5f; border-color: #777; color: #e0e0e0; } body[data-theme="dark-grey"] #edit-product-modal-box .button:hover:not(:active), body[data-theme="night"] #edit-product-modal-box .button:hover:not(:active), body[data-theme="mono-dark"] #edit-product-modal-box .button:hover:not(:active) { background-color: #6a6a6a; } body[data-theme="dark-grey"] #edit-product-modal-box .button:active, body[data-theme="night"] #edit-product-modal-box .button:active, body[data-theme="mono-dark"] #edit-product-modal-box .button:active { background-color: #555; }
 body[data-theme="dark-grey"] #edit-product-save, body[data-theme="night"] #edit-product-save, body[data-theme="mono-dark"] #edit-product-save { background-color: var(--active-green); border-color: var(--border-color); }
 /* --- End Edit Product Modal Styles --- */
 
 /* --- START: Edit Category Modal Styles --- */
 #edit-category-modal-overlay { z-index: 1160; } /* Ensure above product edit modal if somehow overlaps */
-#edit-category-modal-box { width: 360px; /* Slightly smaller maybe */ max-width: 95%; /* Reuse styles from product modal */ /* Copy base styles from #edit-product-modal-box */ background-color: var(--main-bg-color); border: var(--border-thickness) solid var(--border-color); border-radius: var(--element-border-radius); box-shadow: 0 5px 15px rgba(0,0,0,0.3); color: var(--text-color-dark); display: flex; flex-direction: column; padding: 0; transition: background-color var(--view-change-speed) ease, border-color var(--view-change-speed) ease, color var(--view-change-speed) ease; }
+#edit-category-modal-box { width: 360px; /* Slightly smaller maybe */ max-width: 95%; /* Reuse styles from product modal */ /* Copy base styles from #edit-product-modal-box */ background-color: var(--main-bg-color); border: var(--border-thickness) solid var(--border-color); border-radius: var(--element-border-radius); box-shadow: 0 5px 15px rgba(0,0,0,0.3); color: var(--text-color-dark); display: flex; flex-direction: column; padding: 0; transition: background-color var(--view-change-speed) ease, border-color var(--view-change-speed) ease, color var(--view-change-speed) ease; margin: 10px; box-sizing: border-box; }
 #edit-category-modal-box h3 { /* Reuse styles from product modal */ padding: 20px 25px 15px 25px; margin: 0; flex-shrink: 0; border-bottom: 1px solid color-mix(in srgb, var(--border-color) 50%, transparent); text-align: center !important; font-size: 1.4rem; color: var(--text-color-dark); font-weight: 700; -webkit-text-stroke: 0; text-stroke: 0; transition: color var(--view-change-speed) ease, border-color var(--view-change-speed) ease; }
 body[data-theme="dark-grey"] #edit-category-modal-box h3, body[data-theme="night"] #edit-category-modal-box h3, body[data-theme="mono-dark"] #edit-category-modal-box h3 { color: var(--text-color-light); border-bottom-color: color-mix(in srgb, var(--border-color) 50%, transparent); }
 #edit-category-modal-box .form-box { /* Reuse styles */ padding: 20px 25px 10px 25px; margin-bottom: 0; flex-grow: 1; /* Allow some growth */ overflow-y: auto; /* Add scroll if needed, less likely than product */ }
@@ -865,13 +922,14 @@ body[data-theme="dark-grey"] #edit-category-modal-box h3, body[data-theme="night
 #edit-category-modal-box input { /* Reuse styles */ width: 100%; margin-bottom: 12px; padding: 8px 10px; font-size: 0.95rem; background-color: var(--lighter-blue-bg); border: 1px solid var(--border-color); color: var(--text-color-dark); border-radius: 5px; transition: background-color var(--view-change-speed) ease, border-color var(--view-change-speed) ease, color var(--view-change-speed) ease, box-shadow var(--fast-transition-speed) ease; }
 #edit-category-modal-box input:focus { outline: none; box-shadow: 0 0 0 2px var(--active-green); border-color: var(--active-green); }
 #edit-category-error { /* Reuse styles */ order: 2; padding: 0 25px 10px 25px; margin: 0; font-size: 0.85rem; flex-shrink: 0; color: red; display: none; text-align: center !important; }
-#edit-category-modal-box .passcode-modal-buttons { /* Reuse styles */ order: 3; padding: 15px 25px 20px 25px; flex-shrink: 0; border-top: 1px solid color-mix(in srgb, var(--border-color) 50%, transparent); margin-top: 0; background-color: inherit; transition: border-color var(--view-change-speed) ease; }
+#edit-category-modal-box .passcode-modal-buttons { /* Reuse styles */ order: 3; padding: 15px 25px 20px 25px; flex-shrink: 0; border-top: 1px solid color-mix(in srgb, var(--border-color) 50%, transparent); margin-top: 0; background-color: inherit; transition: border-color var(--view-change-speed) ease; display: flex; justify-content: space-between; }
 /* Dark theme adjustments for Edit Category Modal */
 body[data-theme="dark-grey"] #edit-category-modal-box label, body[data-theme="night"] #edit-category-modal-box label, body[data-theme="mono-dark"] #edit-category-modal-box label { color: #ccc; }
 body[data-theme="dark-grey"] #edit-category-modal-box input, body[data-theme="night"] #edit-category-modal-box input, body[data-theme="mono-dark"] #edit-category-modal-box input { background-color: #555; border: 1px solid #777; color: #eee; }
 body[data-theme="dark-grey"] #edit-category-modal-box input::placeholder, body[data-theme="night"] #edit-category-modal-box input::placeholder, body[data-theme="mono-dark"] #edit-category-modal-box input::placeholder { color: #aaa; }
-#edit-category-modal-box #edit-category-save { background-color: var(--active-green); color: var(--text-color-dark); border-color: var(--border-color); }
+#edit-category-modal-box #edit-category-save { background-color: var(--active-green); color: var(--text-color-dark); border-color: var(--border-color); width: 45%; padding: 12px 20px; }
 body[data-theme="green"] #edit-category-save, body[data-theme="yellow"] #edit-category-save, body[data-theme="orange"] #edit-category-save { color: var(--text-color-dark); } body[data-theme="dark-grey"] #edit-category-save { color: #000; } body[data-theme="night"] #edit-category-save { color: #000; } body[data-theme="mono-dark"] #edit-category-save { color: var(--main-bg-color-mono-dark); }
+#edit-category-modal-box #edit-category-cancel { width: 45%; padding: 12px 20px; }
 body[data-theme="dark-grey"] #edit-category-modal-box .button, body[data-theme="night"] #edit-category-modal-box .button, body[data-theme="mono-dark"] #edit-category-modal-box .button { background-color: #5f5f5f; border-color: #777; color: #e0e0e0; } body[data-theme="dark-grey"] #edit-category-modal-box .button:hover:not(:active), body[data-theme="night"] #edit-category-modal-box .button:hover:not(:active), body[data-theme="mono-dark"] #edit-category-modal-box .button:hover:not(:active) { background-color: #6a6a6a; } body[data-theme="dark-grey"] #edit-category-modal-box .button:active, body[data-theme="night"] #edit-category-modal-box .button:active, body[data-theme="mono-dark"] #edit-category-modal-box .button:active { background-color: #555; }
 body[data-theme="dark-grey"] #edit-category-save, body[data-theme="night"] #edit-category-save, body[data-theme="mono-dark"] #edit-category-save { background-color: var(--active-green); border-color: var(--border-color); }
 /* --- END: Edit Category Modal Styles --- */
@@ -897,10 +955,10 @@ body[data-theme="dark-grey"] .drag-hint, body[data-theme="night"] .drag-hint, bo
 .category-list-item .category-name { font-size: 1.1rem; font-weight: 600; color: var(--text-color-dark); flex-grow: 1; transition: color var(--view-change-speed) ease; text-transform: capitalize; }
 /* NEW Category Actions Container */
 .category-actions { display: flex; align-items: center; gap: 8px; flex-shrink: 0; }
-.category-actions .button.action-button { padding: 4px 6px; font-size: 0.75rem; min-width: 26px; margin: 0; border-radius: 3px; background-color: rgba(0,0,0,0.1); border: 1px solid rgba(0,0,0,0.2); color: var(--text-color-dark); opacity: 0.8; transition: opacity 0.2s ease, background-color 0.2s ease; }
+.category-actions .button.action-button { padding: 6px 8px; font-size: 0.85rem; min-width: 32px; margin: 0; border-radius: 5px; background-color: rgba(0,0,0,0.1); border: 1px solid rgba(0,0,0,0.2); color: var(--text-color-dark); opacity: 0.8; transition: opacity 0.2s ease, background-color 0.2s ease; }
 .category-list-item:hover .category-actions .button.action-button { opacity: 1; }
 .category-actions .button.action-button:hover { background-color: rgba(0,0,0,0.2); }
-.category-actions .button.action-button i { font-size: 0.9em; margin: 0; vertical-align: middle; }
+.category-actions .button.action-button i { font-size: 1em; margin: 0; vertical-align: middle; }
 .category-actions .drag-handle { cursor: grab; color: var(--text-color-dark); opacity: 0.6; font-size: 1.2rem; padding: 0 5px; margin-left: 5px; /* Space between buttons and handle */ }
 .category-actions .drag-handle:active { cursor: grabbing; }
 html[lang="ar"] .category-actions { order: -1; } html[lang="ar"] .category-actions .drag-handle { margin-left: 0; margin-right: 5px; }
@@ -1176,6 +1234,17 @@ body[data-theme="dark-grey"] .discovery-category-grid::-webkit-scrollbar-thumb, 
       .add-category-form #add-new-category-button {
           grid-column: 1 / -1;
           justify-self: center; /* Center button */
+      }
+      
+      /* Desktop styles for category actions */
+      .category-actions .button.action-button { 
+          padding: 8px 10px; 
+          font-size: 0.9rem; 
+          min-width: 36px; 
+          border-radius: 6px; 
+      }
+      .category-actions .button.action-button i { 
+          font-size: 1.1em; 
       }
 
 } /* End 992px */
@@ -1815,6 +1884,52 @@ body[data-theme="light-red"] .error-message {
     color: var(--remove-red-light-red); /* Explicitly use the theme's red for errors */
 }
 
+/* Styled error messages in light themes with adaptive sizing */
+body[data-theme="light-blue"] .add-product-form .error-message,
+body[data-theme="light-blue"] .add-category-form .error-message {
+  display: block;
+  padding: 10px 15px;
+  border-radius: 10px;
+  background: #E3F2FD; /* Light blue shade */
+  border: 1px solid #90A4AE;
+  margin: 10px 0 15px 0;
+  font-weight: 600;
+  color: #0D47A1; /* Dark blue text */
+  width: 100%;
+  box-sizing: border-box;
+  word-wrap: break-word;
+  line-height: 1.4;
+}
+
+body[data-theme="light-red"] .add-product-form .error-message,
+body[data-theme="light-red"] .add-category-form .error-message {
+  display: block;
+  padding: 10px 15px;
+  border-radius: 10px;
+  background: #FFEBEE; /* Light red shade */
+  border: 1px solid #EF9A9A;
+  margin: 10px 0 15px 0;
+  font-weight: 600;
+  color: #B71C1C; /* Dark red text */
+  width: 100%;
+  box-sizing: border-box;
+  word-wrap: break-word;
+  line-height: 1.4;
+}
+
+/* Responsive adjustments for error messages */
+@media (max-width: 600px) {
+  body[data-theme="light-blue"] .add-product-form .error-message,
+  body[data-theme="light-blue"] .add-category-form .error-message,
+  body[data-theme="light-red"] .add-product-form .error-message,
+  body[data-theme="light-red"] .add-category-form .error-message {
+    padding: 8px 12px;
+    border-radius: 8px;
+    margin: 8px 0 12px 0;
+    font-size: 0.9em;
+  }
+}
+
 /* Custom styling for error messages in Light Blue theme */
 body[data-theme="light-blue"] .error-message {
     border: 2px solid #0d47a1 !important; /* Match heading color and make border thicker */
@@ -1838,6 +1953,89 @@ body[data-theme="light-red"] .button.back-button:hover {
   color: #b71c1c;
   border-color: #e57373;
 }
+
+/* Styled input fields in light themes with adaptive sizing */
+body[data-theme="light-blue"] .add-product-form input[type="text"],
+body[data-theme="light-blue"] .add-product-form input[type="number"],
+body[data-theme="light-blue"] .add-category-form input[type="text"] {
+  background: #FFFFFF; /* White background */
+  border: 1px solid #90A4AE;
+  color: #0D47A1; /* Dark blue text */
+  border-radius: 10px;
+  padding: 12px 15px;
+  width: 100%;
+  box-sizing: border-box;
+  margin-bottom: 15px;
+  margin-top: 0;
+  font-size: 1rem;
+  transition: border-color 0.3s, box-shadow 0.3s;
+}
+
+body[data-theme="light-red"] .add-product-form input[type="text"],
+body[data-theme="light-red"] .add-product-form input[type="number"],
+body[data-theme="light-red"] .add-category-form input[type="text"] {
+  background: #FFFFFF; /* White background */
+  border: 1px solid #EF9A9A;
+  color: #B71C1C; /* Dark red text */
+  border-radius: 10px;
+  padding: 12px 15px;
+  width: 100%;
+  box-sizing: border-box;
+  margin-bottom: 15px;
+  margin-top: 0;
+  font-size: 1rem;
+  transition: border-color 0.3s, box-shadow 0.3s;
+}
+
+body[data-theme="light-blue"] .add-product-form input[type="text"]:focus,
+body[data-theme="light-blue"] .add-product-form input[type="number"]:focus,
+body[data-theme="light-blue"] .add-category-form input[type="text"]:focus {
+  background: #FFFFFF;
+  border: 1px solid #64B5F6;
+  box-shadow: 0 0 0 3px #BBDEFB;
+  color: #0D47A1;
+  outline: none;
+}
+
+body[data-theme="light-red"] .add-product-form input[type="text"]:focus,
+body[data-theme="light-red"] .add-product-form input[type="number"]:focus,
+body[data-theme="light-red"] .add-category-form input[type="text"]:focus {
+  background: #FFFFFF;
+  border: 1px solid #E57373;
+  box-shadow: 0 0 0 3px #FFCDD2;
+  color: #B71C1C;
+  outline: none;
+}
+
+/* Responsive adjustments for input fields */
+@media (max-width: 600px) {
+  body[data-theme="light-blue"] .add-product-form input[type="text"],
+  body[data-theme="light-blue"] .add-product-form input[type="number"],
+  body[data-theme="light-blue"] .add-category-form input[type="text"],
+  body[data-theme="light-red"] .add-product-form input[type="text"],
+  body[data-theme="light-red"] .add-product-form input[type="number"],
+  body[data-theme="light-red"] .add-category-form input[type="text"] {
+    padding: 10px 12px;
+    border-radius: 8px;
+    margin-bottom: 12px;
+    font-size: 0.9rem;
+  }
+  
+  body[data-theme="light-blue"] .add-product-form input[type="text"]:focus,
+  body[data-theme="light-blue"] .add-product-form input[type="number"]:focus,
+  body[data-theme="light-blue"] .add-category-form input[type="text"]:focus,
+  body[data-theme="light-red"] .add-product-form input[type="text"]:focus,
+  body[data-theme="light-red"] .add-product-form input[type="number"]:focus,
+  body[data-theme="light-red"] .add-category-form input[type="text"]:focus {
+    box-shadow: 0 0 0 2px #BBDEFB;
+  }
+  
+  body[data-theme="light-red"] .add-product-form input[type="text"]:focus,
+  body[data-theme="light-red"] .add-product-form input[type="number"]:focus,
+  body[data-theme="light-red"] .add-category-form input[type="text"]:focus {
+    box-shadow: 0 0 0 2px #FFCDD2;
+  }
+}
 body[data-theme="light-blue"] .button.back-button,
 body[data-theme="light-red"] .button.back-button {
   transition: background-color var(--fast-transition-speed) ease, color var(--fast-transition-speed) ease, border-color var(--fast-transition-speed) ease, transform var(--fast-transition-speed) ease;
@@ -1849,6 +2047,91 @@ body[data-theme="light-blue"] .button.back-button:active {
 body[data-theme="light-red"] .button.back-button:active {
   transform: scale(0.96);
   background: #ffe3e3;
+}
+
+/* Styled buttons in light themes with adaptive sizing */
+body[data-theme="light-blue"] #add-new-product-button,
+body[data-theme="light-blue"] #add-new-category-button {
+  background: #E3F2FD; /* Light blue shade */
+  border: 1px solid #90A4AE;
+  color: #0D47A1; /* Dark blue text */
+  border-radius: 25px;
+  padding: 12px 25px;
+  font-weight: 600;
+  margin: 20px auto;
+  transition: background-color 0.3s, border-color 0.3s, transform 0.2s;
+  display: block;
+  width: fit-content;
+  max-width: 100%;
+  box-sizing: border-box;
+  font-size: 1.1rem;
+  cursor: pointer;
+  user-select: none;
+}
+
+body[data-theme="light-red"] #add-new-product-button,
+body[data-theme="light-red"] #add-new-category-button {
+  background: #FFEBEE; /* Light red shade */
+  border: 1px solid #EF9A9A;
+  color: #B71C1C; /* Dark red text */
+  border-radius: 25px;
+  padding: 12px 25px;
+  font-weight: 600;
+  margin: 20px auto;
+  transition: background-color 0.3s, border-color 0.3s, transform 0.2s;
+  display: block;
+  width: fit-content;
+  max-width: 100%;
+  box-sizing: border-box;
+  font-size: 1.1rem;
+  cursor: pointer;
+  user-select: none;
+}
+
+body[data-theme="light-blue"] #add-new-product-button:hover,
+body[data-theme="light-blue"] #add-new-category-button:hover {
+  background: #BBDEFB; /* Slightly darker blue on hover */
+  border: 1px solid #64B5F6;
+  transform: translateY(-2px);
+}
+
+body[data-theme="light-red"] #add-new-product-button:hover,
+body[data-theme="light-red"] #add-new-category-button:hover {
+  background: #FFCDD2; /* Slightly darker red on hover */
+  border: 1px solid #E57373;
+  transform: translateY(-2px);
+}
+
+body[data-theme="light-blue"] #add-new-product-button:active,
+body[data-theme="light-blue"] #add-new-category-button:active,
+body[data-theme="light-red"] #add-new-product-button:active,
+body[data-theme="light-red"] #add-new-category-button:active {
+  transform: translateY(0) scale(0.98);
+}
+
+/* Responsive adjustments for buttons */
+@media (max-width: 600px) {
+  body[data-theme="light-blue"] #add-new-product-button,
+  body[data-theme="light-blue"] #add-new-category-button,
+  body[data-theme="light-red"] #add-new-product-button,
+  body[data-theme="light-red"] #add-new-category-button {
+    padding: 10px 20px;
+    border-radius: 20px;
+    margin: 15px auto;
+    font-size: 1rem;
+  }
+}
+
+@media (max-width: 400px) {
+  body[data-theme="light-blue"] #add-new-product-button,
+  body[data-theme="light-blue"] #add-new-category-button,
+  body[data-theme="light-red"] #add-new-product-button,
+  body[data-theme="light-red"] #add-new-category-button {
+    padding: 8px 16px;
+    border-radius: 18px;
+    margin: 12px auto;
+    font-size: 0.9rem;
+  }
 }
 
 /* Liquid Glass effect for EVA Canteen title */
@@ -1909,6 +2192,53 @@ body[data-theme="light-red"] .liquid-glass-title-bg:hover {
   background: rgba(255,255,255,0.6) !important;
   border: 2.5px solid var(--border-color) !important;
   box-shadow: 0 6px 32px 0 rgba(0,0,0,0.13);
+}
+
+/* Styled form labels in light themes with adaptive background */
+body[data-theme="light-blue"] .add-product-form label,
+body[data-theme="light-blue"] .add-category-form label {
+  display: inline-block;
+  padding: 0.4em 1.2em;
+  border-radius: 15px;
+  background: #E3F2FD; /* Solid light blue shade */
+  border: 1px solid #90A4AE;
+  margin-bottom: 8px;
+  font-weight: 600;
+  color: #0D47A1; /* Dark blue text */
+  width: auto;
+  max-width: 100%;
+  box-sizing: border-box;
+  white-space: normal;
+  word-wrap: break-word;
+  line-height: 1.3;
+}
+
+body[data-theme="light-red"] .add-product-form label,
+body[data-theme="light-red"] .add-category-form label {
+  display: inline-block;
+  padding: 0.4em 1.2em;
+  border-radius: 15px;
+  background: #FFEBEE; /* Solid light red shade */
+  border: 1px solid #EF9A9A;
+  margin-bottom: 8px;
+  font-weight: 600;
+  color: #B71C1C; /* Dark red text */
+  width: auto;
+  max-width: 100%;
+  box-sizing: border-box;
+  white-space: normal;
+  word-wrap: break-word;
+  line-height: 1.3;
+}
+
+body[data-theme="light-blue"] .add-product-form label:hover,
+body[data-theme="light-blue"] .add-category-form label:hover {
+  background: #BBDEFB; /* Slightly darker blue on hover */
+}
+
+body[data-theme="light-red"] .add-product-form label:hover,
+body[data-theme="light-red"] .add-category-form label:hover {
+  background: #FFCDD2; /* Slightly darker red on hover */
 }
 
 /* Main glass block for big titles */
@@ -2407,6 +2737,7 @@ body[data-theme="light-red"] .canteen-status-section {
   border: 2px solid var(--border-color) !important;
   border-radius: var(--element-border-radius);
   max-width: 650px;
+  padding: 20px;
 }
 body[data-theme="light-blue"] .canteen-status-section .status-control,
 body[data-theme="light-red"] .canteen-status-section .status-control {
@@ -2414,6 +2745,7 @@ body[data-theme="light-red"] .canteen-status-section .status-control {
   backdrop-filter: blur(8px);
   -webkit-backdrop-filter: blur(8px);
   border: 1.5px solid var(--border-color) !important;
+  padding: 15px;
 }
 
 @media (max-width: 900px) {
@@ -2487,6 +2819,15 @@ body[data-theme="light-red"] .canteen-status-section .status-control {
     padding: 0.5em 0.5em !important;
     border-radius: 12px !important;
     max-width: 98vw !important;
+  }
+  #edit-product-modal-box, #edit-category-modal-box {
+    width: 98%;
+    max-height: 95vh;
+    margin: 2px;
+  }
+  #edit-product-modal-box #edit-product-save, #edit-product-modal-box #edit-product-cancel,
+  #edit-category-modal-box #edit-category-save, #edit-category-modal-box #edit-category-cancel {
+    padding: 16px 20px;
   }
 }
 @media (min-width: 346px) and (max-width: 600px) {
@@ -2592,6 +2933,20 @@ body[data-theme="light-red"] .canteen-status-section .status-control {
     white-space: normal !important;
     text-align: center !important;
     display: block !important;
+  }
+  #edit-product-modal-box, #edit-category-modal-box {
+    width: 95%;
+    max-height: 90vh;
+    margin: 5px;
+  }
+  #edit-product-modal-box .passcode-modal-buttons, #edit-category-modal-box .passcode-modal-buttons {
+    flex-direction: column;
+    gap: 10px;
+  }
+  #edit-product-modal-box #edit-product-save, #edit-product-modal-box #edit-product-cancel,
+  #edit-category-modal-box #edit-category-save, #edit-category-modal-box #edit-category-cancel {
+    width: 100%;
+    padding: 14px 20px;
   }
 }
 
@@ -2772,4 +3127,137 @@ body[data-theme="blue"] .liquid-glass-title-bg.main-title-glass:hover {
   #about-project-box {
     width: 450px !important;
   }
+}
+
+/* --- Currency Management Styling --- */
+.currency-divider {
+    height: var(--border-thickness);
+    background-color: color-mix(in srgb, var(--border-color) 50%, transparent);
+    margin: 30px 0;
+    width: 100%;
+    border: none;
+}
+
+.currency-management-section {
+    padding: 20px;
+    border: var(--border-thickness) solid var(--border-color);
+    border-radius: var(--element-border-radius);
+    background-color: color-mix(in srgb, var(--main-bg-color) 90%, #ffffff 10%); /* Match order preview background */
+    margin-top: 20px;
+    box-shadow: 0 2px 8px rgba(0,0,0,0.08);
+    transition: background-color var(--view-change-speed) ease, border-color var(--view-change-speed) ease;
+}
+
+.currency-management-section h4 {
+    font-size: 1.3rem;
+    color: var(--text-color-dark);
+    margin-top: 0;
+    margin-bottom: 20px;
+    text-align: center;
+    font-weight: 700;
+    border-bottom: none;
+    padding-bottom: 0;
+    -webkit-text-stroke: 0;
+    text-stroke: 0;
+    transition: color var(--view-change-speed) ease;
+}
+
+.currency-management-section .form-box {
+    max-width: 100%;
+    margin-bottom: 0;
+    gap: 5px;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+}
+
+.currency-management-section label {
+    font-size: 0.9rem;
+    margin-bottom: 2px;
+    text-align: center;
+    font-weight: 600;
+    color: var(--text-color-dark);
+    transition: color var(--view-change-speed) ease;
+}
+
+html[lang="ar"] .currency-management-section label {
+    text-align: center;
+}
+
+html[lang="ar"] .currency-management-section input {
+    text-align: center;
+}
+
+.currency-management-section input {
+    margin-bottom: 15px;
+    text-align: center;
+}
+
+.currency-management-section .currency-input {
+    max-width: 200px; /* Adjust this value as needed */
+    margin-left: auto;
+    margin-right: auto;
+}
+
+.currency-hint {
+    font-size: 0.85rem;
+    color: var(--text-color-dark);
+    opacity: 0.7;
+    text-align: center;
+    margin-top: 0px;
+    margin-bottom: 20px;
+    line-height: 1.4;
+    transition: color var(--view-change-speed) ease;
+}
+
+#update-currency-button {
+    display: block;
+    margin: 15px auto 0 auto;
+    background-color: var(--active-green);
+    color: var(--text-color-dark);
+    border-color: var(--border-color);
+}
+
+#update-currency-button:hover {
+    background-color: color-mix(in srgb, var(--active-green) 80%, white);
+}
+
+/* --- Theme-Specific Currency Management --- */
+
+/* Dark Themes */
+body[data-theme="dark-grey"] .currency-management-section,
+body[data-theme="night"] .currency-management-section,
+body[data-theme="mono-dark"] .currency-management-section {
+    background-color: color-mix(in srgb, var(--lighter-blue-bg) 80%, black);
+}
+
+body[data-theme="dark-grey"] .currency-management-section h4,
+body[data-theme="night"] .currency-management-section h4,
+body[data-theme="mono-dark"] .currency-management-section h4,
+body[data-theme="dark-grey"] .currency-management-section label,
+body[data-theme="night"] .currency-management-section label,
+body[data-theme="mono-dark"] .currency-management-section label,
+body[data-theme="dark-grey"] .currency-hint,
+body[data-theme="night"] .currency-hint,
+body[data-theme="mono-dark"] .currency-hint {
+    color: var(--text-color-dark);
+}
+
+body[data-theme="mono-dark"] #update-currency-button {
+    color: var(--main-bg-color-mono-dark);
+}
+
+/* Light Themes with Liquid Glass */
+body[data-theme="light-blue"] .currency-management-section,
+body[data-theme="light-red"] .currency-management-section {
+    background: rgba(255, 255, 255, 0.45) !important;
+    backdrop-filter: blur(12px);
+    -webkit-backdrop-filter: blur(12px);
+    border: 2.5px solid var(--border-color) !important;
+    box-shadow: 0 4px 24px 0 rgba(0,0,0,0.10);
+}
+
+body[data-theme="light-blue"] .currency-management-section:hover,
+body[data-theme="light-red"] .currency-management-section:hover {
+    background: rgba(255, 255, 255, 0.6) !important;
 }

@@ -12,7 +12,7 @@
       }
     ],
     "totalAmount": 500,
-    "status": "pending",
+    "status": "delivered",
     "paymentMethod": "cash",
     "user": {
       "email": "eyad@canteen.app",

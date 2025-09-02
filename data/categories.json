@@ -33,5 +33,10 @@
       "chips",
       "onionrings"
     ]
+  },
+  {
+    "key": "archive",
+    "name_key": "sort_archive",
+    "productIds": []
   }
 ]

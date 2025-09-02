@@ -1,4 +1,21 @@
 // تم إزالة Express server لأننا نستخدم Python HTTP server بدلاً منه
+/**
+ * EVA Canteen - WebSocket Server
+ * Copyright (C) 2025 EVA International School
+ * 
+ * This program is free software: you can redistribute it and/or modify
+ * it under the terms of the GNU General Public License as published by
+ * the Free Software Foundation, either version 3 of the License, or
+ * (at your option) any later version.
+ * 
+ * This program is distributed in the hope that it will be useful,
+ * but WITHOUT ANY WARRANTY; without even the implied warranty of
+ * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+ * GNU General Public License for more details.
+ * 
+ * You should have received a copy of the GNU General Public License
+ * along with this program.  If not, see <https://www.gnu.org/licenses/>.
+ */
 
 const WebSocket = require('ws');
 const fs = require('fs');
@@ -151,7 +168,8 @@ const defaultProducts = [
 const defaultCategories = [
     { key: 'sweet', name_key: 'sort_sweet', productIds: ['coffee', 'cookies', 'cake', 'croissant', 'juice', 'muffin'] },
     { key: 'lunch', name_key: 'sort_lunch', productIds: ['pizza', 'burger', 'salad', 'pasta', 'sandwich', 'soup'] },
-    { key: 'snacks', name_key: 'sort_snacks', productIds: ['fries', 'soda', 'chips', 'onionrings'] }
+    { key: 'snacks', name_key: 'sort_snacks', productIds: ['fries', 'soda', 'chips', 'onionrings'] },
+    { key: 'archive', name_key: 'sort_archive', productIds: [] }
 ];
 const defaultTranslations = {
     welcome_title: { en: "Welcome to<br>EVA Canteen", ar: "أهلاً بكم في<br>كانتين إيفا" },
@@ -166,7 +184,7 @@ const defaultTranslations = {
     item_name_onionrings: { en: "Onion Rings", ar: "حلقات بصل" }, item_name_soup: { en: "Soup of the Day", ar: "شوربة اليوم" },
     item_desc_coffee: { en: "A rich and aromatic blend, perfect to kickstart your day or enjoy a relaxing break.", ar: "مزيج غني وعطري، مثالي لبدء يومك أو الاستمتاع باستراحة مريحة." },
     item_desc_pizza: { en: "Classic cheese pizza with a tangy tomato sauce and a crispy crust. Always a favorite!", ar: "بيتزا جبنة كلاسيكية بصلصة طماطم منعشة وقشرة مقرمشة. الخيار المفضل دائماً!" },
-    sort_sweet: { en: "Sweet", ar: "حلويات" }, sort_lunch: { en: "Lunch", ar: "غداء" }, sort_snacks: { en: "Snacks", ar: "خفيف" },
+    sort_sweet: { en: "Sweet", ar: "حلويات" }, sort_lunch: { en: "Lunch", ar: "غداء" }, sort_snacks: { en: "Snacks", ar: "خفيف" }, sort_archive: { en: "Archive", ar: "أرشيف" },
     bundle_discount_applied: { en: "Bundle Discount", ar: "خصم الحزمة" },
     currency_symbol: { en: "L.E", ar: "ج.م" },
     canteen_closed_login_alert: { en: "Sorry, the canteen is currently closed. Please try again later.", ar: "عذراً، الكانتين مغلق حالياً. يرجى المحاولة مرة أخرى لاحقاً." },
@@ -209,7 +227,17 @@ const defaultTranslations = {
     admin_login_locked: { en: "Account locked. Try again in {minutes} minute(s).", ar: "الحساب مقفل. حاول مرة أخرى خلال {minutes} دقيقة." },
     admin_login_prefix_too_many_attempts: { en: "Too many failed attempts.", ar: "عدد المحاولات الفاشلة تجاوز الحد." },
     admin_login_missing_details: { en: "Missing admin login details.", ar: "الرجاء إدخال بيانات اعتماد المسؤول." },
-    admin_login_server_error: { en: "Server error during admin login.", ar: "حدث خطأ في الخادم أثناء تسجيل دخول المسؤول." }
+    admin_login_server_error: { en: "Server error during admin login.", ar: "حدث خطأ في الخادم أثناء تسجيل دخول المسؤول." },
+    // --- ADDED: Currency Management Translations ---
+    currency_management_title: { en: "Currency Management", ar: "إدارة العملة" },
+    currency_symbol_en_label: { en: "Currency Symbol (English):", ar: "رمز العملة (الإنجليزية):" },
+    currency_symbol_ar_label: { en: "Currency Symbol (Arabic):", ar: "رمز العملة (العربية):" },
+    currency_symbol_en_placeholder: { en: "e.g., $, €, £, L.E, USD, EUR", ar: "مثال: $، €، £، L.E، USD، EUR" },
+    currency_symbol_ar_placeholder: { en: "e.g., $, €, £, ج.م, USD, EUR", ar: "مثال: $، €، £، ج.م، USD، EUR" },
+    currency_customization_hint: { en: "You can use symbols ($, €, £) or currency codes (USD, EUR, GBP) or any custom text.", ar: "يمكنك استخدام الرموز ($، €، £) أو رموز العملات (USD، EUR، GBP) أو أي نص مخصص." },
+    update_currency_button: { en: "Update Currency", ar: "تحديث العملة" },
+    currency_update_success: { en: "Currency updated successfully!", ar: "تم تحديث العملة بنجاح!" },
+    currency_update_error: { en: "Please enter currency symbols for both languages.", ar: "الرجاء إدخال رموز العملة للغتين." }
     // --- END: Added Admin Login Error Translation Keys ---
 };
 const defaultStatus = { isOpen: true };
@@ -865,6 +893,14 @@ wss.on('connection', (ws, req) => {
                      if (clientInfo.isManagement && parsedMessage.payload && parsedMessage.payload.categoryKey && parsedMessage.payload.nameKey && parsedMessage.payload.translations) {
                          const { categoryKey, nameKey, translations: updatedTranslations } = parsedMessage.payload;
                          console.log('Admin action: Updating category', categoryKey);
+                         
+                         // Prevent updating archive category name
+                         if (categoryKey === 'archive') {
+                             console.warn('Attempted to update archive category name. Ignoring.');
+                             ws.send(JSON.stringify({ type: 'admin_error', payload: { message: 'The archive category name cannot be modified.' } }));
+                             break;
+                         }
+                         
                          const catIndex = categories.findIndex(c => c.key === categoryKey);
                          if (catIndex > -1) {
                              // Update name key if needed (though it usually doesn't change)
@@ -891,6 +927,14 @@ wss.on('connection', (ws, req) => {
                       if (clientInfo.isManagement && parsedMessage.payload && parsedMessage.payload.categoryKey && parsedMessage.payload.nameKey) {
                           const { categoryKey, nameKey } = parsedMessage.payload;
                           console.log('Admin action: Deleting category', categoryKey);
+                          
+                          // Prevent deletion of archive category
+                          if (categoryKey === 'archive') {
+                              console.warn('Attempted to delete archive category. Ignoring.');
+                              ws.send(JSON.stringify({ type: 'admin_error', payload: { message: 'The archive category cannot be deleted.' } }));
+                              break;
+                          }
+                          
                           const catIndex = categories.findIndex(c => c.key === categoryKey);
                           if (catIndex > -1) {
                               // Ensure category is empty before deleting (important!)
@@ -923,13 +967,51 @@ wss.on('connection', (ws, req) => {
                       }
                       break;
 
+                case 'admin_currency_updated':
+                    if (clientInfo.isManagement && parsedMessage.payload && parsedMessage.payload.currency) {
+                        const { currency } = parsedMessage.payload;
+                        console.log('Admin action: Updating currency', currency);
+                        
+                        // Validate currency data
+                        if (currency.en && currency.ar) {
+                            // Update translations
+                            translations.currency_symbol = currency;
+                            
+                            // Broadcast updates
+                            broadcast(JSON.stringify({ type: 'translations_updated', payload: translations }));
+                            
+                            // Save updated data
+                            saveDataToFile(TRANSLATIONS_FILE, translations);
+                            console.log('Currency updated successfully:', currency);
+                        } else {
+                            console.warn('Invalid currency data received:', currency);
+                        }
+                    } else {
+                        console.warn('Unauthorized or invalid admin_currency_updated attempt.');
+                    }
+                    break;
+
                 case 'admin_categories_reordered': // New case for reordering
                     if (clientInfo.isManagement && Array.isArray(parsedMessage.payload)) {
                          // Basic validation: Check if payload structure looks like categories array
                         const isValidPayload = parsedMessage.payload.every(cat => cat && cat.key && cat.name_key && Array.isArray(cat.productIds));
                         if (isValidPayload) {
                             console.log('Admin action: Reordering categories/products');
-                            categories = parsedMessage.payload; // Replace server's array with the new order
+                            
+                            // Ensure archive category is at the end
+                            let reorderedCategories = [...parsedMessage.payload];
+                            const archiveCategoryIndex = reorderedCategories.findIndex(c => c.key === 'archive');
+                            
+                            // If archive category exists, move it to the end
+                            if (archiveCategoryIndex !== -1) {
+                                const [archiveCategory] = reorderedCategories.splice(archiveCategoryIndex, 1);
+                                reorderedCategories.push(archiveCategory);
+                            } else {
+                                // If archive category doesn't exist in the payload, add it
+                                reorderedCategories.push({ key: 'archive', name_key: 'sort_archive', productIds: [] });
+                            }
+                            
+                            categories = reorderedCategories; // Replace server's array with the new order
                             // Broadcast the update to all clients
                             broadcast(JSON.stringify({ type: 'categories_updated', payload: categories }));
                             // Save updated data
@@ -944,54 +1026,60 @@ wss.on('connection', (ws, req) => {
                     break;
 
                 case 'admin_config_imported':
-                    if (isAdminClient(ws)) {
-                        console.log("Received 'admin_config_imported' from an admin client.");
-                        const { products, categories: importedCategories, productRelatedTranslations } = parsedMessage.payload;
+                    // Fix variable names to match what the client sends
+                    const { products, categories: importedCategories, productRelatedTranslations } = parsedMessage.payload;
+                    if (Array.isArray(products) && Array.isArray(importedCategories) && typeof productRelatedTranslations === 'object') {
+                        console.log(`Importing ${products.length} products, ${importedCategories.length} categories.`);
+                        
+                        // Validate and Update Products
+                        baseMenuData = products.map(p => ({ // Basic validation/mapping
+                            id: p.id || `prod_imported_${Date.now()}_${Math.random().toString(36).substring(2,7)}`,
+                            price: typeof p.price === 'number' ? p.price : 0,
+                            image: typeof p.image === 'string' ? p.image : '/images/default.png',
+                            category: typeof p.category === 'string' ? p.category : 'uncategorized',
+                            quantity: typeof p.quantity === 'number' ? p.quantity : 0,
+                            name_key: typeof p.name_key === 'string' ? p.name_key : `item_name_${p.id || 'new'}`,
+                            description_key: typeof p.description_key === 'string' ? p.description_key : `item_desc_${p.id || 'new'}`
+                        }));
+                        saveDataToFile(PRODUCTS_FILE, baseMenuData);
+                        console.log('Products updated and saved from imported config.');
 
-                        if (Array.isArray(products) && Array.isArray(importedCategories) && typeof productRelatedTranslations === 'object') {
-                            console.log(`Importing ${products.length} products, ${importedCategories.length} categories.`);
-                            
-                            // Validate and Update Products
-                            baseMenuData = products.map(p => ({ // Basic validation/mapping
-                                id: p.id || `prod_imported_${Date.now()}_${Math.random().toString(36).substring(2,7)}`,
-                                price: typeof p.price === 'number' ? p.price : 0,
-                                image: typeof p.image === 'string' ? p.image : '/images/default.png',
-                                category: typeof p.category === 'string' ? p.category : 'uncategorized',
-                                quantity: typeof p.quantity === 'number' ? p.quantity : 0,
-                                name_key: typeof p.name_key === 'string' ? p.name_key : `item_name_${p.id || 'new'}`,
-                                description_key: typeof p.description_key === 'string' ? p.description_key : `item_desc_${p.id || 'new'}`
-                            }));
-                            saveDataToFile(PRODUCTS_FILE, baseMenuData);
-                            console.log('Products updated and saved from imported config.');
-
-                            // Validate and Update Categories
-                            categories = importedCategories.map(c => ({ // Basic validation/mapping
-                                key: c.key || `cat_imported_${Date.now()}_${Math.random().toString(36).substring(2,7)}`,
-                                name_key: typeof c.name_key === 'string' ? c.name_key : `sort_${c.key || 'new'}`,
-                                productIds: Array.isArray(c.productIds) ? c.productIds : []
-                            }));
-                            saveDataToFile(CATEGORIES_FILE, categories);
-                            console.log('Categories updated and saved from imported config.');
-
-                            // Merge and Update Translations
-                            if (productRelatedTranslations) {
-                                Object.assign(translations, productRelatedTranslations);
-                                saveDataToFile(TRANSLATIONS_FILE, translations);
-                                console.log('Product-related translations merged and saved from imported config.');
-                            }
-
-                            // Broadcast updates to all clients
-                            broadcast({ type: 'products_updated', payload: baseMenuData });
-                            broadcast({ type: 'categories_updated', payload: categories });
-                            broadcast({ type: 'translations_updated', payload: translations }); // Send all translations
-
-                            ws.send(JSON.stringify({ type: 'admin_action_success', message: 'Product configuration imported successfully.' }));
+                        // Validate and Update Categories
+                        // Ensure archive category is preserved
+                        let updatedCategories = importedCategories.map(c => ({ // Basic validation/mapping
+                            key: c.key || `cat_imported_${Date.now()}_${Math.random().toString(36).substring(2,7)}`,
+                            name_key: typeof c.name_key === 'string' ? c.name_key : `sort_${c.key || 'new'}`,
+                            productIds: Array.isArray(c.productIds) ? c.productIds : []
+                        }));
+                        
+                        // Ensure archive category exists and is at the end
+                        const archiveCategoryIndex = updatedCategories.findIndex(c => c.key === 'archive');
+                        if (archiveCategoryIndex !== -1) {
+                            // Move archive category to the end
+                            const [archiveCategory] = updatedCategories.splice(archiveCategoryIndex, 1);
+                            updatedCategories.push(archiveCategory);
                         } else {
-                            console.warn("Invalid payload for 'admin_config_imported'.");
-                            ws.send(JSON.stringify({ type: 'admin_action_error', message: 'Invalid configuration data received for import.' }));
+                            // Add archive category if it doesn't exist
+                            updatedCategories.push({ key: 'archive', name_key: 'sort_archive', productIds: [] });
                         }
-                    } else {
-                        console.warn("Received 'admin_config_imported' from non-admin client.");
+                        
+                        categories = updatedCategories;
+                        saveDataToFile(CATEGORIES_FILE, categories);
+                        console.log('Categories updated and saved from imported config.');
+
+                        // Merge and Update Translations
+                        if (productRelatedTranslations) {
+                            Object.assign(translations, productRelatedTranslations);
+                            saveDataToFile(TRANSLATIONS_FILE, translations);
+                            console.log('Product-related translations merged and saved from imported config.');
+                        }
+
+                        // Broadcast updates to all clients
+                        broadcast({ type: 'products_updated', payload: baseMenuData });
+                        broadcast({ type: 'categories_updated', payload: categories });
+                        broadcast({ type: 'translations_updated', payload: translations }); // Send all translations
+
+                        ws.send(JSON.stringify({ type: 'admin_action_success', message: 'Product configuration imported successfully.' }));
                     }
                     break;
 
