@@ -475,7 +475,7 @@ document.addEventListener('DOMContentLoaded', () => {
                           if(foundKey) currentUser.profilePic = foundKey;
                           else currentUser.profilePic = 'pic1';
                         }
-                        setCookie('canteenUser', JSON.stringify(currentUser), 7);
+                        setCookie('canteenUser', JSON.stringify(currentUser), 30);
                         console.log('[register_success] setCookie called', currentUser);
                         // Clear registration form fields
                         if(registerEmailInput) registerEmailInput.value = '';
@@ -503,7 +503,7 @@ document.addEventListener('DOMContentLoaded', () => {
                           if(foundKey) currentUser.profilePic = foundKey;
                           else currentUser.profilePic = 'pic1';
                         }
-                        setCookie('canteenUser', JSON.stringify(currentUser), 7);
+                        setCookie('canteenUser', JSON.stringify(currentUser), 30);
                         console.log('[login_success] setCookie called', currentUser);
                         // Clear login form fields
                         if(loginEmailInput) loginEmailInput.value = '';
