@@ -121,7 +121,7 @@
       }
     ],
     "totalAmount": 1355,
-    "status": "pending",
+    "status": "delivered",
     "paymentMethod": "cash",
     "user": {
       "email": "t@t.t",
