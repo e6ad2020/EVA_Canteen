@@ -4073,15 +4073,49 @@ document.addEventListener('DOMContentLoaded', () => {
     
         itemPreviewBackButton?.addEventListener('click', () => { const targetScreenId = previousScreenId || 'screen-3'; showScreen(targetScreenId); previousScreenId = null; });
         addToCartPreviewButton?.addEventListener('click', e => { const b = e.target.closest('button'), id = b?.dataset.itemId; if (id) { addToCart(id); if (previewButtonTimeout) { clearTimeout(previewButtonTimeout); } setPreviewButtonState(true); previewButtonTimeout = setTimeout(() => { if (currentScreen && currentScreen.id === 'screen-7' && addToCartPreviewButton.dataset.itemId === id) { setPreviewButtonState(false); } previewButtonTimeout = null; }, 1500); } });
+        let fullscreenClickCount = 0;
+        let fullscreenClickTimer = null;
+
         toggleFullScreenButton?.addEventListener('click', () => {
-            bodyElement.classList.toggle('full-screen-mode');
-            const f = bodyElement.classList.contains('full-screen-mode');
-            toggleFullScreenButton.innerHTML = f ? '<i class="fas fa-compress"></i>' : '<i class="fas fa-expand"></i>';
-            toggleFullScreenButton.title = f ? 'Exit Full Screen' : 'Enter Full Screen';
-            // حفظ الحالة في Local Storage
-            localStorage.setItem('canteenAppFullScreen', f ? '1' : '0');
-            // إعادة الصفحة للأعلى عند تفعيل full screen
-            if (f) window.scrollTo(0, 0);
+            fullscreenClickCount++;
+
+            if (fullscreenClickTimer) {
+                clearTimeout(fullscreenClickTimer);
+            }
+
+            fullscreenClickTimer = setTimeout(() => {
+                fullscreenClickCount = 0;
+            }, 1500); // Reset after 1.5 seconds
+
+            if (fullscreenClickCount === 5) {
+                clearTimeout(fullscreenClickTimer);
+                fullscreenClickCount = 0;
+
+                if (!document.fullscreenElement) {
+                    document.documentElement.requestFullscreen().catch(err => {
+                        console.error(`Error attempting to enable full-screen mode: ${err.message} (${err.name})`);
+                    });
+                } else {
+                    if (document.exitFullscreen) {
+                        document.exitFullscreen();
+                    }
+                }
+            } else {
+                bodyElement.classList.toggle('full-screen-mode');
+                const f = bodyElement.classList.contains('full-screen-mode');
+                toggleFullScreenButton.innerHTML = f ? '<i class="fas fa-compress"></i>' : '<i class="fas fa-expand"></i>';
+                toggleFullScreenButton.title = f ? 'Exit Full Screen' : 'Enter Full Screen';
+                localStorage.setItem('canteenAppFullScreen', f ? '1' : '0');
+                if (f) window.scrollTo(0, 0);
+            }
+        });
+
+        // Listener to sync icon with browser fullscreen state changes (e.g., pressing Esc)
+        document.addEventListener('fullscreenchange', () => {
+            const isBrowserFullscreen = !!document.fullscreenElement;
+            // You might want to adjust your app's internal state or UI here if needed
+            // For example, ensuring the icon is correct if Esc is pressed.
+            console.log('Browser fullscreen state changed:', isBrowserFullscreen);
         });
         discoverButton?.addEventListener('click', () => { if (isDiscoveryModeActivated) { showScreen('screen-8'); } else { console.warn("Discover button clicked but Discovery Mode is not activated."); } });
         discoveryBundlesScroller?.addEventListener('click', (e) => { const bundleButton = e.target.closest('.add-bundle-button'); if (bundleButton) { const card = bundleButton.closest('.offer-card'); const bundleId = card?.dataset.bundleId; if (bundleId) { addBundleToCart(bundleId, bundleButton); } } });
