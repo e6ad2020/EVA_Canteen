@@ -152,7 +152,9 @@ document.addEventListener('DOMContentLoaded', () => {
     // Ensure server.js is running on the machine with this IP (192.168.1.14)
     // and the firewall allows connections on port 8080.
     // const WS_URL = 'ws://192.168.1.10:8080'; // <-- Local Network IP
-    const WS_URL = 'ws://' + location.hostname + ':8080/';
+    const isSecure = window.location.protocol === 'https:';
+    const wsProtocol = isSecure ? 'wss://' : 'ws://';
+    const WS_URL = wsProtocol + window.location.host;
     let reconnectInterval = 5000; // Reconnect every 5 seconds
     let isManagementClient = false; // Flag to track if this instance is management
 

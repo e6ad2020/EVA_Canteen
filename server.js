@@ -21,8 +21,14 @@ const WebSocket = require('ws');
 const fs = require('fs');
 const path = require('path');
 const bcrypt = require('bcrypt');
+const express = require('express');
+const http = require('http');
 
-// تم إزالة SSL certificates لأننا نستخدم Python HTTP server
+const app = express();
+const server = http.createServer(app);
+
+// Serve static files from the project root (e.g., index.html, script.js)
+app.use(express.static(path.join(__dirname, '')));
 
 // --- Data Persistence Setup ---
 const DATA_DIR = path.join(__dirname, 'data');
@@ -276,12 +282,14 @@ if (translationsModified) {
 }
 // --- End Critical Translation Key Check ---
 
-// WebSocket server يعمل على بورت 8080 مباشرة
-const WEBSOCKET_PORT = 8080;
-const wss = new WebSocket.Server({ port: WEBSOCKET_PORT, host: '0.0.0.0' });
+// Attach WebSocket server to the HTTP server
+const wss = new WebSocket.Server({ server });
 
-console.log(`🚀 WebSocket server running on port ${WEBSOCKET_PORT}`);
-console.log(`📁 Use: python -m http.server 8000 to serve files`);
+const PORT = process.env.PORT || 8080; // Render will set PORT, fallback to 8080 for local dev
+
+server.listen(PORT, () => {
+    console.log(`🚀 HTTP and WebSocket server running on port ${PORT}`);
+});
 
 // Store connected clients and their roles
 const clients = new Map(); // Use Map for better client management { ws: { isManagement: false, ip: string } }
@@ -1180,7 +1188,7 @@ process.on('SIGINT', () => {
     saveDataToFile(STATUS_FILE, canteenStatus);
     console.log('✅ Data saving complete.');
 
-    wss.close((err) => {
+    server.close((err) => {
         if (err) {
             console.error('❌ Error closing WebSocket server:', err);
         } else {
