@@ -5744,7 +5744,7 @@ body[data-theme="light-blue"] {
 
 
 body[data-theme="light-blue"] .app-container {
-  background-image: url('theme_light_blue_wallpaper_template/phone.png');
+  background-image: url('assets/theme_light_blue_wallpaper_template/phone.png');
   background-size: cover;
   /* Changed from contain to cover */
   background-position: center;
@@ -5753,7 +5753,7 @@ body[data-theme="light-blue"] .app-container {
 
 @media (min-width: 768px) {
   body[data-theme="light-blue"] .app-container {
-    background-image: url('theme_light_blue_wallpaper_template/desktop.png');
+    background-image: url('assets/theme_light_blue_wallpaper_template/desktop.png');
     background-size: cover;
     /* Changed from contain to cover */
   }
@@ -5803,7 +5803,7 @@ body[data-theme="mono-light"] {
 }
 
 body[data-theme="light-red"] .app-container {
-  background-image: url('theme_light_red_wallpaper_template/phone.png');
+  background-image: url('assets/theme_light_red_wallpaper_template/phone.png');
   background-size: cover;
   /* Changed from contain to cover */
   background-position: center;
@@ -5812,7 +5812,7 @@ body[data-theme="light-red"] .app-container {
 
 @media (min-width: 768px) {
   body[data-theme="light-red"] .app-container {
-    background-image: url('theme_light_red_wallpaper_template/desktop.png');
+    background-image: url('assets/theme_light_red_wallpaper_template/desktop.png');
     background-size: cover;
     /* Changed from contain to cover */
   }
