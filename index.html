@@ -17,6 +17,7 @@
  along with this program.  If not, see <https://www.gnu.org/licenses/>.
 -->
 <html lang="en"> <!-- Default language set here -->
+
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
@@ -36,349 +37,413 @@
     <link rel="stylesheet" href="style.css">
 
 </head>
+
 <body data-theme="blue"> <!-- Default theme set here -->
     <div class="app-container">
-        <div id="loader-overlay" style="position:absolute;z-index:9999;top:0;left:0;width:100%;height:100%;background:rgba(255,255,255,0.85);display:flex;align-items:center;justify-content:center;transition:opacity 0.3s;">
+        <div id="loader-overlay"
+            style="position:absolute;z-index:9999;top:0;left:0;width:100%;height:100%;background:rgba(255,255,255,0.85);display:flex;align-items:center;justify-content:center;transition:opacity 0.3s;">
             <div class="loader-spinner"></div>
         </div>
-    <style>
-        @keyframes spin { 0% { transform: rotate(0deg);} 100% { transform: rotate(360deg);} }
-        #loader-overlay .loader-spinner {
-            border:6px solid #eee;
-            border-top:6px solid #3498db;
-            border-radius:50%;
-            width:48px;
-            height:48px;
-            animation:spin 1s linear infinite;
-        }
-        /* حجم أصغر للموبايل */
-        @media (max-width: 600px) {
-            #loader-overlay .loader-spinner {
-                width:32px;
-                height:32px;
-                border-width:4px;
-            }
-        }
-        /* حجم أكبر في وضع Full Screen */
-        body.full-screen-mode #loader-overlay .loader-spinner {
-            width:80px;
-            height:80px;
-            border-width:8px;
-        }
-        /* غطاء التحميل يغطي فقط app-container */
-        .app-container { position: relative; }
-        #loader-overlay { position: absolute; top: 0; left: 0; width: 100%; height: 100%; }
-        
-        /* Archive category styles - applied to all themes */
-        .category-list-item.archive-category {
-            background-color: #d0d0d0 !important;
-            border-color: #999 !important;
-            opacity: 1;
-        }
-        
-        .category-list-item.archive-category .category-name {
-            color: #444 !important;
-            font-style: italic;
-        }
-        
-        .category-list-item.archive-category .archive-indicator {
-            color: #666 !important;
-            padding: 5px 10px;
-            border-radius: 4px;
-            background-color: rgba(0,0,0,0.15) !important;
-            display: flex;
-            align-items: center;
-            gap: 5px;
-        }
-        
-        /* Dark theme archive category styles */
-        [data-theme="dark-grey"] .category-list-item.archive-category,
-        [data-theme="night"] .category-list-item.archive-category,
-        [data-theme="mono-dark"] .category-list-item.archive-category {
-            background-color: #2a2a2a !important;
-            border-color: #555 !important;
-        }
-        
-        [data-theme="dark-grey"] .category-list-item.archive-category .category-name,
-        [data-theme="night"] .category-list-item.archive-category .category-name,
-        [data-theme="mono-dark"] .category-list-item.archive-category .category-name {
-            color: #999 !important;
-        }
-        
-        [data-theme="dark-grey"] .category-list-item.archive-category .archive-indicator,
-        [data-theme="night"] .category-list-item.archive-category .archive-indicator,
-        [data-theme="mono-dark"] .category-list-item.archive-category .archive-indicator {
-            color: #777 !important;
-            background-color: rgba(255,255,255,0.15) !important;
-        }
-        
-        /* Light theme archive category styles */
-        [data-theme="light-blue"] .category-list-item.archive-category,
-        [data-theme="light-red"] .category-list-item.archive-category {
-            background-color: #d8d8d8 !important;
-            border-color: #999 !important;
-        }
-        
-        [data-theme="light-blue"] .category-list-item.archive-category .category-name,
-        [data-theme="light-red"] .category-list-item.archive-category .category-name {
-            color: #333 !important;
-        }
-        
-        [data-theme="light-blue"] .category-list-item.archive-category .archive-indicator,
-        [data-theme="light-red"] .category-list-item.archive-category .archive-indicator {
-            color: #555 !important;
-            background-color: rgba(0,0,0,0.12) !important;
-        }
-        
-        /* Monochrome light theme */
-        [data-theme="mono-light"] .category-list-item.archive-category {
-            background-color: #d5d5d5 !important;
-            border-color: #888 !important;
-        }
-        
-        [data-theme="mono-light"] .category-list-item.archive-category .category-name {
-            color: #222 !important;
-        }
-        
-        [data-theme="mono-light"] .category-list-item.archive-category .archive-indicator {
-            color: #444 !important;
-            background-color: rgba(0,0,0,0.1) !important;
-        }
-        
-        /* Yellow and Orange themes */
-        [data-theme="yellow"] .category-list-item.archive-category {
-            background-color: #d0d0d0 !important;
-            border-color: #999 !important;
-        }
-        
-        [data-theme="yellow"] .category-list-item.archive-category .category-name {
-            color: #444 !important;
-        }
-        
-        [data-theme="yellow"] .category-list-item.archive-category .archive-indicator {
-            color: #666 !important;
-            background-color: rgba(0,0,0,0.15) !important;
-        }
-        
-        [data-theme="orange"] .category-list-item.archive-category {
-            background-color: #d0d0d0 !important;
-            border-color: #999 !important;
-        }
-        
-        [data-theme="orange"] .category-list-item.archive-category .category-name {
-            color: #444 !important;
-        }
-        
-        [data-theme="orange"] .category-list-item.archive-category .archive-indicator {
-            color: #666 !important;
-            background-color: rgba(0,0,0,0.15) !important;
-        }
-        
-        /* Default blue theme */
-        [data-theme="blue"] .category-list-item.archive-category {
-            background-color: #d0d0d0 !important;
-            border-color: #999 !important;
-        }
-        
-        [data-theme="blue"] .category-list-item.archive-category .category-name {
-            color: #444 !important;
-        }
-        
-        [data-theme="blue"] .category-list-item.archive-category .archive-indicator {
-            color: #666 !important;
-            background-color: rgba(0,0,0,0.15) !important;
-        }
-    </style>
+        <style>
+            @keyframes spin {
+                0% {
+                    transform: rotate(0deg);
+                }
 
-    <!-- MOVED Fixed Buttons Outside App Container -->
-    <button id="toggle-fullscreen-btn" class="fixed-button" title="Enter Full Screen"><i class="fas fa-expand"></i></button>
-    <button id="settings-btn" class="fixed-button" title="Settings"><i class="fas fa-cog"></i></button>
+                100% {
+                    transform: rotate(360deg);
+                }
+            }
+
+            #loader-overlay .loader-spinner {
+                border: 6px solid #eee;
+                border-top: 6px solid #3498db;
+                border-radius: 50%;
+                width: 48px;
+                height: 48px;
+                animation: spin 1s linear infinite;
+            }
+
+            /* حجم أصغر للموبايل */
+            @media (max-width: 600px) {
+                #loader-overlay .loader-spinner {
+                    width: 32px;
+                    height: 32px;
+                    border-width: 4px;
+                }
+            }
+
+            /* حجم أكبر في وضع Full Screen */
+            body.full-screen-mode #loader-overlay .loader-spinner {
+                width: 80px;
+                height: 80px;
+                border-width: 8px;
+            }
+
+            /* غطاء التحميل يغطي فقط app-container */
+            .app-container {
+                position: relative;
+            }
+
+            #loader-overlay {
+                position: absolute;
+                top: 0;
+                left: 0;
+                width: 100%;
+                height: 100%;
+            }
+
+            /* Archive category styles - applied to all themes */
+            .category-list-item.archive-category {
+                background-color: #d0d0d0 !important;
+                border-color: #999 !important;
+                opacity: 1;
+            }
+
+            .category-list-item.archive-category .category-name {
+                color: #444 !important;
+                font-style: italic;
+            }
+
+            .category-list-item.archive-category .archive-indicator {
+                color: #666 !important;
+                padding: 5px 10px;
+                border-radius: 4px;
+                background-color: rgba(0, 0, 0, 0.15) !important;
+                display: flex;
+                align-items: center;
+                gap: 5px;
+            }
+
+            /* Dark theme archive category styles */
+            [data-theme="dark-grey"] .category-list-item.archive-category,
+            [data-theme="night"] .category-list-item.archive-category,
+            [data-theme="mono-dark"] .category-list-item.archive-category {
+                background-color: #2a2a2a !important;
+                border-color: #555 !important;
+            }
+
+            [data-theme="dark-grey"] .category-list-item.archive-category .category-name,
+            [data-theme="night"] .category-list-item.archive-category .category-name,
+            [data-theme="mono-dark"] .category-list-item.archive-category .category-name {
+                color: #999 !important;
+            }
+
+            [data-theme="dark-grey"] .category-list-item.archive-category .archive-indicator,
+            [data-theme="night"] .category-list-item.archive-category .archive-indicator,
+            [data-theme="mono-dark"] .category-list-item.archive-category .archive-indicator {
+                color: #777 !important;
+                background-color: rgba(255, 255, 255, 0.15) !important;
+            }
+
+            /* Light theme archive category styles */
+            [data-theme="light-blue"] .category-list-item.archive-category,
+            [data-theme="light-red"] .category-list-item.archive-category {
+                background-color: #d8d8d8 !important;
+                border-color: #999 !important;
+            }
+
+            [data-theme="light-blue"] .category-list-item.archive-category .category-name,
+            [data-theme="light-red"] .category-list-item.archive-category .category-name {
+                color: #333 !important;
+            }
+
+            [data-theme="light-blue"] .category-list-item.archive-category .archive-indicator,
+            [data-theme="light-red"] .category-list-item.archive-category .archive-indicator {
+                color: #555 !important;
+                background-color: rgba(0, 0, 0, 0.12) !important;
+            }
+
+            /* Monochrome light theme */
+            [data-theme="mono-light"] .category-list-item.archive-category {
+                background-color: #d5d5d5 !important;
+                border-color: #888 !important;
+            }
+
+            [data-theme="mono-light"] .category-list-item.archive-category .category-name {
+                color: #222 !important;
+            }
+
+            [data-theme="mono-light"] .category-list-item.archive-category .archive-indicator {
+                color: #444 !important;
+                background-color: rgba(0, 0, 0, 0.1) !important;
+            }
+
+            /* Yellow and Orange themes */
+            [data-theme="yellow"] .category-list-item.archive-category {
+                background-color: #d0d0d0 !important;
+                border-color: #999 !important;
+            }
+
+            [data-theme="yellow"] .category-list-item.archive-category .category-name {
+                color: #444 !important;
+            }
+
+            [data-theme="yellow"] .category-list-item.archive-category .archive-indicator {
+                color: #666 !important;
+                background-color: rgba(0, 0, 0, 0.15) !important;
+            }
+
+            [data-theme="orange"] .category-list-item.archive-category {
+                background-color: #d0d0d0 !important;
+                border-color: #999 !important;
+            }
+
+            [data-theme="orange"] .category-list-item.archive-category .category-name {
+                color: #444 !important;
+            }
+
+            [data-theme="orange"] .category-list-item.archive-category .archive-indicator {
+                color: #666 !important;
+                background-color: rgba(0, 0, 0, 0.15) !important;
+            }
+
+            /* Default blue theme */
+            [data-theme="blue"] .category-list-item.archive-category {
+                background-color: #d0d0d0 !important;
+                border-color: #999 !important;
+            }
+
+            [data-theme="blue"] .category-list-item.archive-category .category-name {
+                color: #444 !important;
+            }
+
+            [data-theme="blue"] .category-list-item.archive-category .archive-indicator {
+                color: #666 !important;
+                background-color: rgba(0, 0, 0, 0.15) !important;
+            }
+        </style>
+
+        <!-- MOVED Fixed Buttons Outside App Container -->
+        <button id="toggle-fullscreen-btn" class="fixed-button" title="Enter Full Screen"><i
+                class="fas fa-expand"></i></button>
+        <button id="settings-btn" class="fixed-button" title="Settings"><i class="fas fa-cog"></i></button>
 
         <!-- Screen 1: Login -->
         <div class="screen" id="screen-1">
-             <div class="screen-content">
-                 <div class="liquid-glass-title-bg main-title-glass" data-lang-key="welcome_title">Welcome to<br>EVA Canteen</div>
-                 <!-- START: Canteen Status Indicator -->
-                 <div id="canteen-status-indicator" class="status-indicator" style="display: none;" data-lang-key="canteen_closed_indicator">Canteen is currently CLOSED</div>
-                 <!-- END: Canteen Status Indicator -->
-                 <div class="form-box">
-                     <h3 data-lang-key="sign_in_label">sign in</h3>
-                     <input type="email" id="login-email" data-lang-placeholder-key="email_placeholder" placeholder="email.....">
-                     <div class="password-container">
-                         <input type="password" id="login-password" data-lang-placeholder-key="password_placeholder" placeholder="password*****">
-                         <span class="password-toggle" data-target="login-password">
-                             <i class="fas fa-eye"></i>
-                         </span>
-                     </div>
-                     <p id="login-error" class="error-message" data-lang-key="login_error_invalid">Invalid credentials (use any)</p>
-                 </div>
-                 <button class="button submit-button" id="login-submit" data-lang-key="submit_button">submit</button>
-                 <div class="switch-account">
-                     <p data-lang-key="new_account_prompt">new account?</p>
-                     <button class="button rect-button register-button" data-target="screen-2" data-lang-key="register_button">Register</button>
-                 </div>
-                 <button class="button small-button" id="goto-admin-login-button" style="margin-top: 25px; background-color: #ffc107; width: auto;">
-                     <i class="fas fa-cog"></i> <span data-lang-key="management_button">Management</span>
-                 </button>
-             </div>
+            <div class="screen-content">
+                <div class="liquid-glass-title-bg main-title-glass" data-lang-key="welcome_title">Welcome to<br>EVA
+                    Canteen</div>
+                <!-- START: Canteen Status Indicator -->
+                <div id="canteen-status-indicator" class="status-indicator" style="display: none;"
+                    data-lang-key="canteen_closed_indicator">Canteen is currently CLOSED</div>
+                <!-- END: Canteen Status Indicator -->
+                <div class="form-box">
+                    <h3 data-lang-key="sign_in_label">sign in</h3>
+                    <input type="email" id="login-email" data-lang-placeholder-key="email_placeholder"
+                        placeholder="email.....">
+                    <div class="password-container">
+                        <input type="password" id="login-password" data-lang-placeholder-key="password_placeholder"
+                            placeholder="password*****">
+                        <span class="password-toggle" data-target="login-password">
+                            <i class="fas fa-eye"></i>
+                        </span>
+                    </div>
+                    <p id="login-error" class="error-message" data-lang-key="login_error_invalid">Invalid credentials
+                        (use any)</p>
+                </div>
+                <button class="button submit-button" id="login-submit" data-lang-key="submit_button">submit</button>
+                <div class="switch-account">
+                    <p data-lang-key="new_account_prompt">new account?</p>
+                    <button class="button rect-button register-button" data-target="screen-2"
+                        data-lang-key="register_button">Register</button>
+                </div>
+                <button class="button small-button" id="goto-admin-login-button"
+                    style="margin-top: 25px; background-color: #ffc107; width: auto;">
+                    <i class="fas fa-cog"></i> <span data-lang-key="management_button">Management</span>
+                </button>
+            </div>
         </div>
 
         <!-- Screen 2: Register -->
         <div class="screen" id="screen-2">
-             <div class="screen-content">
-                 <div class="liquid-glass-title-bg main-title-glass" data-lang-key="welcome_title">Welcome to<br>EVA Canteen</div>
-                 <div class="form-box">
-                     <h3 data-lang-key="register_button">Register</h3>
-                     <input type="email" id="register-email" data-lang-placeholder-key="email_placeholder" placeholder="email.....">
-                     <div class="password-container">
-                         <input type="password" id="register-password" data-lang-placeholder-key="password_placeholder" placeholder="password*****">
-                         <span class="password-toggle" data-target="register-password">
-                             <i class="fas fa-eye"></i>
-                         </span>
-                     </div>
-                     <div class="password-container">
-                         <input type="password" id="register-password-confirm" data-lang-placeholder-key="password_again_placeholder" placeholder="password again*****">
-                         <span class="password-toggle" data-target="register-password-confirm">
-                             <i class="fas fa-eye"></i>
-                         </span>
-                     </div>
-                     <p id="register-error" class="error-message" data-lang-key="register_error_match">Passwords don't match or field empty.</p>
-                     <p class="pick-photo-label" data-lang-key="pick_photo_label">pick photo</p>
-                     <div class="photo-picker" id="register-photo-picker">
-                         <img src="assets\pfp1.png" alt="Profile Pic 1" class="profile-pic">
-                         <img src="assets\pfp2.png" alt="Profile Pic 2" class="profile-pic active">
-                         <img src="assets\pfp3.png" alt="Profile Pic 3" class="profile-pic">
-                     </div>
-                 </div>
-                 <button class="button submit-button" id="register-submit" data-lang-key="submit_button">submit</button>
-                 <button class="button back-button" data-target="screen-1">
-                     <i class="fas fa-arrow-left"></i> <span data-lang-key="back_to_login_button">Back to Login</span>
-                 </button>
-             </div>
+            <div class="screen-content">
+                <div class="liquid-glass-title-bg main-title-glass" data-lang-key="welcome_title">Welcome to<br>EVA
+                    Canteen</div>
+                <div class="form-box">
+                    <h3 data-lang-key="register_button">Register</h3>
+                    <input type="email" id="register-email" data-lang-placeholder-key="email_placeholder"
+                        placeholder="email.....">
+                    <div class="password-container">
+                        <input type="password" id="register-password" data-lang-placeholder-key="password_placeholder"
+                            placeholder="password*****">
+                        <span class="password-toggle" data-target="register-password">
+                            <i class="fas fa-eye"></i>
+                        </span>
+                    </div>
+                    <div class="password-container">
+                        <input type="password" id="register-password-confirm"
+                            data-lang-placeholder-key="password_again_placeholder" placeholder="password again*****">
+                        <span class="password-toggle" data-target="register-password-confirm">
+                            <i class="fas fa-eye"></i>
+                        </span>
+                    </div>
+                    <p id="register-error" class="error-message" data-lang-key="register_error_match">Passwords don't
+                        match or field empty.</p>
+                    <p class="pick-photo-label" data-lang-key="pick_photo_label">pick photo</p>
+                    <div class="photo-picker" id="register-photo-picker">
+                        <img src="assets\pfp1.png" alt="Profile Pic 1" class="profile-pic">
+                        <img src="assets\pfp2.png" alt="Profile Pic 2" class="profile-pic active">
+                        <img src="assets\pfp3.png" alt="Profile Pic 3" class="profile-pic">
+                    </div>
+                </div>
+                <button class="button submit-button" id="register-submit" data-lang-key="submit_button">submit</button>
+                <button class="button back-button" data-target="screen-1">
+                    <i class="fas fa-arrow-left"></i> <span data-lang-key="back_to_login_button">Back to Login</span>
+                </button>
+            </div>
         </div>
 
         <!-- Screen 3: Menu -->
         <div class="screen" id="screen-3">
             <div class="screen-content">
                 <div class="header">
-                     <button class="header-button logout-button" id="logout-button">
-                         <span data-lang-key="logout_button">Log out</span> <i class="fas fa-arrow-left"></i>
-                     </button>
-                     <div class="liquid-glass-title-bg main-title-glass canteen-oval" data-lang-key="canteen_name">EVA Canteen</div>
-                     <div class="cart-icon-container" data-target="screen-4"> <div class="cart-icon"><i class="fas fa-shopping-cart"></i><span class="cart-badge" id="cart-badge">0</span></div> <span data-lang-key="cart_label" class="user-display-glass">Cart</span> </div>
-                 </div>
+                    <button class="header-button logout-button" id="logout-button">
+                        <span data-lang-key="logout_button">Log out</span> <i class="fas fa-arrow-left"></i>
+                    </button>
+                    <div class="liquid-glass-title-bg main-title-glass canteen-oval" data-lang-key="canteen_name">EVA
+                        Canteen</div>
+                    <div class="cart-icon-container" data-target="screen-4">
+                        <div class="cart-icon"><i class="fas fa-shopping-cart"></i><span class="cart-badge"
+                                id="cart-badge">0</span></div> <span data-lang-key="cart_label"
+                            class="user-display-glass">Cart</span>
+                    </div>
+                </div>
                 <div class="sort-options">
                     <p data-lang-key="sort_label">Sort</p>
                     <div class="sort-buttons" id="menu-sort-buttons">
                         <!-- Sort buttons populated by JS based on categories -->
                     </div>
                 </div>
-                <button class="button small-button" id="discover-button" style="display: none; margin-top: -5px; margin-bottom: 20px;">
-                     <i class="fas fa-compass"></i> <span data-lang-key="discover_button">Discover</span>
+                <button class="button small-button" id="discover-button"
+                    style="display: none; margin-top: -5px; margin-bottom: 20px;">
+                    <i class="fas fa-compass"></i> <span data-lang-key="discover_button">Discover</span>
                 </button>
 
-                 <div class="menu-grid" id="menu-grid"></div>
-             </div>
+                <div class="menu-grid" id="menu-grid"></div>
+            </div>
         </div>
 
         <!-- Screen 4: Cart -->
         <div class="screen" id="screen-4">
-             <div class="screen-content">
-                 <div class="header">
-                     <button class="header-button" data-target="screen-3">
-                         <span data-lang-key="menu_label">Menu</span> <i class="fas fa-utensils"></i>
-                     </button>
-                     <div class="liquid-glass-title-bg main-title-glass canteen-oval" data-lang-key="canteen_name">EVA Canteen</div>
-                     <div class="user-icon-container"> <div class="user-icon"> <img id="user-profile-image-display" src="" alt="User Profile" style="display: none;"> <i id="guest-user-icon" class="fas fa-user" style="display: block;"></i> </div> <span id="user-display-name" class="user-display-glass">@guest</span> </div>
-                 </div>
-                 <h4 data-lang-key="cart_label">Cart</h4>
-                 <div class="cart-items" id="cart-items-container"></div>
-                 <div class="cart-total">
-                     <h4 data-lang-key="total_label">Total</h4>
-                     <div class="total-calculation" id="total-calculation-details"></div>
-                     <div class="payment-method-section">
-                         <p class="payment-label" data-lang-key="payment_method_label">Payment Method</p>
-                         <div class="payment-methods" id="payment-methods">
-                             <button class="sort-button payment-button active" data-method="cash"> <i class="fas fa-money-bill-wave"></i> <span data-lang-key="payment_cash">Cash</span> </button>
-                             <button class="sort-button payment-button" data-method="card"> <i class="fas fa-credit-card"></i> <span data-lang-key="payment_card">Card</span> </button>
-                         </div>
-                     </div>
-                     <span class="final-equals">=</span>
-                     <span class="total-amount-button" id="checkout-button">0 L.E</span>
-                 </div>
+            <div class="screen-content">
+                <div class="header">
+                    <button class="header-button" data-target="screen-3">
+                        <span data-lang-key="menu_label">Menu</span> <i class="fas fa-utensils"></i>
+                    </button>
+                    <div class="liquid-glass-title-bg main-title-glass canteen-oval" data-lang-key="canteen_name">EVA
+                        Canteen</div>
+                    <div class="user-icon-container">
+                        <div class="user-icon"> <img id="user-profile-image-display" src="" alt="User Profile"
+                                style="display: none;"> <i id="guest-user-icon" class="fas fa-user"
+                                style="display: block;"></i> </div> <span id="user-display-name"
+                            class="user-display-glass">@guest</span>
+                    </div>
+                </div>
+                <h4 data-lang-key="cart_label">Cart</h4>
+                <div class="cart-items" id="cart-items-container"></div>
+                <div class="cart-total">
+                    <h4 data-lang-key="total_label">Total</h4>
+                    <div class="total-calculation" id="total-calculation-details"></div>
+                    <div class="payment-method-section">
+                        <p class="payment-label" data-lang-key="payment_method_label">Payment Method</p>
+                        <div class="payment-methods" id="payment-methods">
+                            <button class="sort-button payment-button active" data-method="cash"> <i
+                                    class="fas fa-money-bill-wave"></i> <span data-lang-key="payment_cash">Cash</span>
+                            </button>
+                            <button class="sort-button payment-button" data-method="card"> <i
+                                    class="fas fa-credit-card"></i> <span data-lang-key="payment_card">Card</span>
+                            </button>
+                        </div>
+                    </div>
+                    <span class="final-equals">=</span>
+                    <span class="total-amount-button" id="checkout-button">0 L.E</span>
+                </div>
             </div>
         </div>
 
         <!-- Screen 6: Admin Login -->
         <div class="screen" id="screen-6">
-             <div class="screen-content">
-                 <h2 class="screen-title" data-lang-key="admin_login_title">Management<br>Login</h2>
-                 <div class="form-box"> 
-                     <h3 data-lang-key="admin_enter_creds">Enter Credentials</h3>
-                     <input type="email" id="admin-email" data-lang-placeholder-key="admin_email_placeholder" placeholder="admin email....." value="admin@canteen.app">
-                     <div class="password-container">
-                         <input type="password" id="admin-password" data-lang-placeholder-key="admin_password_placeholder" placeholder="admin password*****" autocomplete="new-password">
-                         <span class="password-toggle" data-target="admin-password">
-                             <i class="fas fa-eye"></i>
-                         </span>
-                     </div>
-                     <p id="admin-login-error" class="error-message" data-lang-key="admin_login_error">Invalid admin credentials.</p>
-                 </div>
-                 <button class="button submit-button" id="admin-login-submit" data-lang-key="login_button">Login</button>
-                 <button class="button back-button" data-target="screen-1">
-                     <i class="fas fa-arrow-left"></i> <span data-lang-key="back_to_welcome_button">Back to Welcome</span>
-                 </button>
-             </div>
+            <div class="screen-content">
+                <h2 class="screen-title" data-lang-key="admin_login_title">Management<br>Login</h2>
+                <div class="form-box">
+                    <h3 data-lang-key="admin_enter_creds">Enter Credentials</h3>
+                    <input type="email" id="admin-email" data-lang-placeholder-key="admin_email_placeholder"
+                        placeholder="admin email....." value="admin@canteen.app">
+                    <div class="password-container">
+                        <input type="password" id="admin-password"
+                            data-lang-placeholder-key="admin_password_placeholder" placeholder="admin password*****"
+                            autocomplete="new-password">
+                        <span class="password-toggle" data-target="admin-password">
+                            <i class="fas fa-eye"></i>
+                        </span>
+                    </div>
+                    <p id="admin-login-error" class="error-message" data-lang-key="admin_login_error">Invalid admin
+                        credentials.</p>
+                </div>
+                <button class="button submit-button" id="admin-login-submit" data-lang-key="login_button">Login</button>
+                <button class="button back-button" data-target="screen-1">
+                    <i class="fas fa-arrow-left"></i> <span data-lang-key="back_to_welcome_button">Back to
+                        Welcome</span>
+                </button>
+            </div>
         </div>
 
         <!-- Screen 5: Order Management -->
         <div class="screen" id="screen-5">
             <div class="screen-content management-container">
-                 <div class="header">
-                     <button class="header-button back-to-login-button" id="mgmt-back-to-login">
-                         <span data-lang-key="exit_button">Exit</span> <i class="fas fa-sign-out-alt"></i>
-                     </button>
-                     <h3 class="screen-title" data-lang-key="order_management_title">Order Management</h3>
-                     <div style="width: 80px; flex-shrink: 0;"></div> <!-- Keep Spacer -->
-                 </div>
-                 <div class="search-section">
-                     <input type="text" id="order-search-input" data-lang-placeholder-key="search_order_id_placeholder" placeholder="Search by Order ID...">
-                     <button class="button small-button" id="order-search-button"><i class="fas fa-search"></i> <span data-lang-key="search_button">Search</span></button>
-                 </div>
+                <div class="header">
+                    <button class="header-button back-to-login-button" id="mgmt-back-to-login">
+                        <span data-lang-key="exit_button">Exit</span> <i class="fas fa-sign-out-alt"></i>
+                    </button>
+                    <h3 class="screen-title" data-lang-key="order_management_title">Order Management</h3>
+                    <div style="width: 80px; flex-shrink: 0;"></div> <!-- Keep Spacer -->
+                </div>
+                <div class="search-section">
+                    <input type="text" id="order-search-input" data-lang-placeholder-key="search_order_id_placeholder"
+                        placeholder="Search by Order ID...">
+                    <button class="button small-button" id="order-search-button"><i class="fas fa-search"></i> <span
+                            data-lang-key="search_button">Search</span></button>
+                </div>
 
-                 <!-- Button to go to Product Management -->
-                 <button class="button small-button" id="goto-product-mgmt-button" data-target="screen-9" style="margin-top: 15px; background-color: #28a745; width: auto;">
-                     <i class="fas fa-boxes"></i> <span data-lang-key="manage_products_button">Manage Products</span>
-                 </button>
-                 <!-- END Button -->
+                <!-- Button to go to Product Management -->
+                <button class="button small-button" id="goto-product-mgmt-button" data-target="screen-9"
+                    style="margin-top: 15px; background-color: #28a745; width: auto;">
+                    <i class="fas fa-boxes"></i> <span data-lang-key="manage_products_button">Manage Products</span>
+                </button>
+                <!-- END Button -->
 
-                 <div class="order-management-layout">
-                     <div class="order-log-section">
-                         <h4 data-lang-key="order_log_title">Order Log</h4>
-                         <div class="order-view-toggle-buttons">
-                             <button class="button small-button toggle-order-view-button active" data-view-mode="current" data-lang-key="order_log_current_button">Current Orders</button>
-                             <button class="button small-button toggle-order-view-button" data-view-mode="archived" data-lang-key="order_log_archived_button">Archived Orders</button>
-                         </div>
-                         <div class="order-log-container" id="order-log-container"></div>
-                     </div>
-                     <div class="order-preview-section" id="order-preview-section">
-                         <h4 data-lang-key="order_preview_title">Order Preview</h4>
-                         <div class="order-preview-content" id="order-preview-content"></div>
-                         <div class="order-status-controls" id="order-status-controls"></div>
-                     </div>
+                <div class="order-management-layout">
+                    <div class="order-log-section">
+                        <h4 data-lang-key="order_log_title">Order Log</h4>
+                        <div class="order-view-toggle-buttons">
+                            <button class="button small-button toggle-order-view-button active" data-view-mode="current"
+                                data-lang-key="order_log_current_button">Current Orders</button>
+                            <button class="button small-button toggle-order-view-button" data-view-mode="archived"
+                                data-lang-key="order_log_archived_button">Archived Orders</button>
+                        </div>
+                        <div class="order-log-container" id="order-log-container"></div>
+                    </div>
+                    <div class="order-preview-section" id="order-preview-section">
+                        <h4 data-lang-key="order_preview_title">Order Preview</h4>
+                        <div class="order-preview-content" id="order-preview-content"></div>
+                        <div class="order-status-controls" id="order-status-controls"></div>
+                    </div>
                 </div> <!-- END order-management-layout -->
 
                 <!-- START: Config Management Section -->
                 <div class="config-management-section">
                     <h4 data-lang-key="config_management_title">Configuration Management</h4>
                     <div class="config-buttons">
-                         <button class="button small-button" id="export-config-button">
-                            <i class="fas fa-download"></i> <span data-lang-key="export_config_button">Export Config</span>
-                         </button>
-                         <input type="file" id="import-config-input" accept=".json" style="display: none;">
-                         <button class="button small-button" id="import-config-button">
-                            <i class="fas fa-upload"></i> <span data-lang-key="import_config_button">Import Config</span>
-                         </button>
+                        <button class="button small-button" id="export-config-button">
+                            <i class="fas fa-download"></i> <span data-lang-key="export_config_button">Export
+                                Config</span>
+                        </button>
+                        <input type="file" id="import-config-input" accept=".json" style="display: none;">
+                        <button class="button small-button" id="import-config-button">
+                            <i class="fas fa-upload"></i> <span data-lang-key="import_config_button">Import
+                                Config</span>
+                        </button>
                     </div>
                     <p id="import-config-error" class="error-message" data-lang-key="import_config_error_generic"></p>
                 </div>
@@ -394,7 +459,8 @@
                             <span class="slider round"></span>
                         </label>
                     </div>
-                    <p class="settings-hint" data-lang-key="canteen_status_hint">Toggle to open or close the canteen for regular users.</p>
+                    <p class="settings-hint" data-lang-key="canteen_status_hint">Toggle to open or close the canteen for
+                        regular users.</p>
                 </div>
                 <!-- END: Canteen Status Section -->
 
@@ -403,27 +469,30 @@
 
         <!-- Screen 7: Item Preview -->
         <div class="screen" id="screen-7">
-             <div class="screen-content item-preview-container">
-                 <div class="header">
-                     <button class="header-button back-button" id="item-preview-back-button">
-                         <i class="fas fa-arrow-left"></i> <span data-lang-key="back_button">Back</span>
-                     </button>
-                     <h3 class="screen-title" data-lang-key="item_details_title">Item Details</h3>
-                     <div class="cart-icon-container" data-target="screen-4" style="visibility: visible;">
-                         <div class="cart-icon">
-                             <i class="fas fa-shopping-cart"></i>
-                             <span class="cart-badge" id="cart-badge-preview">0</span>
-                         </div>
-                         <span data-lang-key="cart_label">Cart</span>
-                     </div>
-                 </div>
-                 <img id="preview-item-image" src="https://via.placeholder.com/220x165/eee?text=Loading..." alt="Item Image" class="preview-image">
-                 <h3 id="preview-item-name" class="preview-name" data-lang-key="item_name_placeholder">Item Name</h3>
-                 <p id="preview-item-description" class="preview-description liquid-glass-title-bg" data-lang-key="item_description_placeholder">Item description loading...</p>
-                 <p id="preview-item-price" class="preview-price">0 L.E</p>
-                 <button class="button add-to-cart-preview-button" id="add-to-cart-preview-button">
-                     <i class="fas fa-cart-plus"></i> <span data-lang-key="add_to_cart_button">Add to Cart</span>
-                 </button>
+            <div class="screen-content item-preview-container">
+                <div class="header">
+                    <button class="header-button back-button" id="item-preview-back-button">
+                        <i class="fas fa-arrow-left"></i> <span data-lang-key="back_button">Back</span>
+                    </button>
+                    <h3 class="screen-title" data-lang-key="item_details_title">Item Details</h3>
+                    <div class="cart-icon-container" data-target="screen-4" style="visibility: visible;">
+                        <div class="cart-icon">
+                            <i class="fas fa-shopping-cart"></i>
+                            <span class="cart-badge" id="cart-badge-preview">0</span>
+                        </div>
+                        <span data-lang-key="cart_label">Cart</span>
+                    </div>
+                </div>
+                <img id="preview-item-image" src="https://via.placeholder.com/220x165/eee?text=Loading..."
+                    alt="Item Image" class="preview-image">
+                <h3 id="preview-item-name" class="preview-name" data-lang-key="item_name_placeholder">Item Name</h3>
+                <p id="preview-item-description" class="preview-description liquid-glass-title-bg"
+                    data-lang-key="item_description_placeholder">Item description loading...</p>
+                <p id="preview-item-price" class="preview-price">0 L.E</p>
+                <button class="button add-to-cart-preview-button" id="add-to-cart-preview-button">
+                    <span data-lang-key="add_to_cart_button">Add to Cart</span>
+                    <span class="cart-quantity-indicator" id="preview-quantity-indicator">0</span>
+                </button>
             </div>
         </div>
 
@@ -443,9 +512,18 @@
                         <span data-lang-key="cart_label">Cart</span>
                     </div>
                 </div>
-                <section class="discovery-section discovery-section-bundles"> <h4 data-lang-key="discovery_bundles_title">Special Bundles</h4> <div class="discovery-offers-scroller" id="discovery-bundles-scroller"></div> </section>
-                <section class="discovery-section discovery-section-ideas"> <h4 data-lang-key="discovery_suggestions_title">Meal Ideas</h4> <div class="discovery-suggestions-grid" id="discovery-suggestions-grid"></div> </section>
-                <section class="discovery-section discovery-section-all-items"> <h4 data-lang-key="discovery_all_items_title">Explore the Menu</h4> <div class="discovery-categories-container" id="discovery-categories-container"></div> </section>
+                <section class="discovery-section discovery-section-bundles">
+                    <h4 data-lang-key="discovery_bundles_title">Special Bundles</h4>
+                    <div class="discovery-offers-scroller" id="discovery-bundles-scroller"></div>
+                </section>
+                <section class="discovery-section discovery-section-ideas">
+                    <h4 data-lang-key="discovery_suggestions_title">Meal Ideas</h4>
+                    <div class="discovery-suggestions-grid" id="discovery-suggestions-grid"></div>
+                </section>
+                <section class="discovery-section discovery-section-all-items">
+                    <h4 data-lang-key="discovery_all_items_title">Explore the Menu</h4>
+                    <div class="discovery-categories-container" id="discovery-categories-container"></div>
+                </section>
             </div>
         </div>
         <!-- End Screen 8 -->
@@ -453,108 +531,147 @@
         <!-- START: Screen 9: Product Management (REVISED STRUCTURE + CATEGORY MGMT) -->
         <div class="screen" id="screen-9">
             <div class="screen-content management-container">
-                 <div class="header">
-                     <!-- Back Button: Dynamically changes target -->
-                     <button class="header-button back-button" id="product-mgmt-back-button" data-target="screen-5">
-                         <i class="fas fa-arrow-left"></i> <span data-lang-key="back_to_orders_button">Back to Orders</span>
-                     </button>
-                     <!-- Title: Dynamically changes -->
-                     <h3 class="screen-title" id="product-mgmt-title" data-lang-key="product_management_title">Product Management</h3>
-                     <div style="width: 80px; flex-shrink: 0;"></div> <!-- Spacer -->
-                 </div>
+                <div class="header">
+                    <!-- Back Button: Dynamically changes target -->
+                    <button class="header-button back-button" id="product-mgmt-back-button" data-target="screen-5">
+                        <i class="fas fa-arrow-left"></i> <span data-lang-key="back_to_orders_button">Back to
+                            Orders</span>
+                    </button>
+                    <!-- Title: Dynamically changes -->
+                    <h3 class="screen-title" id="product-mgmt-title" data-lang-key="product_management_title">Product
+                        Management</h3>
+                    <div style="width: 80px; flex-shrink: 0;"></div> <!-- Spacer -->
+                </div>
 
-                 <!-- Container for Category List View -->
-                 <div id="category-view-container" class="view-container active">
-                     <h4 data-lang-key="manage_categories_title">Manage Categories</h4>
-                     <p class="drag-hint" data-lang-key="drag_categories_hint">Drag and drop to reorder categories.</p>
-                     <div class="category-list-container scrollable-list" id="category-list-container">
-                         <!-- Draggable Category items will be loaded here by JS -->
-                     </div>
+                <!-- Container for Category List View -->
+                <div id="category-view-container" class="view-container active">
+                    <h4 data-lang-key="manage_categories_title">Manage Categories</h4>
+                    <p class="drag-hint" data-lang-key="drag_categories_hint">Drag and drop to reorder categories.</p>
+                    <div class="category-list-container scrollable-list" id="category-list-container">
+                        <!-- Draggable Category items will be loaded here by JS -->
+                    </div>
 
-                     <!-- START: Add Category Form -->
-                      <div class="add-category-form" id="add-category-form" style="border-top: var(--border-thickness) dashed var(--border-color); padding-top: 20px; margin-top: 20px;">
-                          <h5 data-lang-key="add_category_title">Add New Category</h5>
-                          <div class="form-box">
-                              <label for="new-category-name-en" data-lang-key="category_name_en_label">Category Name (English):</label>
-                              <input type="text" id="new-category-name-en" data-lang-placeholder-key="category_name_placeholder" placeholder="e.g., Breakfast">
+                    <!-- START: Add Category Form -->
+                    <div class="add-category-form" id="add-category-form"
+                        style="border-top: var(--border-thickness) dashed var(--border-color); padding-top: 20px; margin-top: 20px;">
+                        <h5 data-lang-key="add_category_title">Add New Category</h5>
+                        <div class="form-box">
+                            <label for="new-category-name-en" data-lang-key="category_name_en_label">Category Name
+                                (English):</label>
+                            <input type="text" id="new-category-name-en"
+                                data-lang-placeholder-key="category_name_placeholder" placeholder="e.g., Breakfast">
 
-                              <label for="new-category-name-ar" data-lang-key="category_name_ar_label">Category Name (Arabic):</label>
-                              <input type="text" id="new-category-name-ar" data-lang-placeholder-key="category_name_placeholder" placeholder="مثال: فطور">
-                          </div>
-                          <button class="button small-button" id="add-new-category-button">
-                              <i class="fas fa-plus-circle"></i> <span data-lang-key="add_category_button">Add Category</span>
-                          </button>
-                          <p id="add-category-error" class="error-message" data-lang-key="add_category_error_generic"></p>
-                      </div>
-                     <!-- END: Add Category Form -->
-                     
-                     <!-- Currency Management Section -->
-                     <div class="currency-divider"></div>
-                     <div class="currency-management-section">
-                         <h4 data-lang-key="currency_management_title">Currency Management</h4>
-                         <div class="form-box">
-                             <label for="currency-symbol-en" data-lang-key="currency_symbol_en_label">Currency Symbol (English):</label>
-                             <input type="text" id="currency-symbol-en" class="currency-input" data-lang-placeholder-key="currency_symbol_en_placeholder" placeholder="e.g., $, €, £, L.E, USD, EUR">
-                             
-                             <label for="currency-symbol-ar" data-lang-key="currency_symbol_ar_label">Currency Symbol (Arabic):</label>
-                             <input type="text" id="currency-symbol-ar" class="currency-input" data-lang-placeholder-key="currency_symbol_ar_placeholder" placeholder="مثال: $، €، £، ج.م، USD، EUR">
-                             
-                             <p class="currency-hint" data-lang-key="currency_customization_hint">You can use symbols ($, €, £) or currency codes (USD, EUR, GBP) or any custom text.</p>
-                             
-                             <button class="button small-button" id="update-currency-button">
-                                 <i class="fas fa-save"></i> <span data-lang-key="update_currency_button">Update Currency</span>
-                             </button>
-                         </div>
-                     </div>
+                            <label for="new-category-name-ar" data-lang-key="category_name_ar_label">Category Name
+                                (Arabic):</label>
+                            <input type="text" id="new-category-name-ar"
+                                data-lang-placeholder-key="category_name_placeholder" placeholder="مثال: فطور">
+                        </div>
+                        <button class="button small-button" id="add-new-category-button">
+                            <i class="fas fa-plus-circle"></i> <span data-lang-key="add_category_button">Add
+                                Category</span>
+                        </button>
+                        <p id="add-category-error" class="error-message" data-lang-key="add_category_error_generic"></p>
+                    </div>
+                    <!-- END: Add Category Form -->
 
-                 </div> <!-- END category-view-container -->
+                    <!-- Currency Management Section -->
+                    <div class="currency-divider"></div>
+                    <div class="currency-management-section">
+                        <h4 data-lang-key="currency_management_title">Currency Management</h4>
+                        <div class="form-box">
+                            <label for="currency-symbol-en" data-lang-key="currency_symbol_en_label">Currency Symbol
+                                (English):</label>
+                            <input type="text" id="currency-symbol-en" class="currency-input"
+                                data-lang-placeholder-key="currency_symbol_en_placeholder"
+                                placeholder="e.g., $, €, £, L.E, USD, EUR">
 
-                 <!-- Container for Product Grid View (within a category) -->
-                 <div id="product-view-container" class="view-container">
-                     <!-- Category Title will be updated by JS -->
-                     <h4 id="product-view-category-title">Category Products</h4>
-                     <p class="drag-hint" data-lang-key="drag_products_hint">Drag and drop to reorder products within this category.</p>
-                     <!-- Product Grid (User-like display) -->
-                     <div class="product-grid-container scrollable-list" id="product-grid-container">
-                         <!-- Draggable Product items will be loaded here by JS -->
-                     </div>
+                            <label for="currency-symbol-ar" data-lang-key="currency_symbol_ar_label">Currency Symbol
+                                (Arabic):</label>
+                            <input type="text" id="currency-symbol-ar" class="currency-input"
+                                data-lang-placeholder-key="currency_symbol_ar_placeholder"
+                                placeholder="مثال: $، €، £، ج.م، USD، EUR">
 
-                     <!-- Add Product Form (Now inside the product view) -->
-                     <div class="add-product-form" id="add-product-form-container" style="border-top: var(--border-thickness) dashed var(--border-color); padding-top: 20px; margin-top: 20px;">
-                         <h5 data-lang-key="add_new_product_title">Add New Product to <span id="add-product-category-name">Category</span></h5>
-                         <div class="form-box">
+                            <p class="currency-hint" data-lang-key="currency_customization_hint">You can use symbols ($,
+                                €, £) or currency codes (USD, EUR, GBP) or any custom text.</p>
+
+                            <button class="button small-button" id="update-currency-button">
+                                <i class="fas fa-save"></i> <span data-lang-key="update_currency_button">Update
+                                    Currency</span>
+                            </button>
+                        </div>
+                    </div>
+
+                </div> <!-- END category-view-container -->
+
+                <!-- Container for Product Grid View (within a category) -->
+                <div id="product-view-container" class="view-container">
+                    <!-- Category Title will be updated by JS -->
+                    <h4 id="product-view-category-title">Category Products</h4>
+                    <p class="drag-hint" data-lang-key="drag_products_hint">Drag and drop to reorder products within
+                        this category.</p>
+                    <!-- Product Grid (User-like display) -->
+                    <div class="product-grid-container scrollable-list" id="product-grid-container">
+                        <!-- Draggable Product items will be loaded here by JS -->
+                    </div>
+
+                    <!-- Add Product Form (Now inside the product view) -->
+                    <div class="add-product-form" id="add-product-form-container"
+                        style="border-top: var(--border-thickness) dashed var(--border-color); padding-top: 20px; margin-top: 20px;">
+                        <h5 data-lang-key="add_new_product_title">Add New Product to <span
+                                id="add-product-category-name">Category</span></h5>
+                        <div class="form-box">
                             <!-- START: Modified Product Inputs -->
-                            <label for="new-product-name-en" data-lang-key="product_name_en_label">Product Name (English):</label>
-                            <input type="text" id="new-product-name-en" data-lang-placeholder-key="product_name_en_placeholder" placeholder="e.g., Special Sandwich">
+                            <label for="new-product-name-en" data-lang-key="product_name_en_label">Product Name
+                                (English):</label>
+                            <input type="text" id="new-product-name-en"
+                                data-lang-placeholder-key="product_name_en_placeholder"
+                                placeholder="e.g., Special Sandwich">
 
-                            <label for="new-product-name-ar" data-lang-key="product_name_ar_label">Product Name (Arabic):</label>
-                            <input type="text" id="new-product-name-ar" data-lang-placeholder-key="product_name_ar_placeholder" placeholder="e.g., ساندويتش خاص">
+                            <label for="new-product-name-ar" data-lang-key="product_name_ar_label">Product Name
+                                (Arabic):</label>
+                            <input type="text" id="new-product-name-ar"
+                                data-lang-placeholder-key="product_name_ar_placeholder"
+                                placeholder="e.g., ساندويتش خاص">
 
-                            <label for="new-product-desc-en" data-lang-key="product_desc_en_label">Description (English):</label>
-                            <input type="text" id="new-product-desc-en" data-lang-placeholder-key="product_desc_en_placeholder" placeholder="e.g., Chicken, lettuce, tomato...">
+                            <label for="new-product-desc-en" data-lang-key="product_desc_en_label">Description
+                                (English):</label>
+                            <input type="text" id="new-product-desc-en"
+                                data-lang-placeholder-key="product_desc_en_placeholder"
+                                placeholder="e.g., Chicken, lettuce, tomato...">
 
-                            <label for="new-product-desc-ar" data-lang-key="product_desc_ar_label">Description (Arabic):</label>
-                            <input type="text" id="new-product-desc-ar" data-lang-placeholder-key="product_desc_ar_placeholder" placeholder="e.g., دجاج، خس، طماطم...">
+                            <label for="new-product-desc-ar" data-lang-key="product_desc_ar_label">Description
+                                (Arabic):</label>
+                            <input type="text" id="new-product-desc-ar"
+                                data-lang-placeholder-key="product_desc_ar_placeholder"
+                                placeholder="e.g., دجاج، خس، طماطم...">
                             <!-- END: Modified Product Inputs -->
 
                             <label for="new-product-price" data-lang-key="product_price_label">Price:</label>
-                            <input type="number" id="new-product-price" min="0" step="0.01" data-lang-placeholder-key="product_price_placeholder" placeholder="e.g., 55.50">
+                            <input type="number" id="new-product-price" min="0" step="0.01"
+                                data-lang-placeholder-key="product_price_placeholder" placeholder="e.g., 55.50">
 
-                            <label for="new-product-quantity" data-lang-key="product_quantity_label">Initial Quantity:</label>
-                            <input type="number" id="new-product-quantity" min="0" step="1" data-lang-placeholder-key="product_quantity_placeholder" placeholder="e.g., 50 (use 999 for unlimited)">
+                            <label for="new-product-quantity" data-lang-key="product_quantity_label">Initial
+                                Quantity:</label>
+                            <input type="number" id="new-product-quantity" min="0" step="1"
+                                data-lang-placeholder-key="product_quantity_placeholder"
+                                placeholder="e.g., 50 (use 999 for unlimited)">
 
                             <label for="new-product-image" data-lang-key="product_image_label">Image URL:</label>
-                            <input type="text" id="new-product-image" data-lang-placeholder-key="product_image_placeholder" placeholder="https://...">
+                            <input type="text" id="new-product-image"
+                                data-lang-placeholder-key="product_image_placeholder" placeholder="https://...">
 
                             <input type="hidden" id="new-product-category-key"> <!-- Store category key -->
 
-                            <p id="add-product-error" class="error-message" data-lang-key="add_product_error_en_ar_generic">Please fill all fields, including English and Arabic names/descriptions.</p>
+                            <p id="add-product-error" class="error-message"
+                                data-lang-key="add_product_error_en_ar_generic">Please fill all fields, including
+                                English and Arabic names/descriptions.</p>
                         </div>
-                         <button class="button small-button" id="add-new-product-button">
-                             <i class="fas fa-plus-circle"></i> <span data-lang-key="add_product_button">Add Product</span>
-                         </button>
-                     </div><!-- END add-product-form-container -->
-                 </div><!-- END product-view-container -->
+                        <button class="button small-button" id="add-new-product-button">
+                            <i class="fas fa-plus-circle"></i> <span data-lang-key="add_product_button">Add
+                                Product</span>
+                        </button>
+                    </div><!-- END add-product-form-container -->
+                </div><!-- END product-view-container -->
 
             </div> <!-- END screen-content -->
         </div> <!-- END screen-9 -->
@@ -566,41 +683,67 @@
 
     </div><!-- end app-container -->
 
-     <!-- Floating Settings Panel -->
+    <!-- Floating Settings Panel -->
     <div id="settings-panel">
         <!-- Language Section -->
         <div class="settings-group" id="language-group">
             <span class="settings-label" data-lang-key="language_setting_label">Language</span>
-            <div class="settings-current-display" id="current-language-display" tabindex="0" role="button" aria-haspopup="listbox" aria-expanded="false">
+            <div class="settings-current-display" id="current-language-display" tabindex="0" role="button"
+                aria-haspopup="listbox" aria-expanded="false">
                 <span id="current-language-text">English</span>
                 <i class="fas fa-chevron-down"></i>
             </div>
             <div class="settings-options-list language-options" id="language-options" role="listbox">
-                <div class="option-item active" data-lang="en" role="option" aria-selected="true"> <span>English</span> <i class="fas fa-check"></i> </div>
-                <div class="option-item" data-lang="ar" role="option" aria-selected="false"> <span>العربية</span> <i class="fas fa-check"></i> </div>
+                <div class="option-item active" data-lang="en" role="option" aria-selected="true"> <span>English</span>
+                    <i class="fas fa-check"></i> </div>
+                <div class="option-item" data-lang="ar" role="option" aria-selected="false"> <span>العربية</span> <i
+                        class="fas fa-check"></i> </div>
             </div>
         </div>
 
         <!-- Theme Section -->
         <div class="settings-group" id="theme-group">
             <span class="settings-label" data-lang-key="theme_setting_label">App Theme</span>
-            <div class="settings-current-display" id="current-theme-display" tabindex="0" role="button" aria-haspopup="listbox" aria-expanded="false">
+            <div class="settings-current-display" id="current-theme-display" tabindex="0" role="button"
+                aria-haspopup="listbox" aria-expanded="false">
                 <span class="theme-swatch swatch-blue" id="current-theme-swatch"></span>
                 <span id="current-theme-text">Default Blue</span>
                 <i class="fas fa-chevron-down"></i>
             </div>
             <div class="settings-options-list theme-options" id="theme-options" role="listbox">
-                 <div class="option-item active" data-theme="blue" role="option" aria-selected="true"> <span class="theme-swatch swatch-blue"></span> <span data-lang-key="theme_blue">Default Blue</span> <i class="fas fa-check"></i> </div>
-                 <div class="option-item" data-theme="green" role="option" aria-selected="false"> <span class="theme-swatch swatch-green"></span> <span data-lang-key="theme_green">Green</span> <i class="fas fa-check"></i> </div>
-                 <div class="option-item" data-theme="purple" role="option" aria-selected="false"> <span class="theme-swatch swatch-purple"></span> <span data-lang-key="theme_purple">Purple</span> <i class="fas fa-check"></i> </div>
-                 <div class="option-item" data-theme="light-blue" role="option" aria-selected="false"> <span class="theme-swatch swatch-light-blue"></span> <span data-lang-key="theme_light_blue">Light Blue</span> <i class="fas fa-check"></i> </div>
-                 <div class="option-item" data-theme="light-red" role="option" aria-selected="false"> <span class="theme-swatch swatch-light-red"></span> <span data-lang-key="theme_light_red">Light Red</span> <i class="fas fa-check"></i> </div>
-                 <div class="option-item" data-theme="mono-light" role="option" aria-selected="false"> <span class="theme-swatch swatch-mono-light"></span> <span data-lang-key="theme_mono_light">Monochrome Light</span> <i class="fas fa-check"></i> </div>
-                 <div class="option-item" data-theme="dark-grey" role="option" aria-selected="false"> <span class="theme-swatch swatch-dark-grey"></span> <span data-lang-key="theme_dark_grey">Dark Grey</span> <i class="fas fa-check"></i> </div>
-                 <div class="option-item" data-theme="night" role="option" aria-selected="false"> <span class="theme-swatch swatch-night"></span> <span data-lang-key="theme_night">Night Mode</span> <i class="fas fa-check"></i> </div>
-                 <div class="option-item" data-theme="mono-dark" role="option" aria-selected="false"> <span class="theme-swatch swatch-mono-dark"></span> <span data-lang-key="theme_mono_dark">Monochrome Dark</span> <i class="fas fa-check"></i> </div>
-                 <div class="option-item" data-theme="yellow" role="option" aria-selected="false"> <span class="theme-swatch swatch-yellow"></span> <span data-lang-key="theme_yellow">Yellow</span> <i class="fas fa-check"></i> </div>
-                 <div class="option-item" data-theme="orange" role="option" aria-selected="false"> <span class="theme-swatch swatch-orange"></span> <span data-lang-key="theme_orange">Orange</span> <i class="fas fa-check"></i> </div>
+                <div class="option-item active" data-theme="blue" role="option" aria-selected="true"> <span
+                        class="theme-swatch swatch-blue"></span> <span data-lang-key="theme_blue">Default Blue</span> <i
+                        class="fas fa-check"></i> </div>
+                <div class="option-item" data-theme="green" role="option" aria-selected="false"> <span
+                        class="theme-swatch swatch-green"></span> <span data-lang-key="theme_green">Green</span> <i
+                        class="fas fa-check"></i> </div>
+                <div class="option-item" data-theme="purple" role="option" aria-selected="false"> <span
+                        class="theme-swatch swatch-purple"></span> <span data-lang-key="theme_purple">Purple</span> <i
+                        class="fas fa-check"></i> </div>
+                <div class="option-item" data-theme="light-blue" role="option" aria-selected="false"> <span
+                        class="theme-swatch swatch-light-blue"></span> <span data-lang-key="theme_light_blue">Light
+                        Blue</span> <i class="fas fa-check"></i> </div>
+                <div class="option-item" data-theme="light-red" role="option" aria-selected="false"> <span
+                        class="theme-swatch swatch-light-red"></span> <span data-lang-key="theme_light_red">Light
+                        Red</span> <i class="fas fa-check"></i> </div>
+                <div class="option-item" data-theme="mono-light" role="option" aria-selected="false"> <span
+                        class="theme-swatch swatch-mono-light"></span> <span data-lang-key="theme_mono_light">Monochrome
+                        Light</span> <i class="fas fa-check"></i> </div>
+                <div class="option-item" data-theme="dark-grey" role="option" aria-selected="false"> <span
+                        class="theme-swatch swatch-dark-grey"></span> <span data-lang-key="theme_dark_grey">Dark
+                        Grey</span> <i class="fas fa-check"></i> </div>
+                <div class="option-item" data-theme="night" role="option" aria-selected="false"> <span
+                        class="theme-swatch swatch-night"></span> <span data-lang-key="theme_night">Night Mode</span> <i
+                        class="fas fa-check"></i> </div>
+                <div class="option-item" data-theme="mono-dark" role="option" aria-selected="false"> <span
+                        class="theme-swatch swatch-mono-dark"></span> <span data-lang-key="theme_mono_dark">Monochrome
+                        Dark</span> <i class="fas fa-check"></i> </div>
+                <div class="option-item" data-theme="yellow" role="option" aria-selected="false"> <span
+                        class="theme-swatch swatch-yellow"></span> <span data-lang-key="theme_yellow">Yellow</span> <i
+                        class="fas fa-check"></i> </div>
+                <div class="option-item" data-theme="orange" role="option" aria-selected="false"> <span
+                        class="theme-swatch swatch-orange"></span> <span data-lang-key="theme_orange">Orange</span> <i
+                        class="fas fa-check"></i> </div>
             </div>
         </div>
 
@@ -615,7 +758,8 @@
 
         <!-- About Project Button -->
         <div class="settings-group" id="about-project-group">
-            <button class="button small-button" id="about-project-button" style="width: 100%; margin-top: 10px; background-color: var(--lighter-blue-bg); border-color: var(--border-color);">
+            <button class="button small-button" id="about-project-button"
+                style="width: 100%; margin-top: 10px; background-color: var(--lighter-blue-bg); border-color: var(--border-color);">
                 <i class="fas fa-info-circle"></i> <span data-lang-key="about_project_button">About Project</span>
             </button>
         </div>
@@ -638,10 +782,13 @@
     <div id="passcode-modal-overlay" class="modal-overlay">
         <div id="passcode-modal-box" class="modal-box">
             <h3 id="passcode-modal-title" data-lang-key="discovery_passcode_modal_title">Enter Passcode</h3>
-            <input type="password" id="passcode-modal-input" data-lang-placeholder-key="discovery_passcode_prompt" placeholder="Enter Discovery Mode Passcode:">
-            <p id="passcode-modal-error" class="error-message" data-lang-key="discovery_passcode_incorrect_message">Incorrect passcode entered.</p>
+            <input type="password" id="passcode-modal-input" data-lang-placeholder-key="discovery_passcode_prompt"
+                placeholder="Enter Discovery Mode Passcode:">
+            <p id="passcode-modal-error" class="error-message" data-lang-key="discovery_passcode_incorrect_message">
+                Incorrect passcode entered.</p>
             <div class="passcode-modal-buttons">
-                <button id="passcode-modal-cancel" class="button cancel-button" data-lang-key="cancel_button">Cancel</button>
+                <button id="passcode-modal-cancel" class="button cancel-button"
+                    data-lang-key="cancel_button">Cancel</button>
                 <button id="passcode-modal-ok" class="button ok-button" data-lang-key="ok_button">OK</button>
             </div>
         </div>
@@ -670,10 +817,12 @@
                 <!-- END: Modified Product Inputs -->
 
                 <label for="edit-product-price" data-lang-key="product_price_label">Price:</label>
-                <input type="number" id="edit-product-price" min="0" step="0.01" data-lang-placeholder-key="product_price_placeholder">
+                <input type="number" id="edit-product-price" min="0" step="0.01"
+                    data-lang-placeholder-key="product_price_placeholder">
 
                 <label for="edit-product-quantity" data-lang-key="product_quantity_label">Quantity:</label>
-                <input type="number" id="edit-product-quantity" min="0" step="1" data-lang-placeholder-key="product_quantity_placeholder">
+                <input type="number" id="edit-product-quantity" min="0" step="1"
+                    data-lang-placeholder-key="product_quantity_placeholder">
 
                 <label for="edit-product-image" data-lang-key="product_image_label">Image URL:</label>
                 <input type="text" id="edit-product-image" data-lang-placeholder-key="product_image_placeholder">
@@ -684,11 +833,14 @@
                 </select>
             </div><!-- end form-box -->
 
-            <p id="edit-product-error" class="error-message" data-lang-key="edit_product_error_generic">Please fill all fields correctly.</p>
+            <p id="edit-product-error" class="error-message" data-lang-key="edit_product_error_generic">Please fill all
+                fields correctly.</p>
 
             <div class="passcode-modal-buttons"> <!-- Reusing modal button container style -->
-                <button id="edit-product-cancel" class="button cancel-button" data-lang-key="cancel_button">Cancel</button>
-                <button id="edit-product-save" class="button ok-button" data-lang-key="save_changes_button">Save</button>
+                <button id="edit-product-cancel" class="button cancel-button"
+                    data-lang-key="cancel_button">Cancel</button>
+                <button id="edit-product-save" class="button ok-button"
+                    data-lang-key="save_changes_button">Save</button>
             </div>
         </div>
     </div>
@@ -703,18 +855,23 @@
             <input type="hidden" id="edit-category-name-key">
 
             <div class="form-box" style="margin-bottom: 10px; width: 100%;">
-                <label for="edit-category-name-en" data-lang-key="category_name_en_label">Category Name (English):</label>
+                <label for="edit-category-name-en" data-lang-key="category_name_en_label">Category Name
+                    (English):</label>
                 <input type="text" id="edit-category-name-en" data-lang-placeholder-key="category_name_placeholder">
 
-                <label for="edit-category-name-ar" data-lang-key="category_name_ar_label">Category Name (Arabic):</label>
+                <label for="edit-category-name-ar" data-lang-key="category_name_ar_label">Category Name
+                    (Arabic):</label>
                 <input type="text" id="edit-category-name-ar" data-lang-placeholder-key="category_name_placeholder">
             </div>
 
-            <p id="edit-category-error" class="error-message" data-lang-key="edit_category_error_generic">Please enter names in both languages.</p>
+            <p id="edit-category-error" class="error-message" data-lang-key="edit_category_error_generic">Please enter
+                names in both languages.</p>
 
             <div class="passcode-modal-buttons"> <!-- Reusing modal button container style -->
-                <button id="edit-category-cancel" class="button cancel-button" data-lang-key="cancel_button">Cancel</button>
-                <button id="edit-category-save" class="button ok-button" data-lang-key="save_changes_button">Save</button>
+                <button id="edit-category-cancel" class="button cancel-button"
+                    data-lang-key="cancel_button">Cancel</button>
+                <button id="edit-category-save" class="button ok-button"
+                    data-lang-key="save_changes_button">Save</button>
             </div>
         </div>
     </div>
@@ -722,12 +879,15 @@
 
     <!-- START: Custom Confirmation Modal -->
     <div id="custom-confirm-modal-overlay" class="modal-overlay">
-        <div id="custom-confirm-modal-box" class="modal-box confirm-modal"> <!-- Added confirm-modal class for potential specific styling -->
+        <div id="custom-confirm-modal-box" class="modal-box confirm-modal">
+            <!-- Added confirm-modal class for potential specific styling -->
             <h3 id="custom-confirm-title" data-lang-key="confirm_action_title">Confirm Action</h3>
             <p id="custom-confirm-message"></p>
             <div class="passcode-modal-buttons"> <!-- Reuse button container style -->
-                <button id="custom-confirm-cancel-button" class="button cancel-button" data-lang-key="cancel_button">Cancel</button>
-                <button id="custom-confirm-ok-button" class="button ok-button confirm-button" data-lang-key="confirm_button">Confirm</button> <!-- Added confirm-button class -->
+                <button id="custom-confirm-cancel-button" class="button cancel-button"
+                    data-lang-key="cancel_button">Cancel</button>
+                <button id="custom-confirm-ok-button" class="button ok-button confirm-button"
+                    data-lang-key="confirm_button">Confirm</button> <!-- Added confirm-button class -->
             </div>
         </div>
     </div>
@@ -738,17 +898,19 @@
         <div id="about-project-box" class="modal-box">
             <h3 data-lang-key="about_project_title">About Project</h3>
             <div class="about-project-image-container">
-                <img src="https://i.postimg.cc/jdTC3Sq2/Whats-App-Image-2024-12-10-at-13-31-40-da111f53.jpg" alt="Project Team" class="about-project-image">
+                <img src="https://i.postimg.cc/jdTC3Sq2/Whats-App-Image-2024-12-10-at-13-31-40-da111f53.jpg"
+                    alt="Project Team" class="about-project-image">
             </div>
-            <p data-lang-key="about_project_description">This project was developed by students at EVA International School for Applied Technology: Ayad Jaber, Anwar Qasem, Dina Mahmoud, and Ahmed Mohamed.</p>
-            
+            <p data-lang-key="about_project_description">This project was developed by students at EVA International
+                School for Applied Technology: Ayad Jaber, Anwar Qasem, Dina Mahmoud, and Ahmed Mohamed.</p>
+
             <!-- Copyright Icon Button -->
             <div class="copyright-icon-container">
                 <button id="copyright-info-button" class="copyright-icon-button">
                     <i class="fas fa-copyright"></i>
                 </button>
             </div>
-            
+
             <button id="about-project-close" class="button" data-lang-key="ok_button">OK</button>
         </div>
     </div>
@@ -761,10 +923,11 @@
             <div class="copyright-content">
                 <h4 data-lang-key="copyright_info_title">Copyright Information</h4>
                 <p data-lang-key="copyright_info_text">Copyright (C) 2025 EVA International School</p>
-                
+
                 <h4 data-lang-key="license_info_title">License Information</h4>
-                <p data-lang-key="license_info_text">This project is licensed under the GNU General Public License v3.0 or later.</p>
-                
+                <p data-lang-key="license_info_text">This project is licensed under the GNU General Public License v3.0
+                    or later.</p>
+
                 <h4 data-lang-key="gpl_license_title">GNU General Public License</h4>
                 <p data-lang-key="gpl_license_text_1">
                     This program is free software: you can redistribute it and/or modify
@@ -779,7 +942,8 @@
                     GNU General Public License for more details.
                 </p>
                 <p data-lang-key="gpl_license_text_3">You should have received a copy of the GNU General Public License
-                   along with this program. If not, see <a href="https://www.gnu.org/licenses/" target="_blank">https://www.gnu.org/licenses/</a>.</p>
+                    along with this program. If not, see <a href="https://www.gnu.org/licenses/"
+                        target="_blank">https://www.gnu.org/licenses/</a>.</p>
             </div>
             <button id="copyright-close" class="button" data-lang-key="ok_button">OK</button>
         </div>
@@ -790,4 +954,5 @@
     <script src="script.js"></script>
 
 </body>
+
 </html>

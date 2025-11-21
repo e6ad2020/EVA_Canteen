@@ -7575,3 +7575,127 @@ body[data-theme="light-red"] .currency-management-section:hover {
     width: 350px !important;
   }
 }
+
+/* Cart Quantity Indicator on Preview Button */
+.cart-quantity-indicator {
+  position: absolute;
+  top: -12px;
+  right: -12px;
+  background-color: var(--remove-red);
+  /* Default fallback */
+  color: white;
+  border-radius: 50%;
+  width: 30px;
+  height: 30px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 1rem;
+  font-weight: bold;
+  box-shadow: 0 2px 5px rgba(0, 0, 0, 0.2);
+  z-index: 10;
+  transition: transform 0.2s cubic-bezier(0.175, 0.885, 0.32, 1.275), background-color 0.3s ease, color 0.3s ease, border-color 0.3s ease;
+  display: none;
+  border: 2px solid white;
+  /* Default border */
+}
+
+.cart-quantity-indicator.visible {
+  display: flex;
+  animation: popIn 0.3s cubic-bezier(0.175, 0.885, 0.32, 1.275);
+}
+
+/* --- Theme Specific Indicator Styles --- */
+
+/* Liquid Glass Effect for Light Blue & Light Red */
+body[data-theme="light-blue"] .cart-quantity-indicator,
+body[data-theme="light-red"] .cart-quantity-indicator {
+  background: rgba(255, 255, 255, 0.45);
+  backdrop-filter: blur(8px);
+  -webkit-backdrop-filter: blur(8px);
+  border: 1px solid rgba(255, 255, 255, 0.6);
+  box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
+  color: var(--text-color-dark);
+  /* Use dark text for contrast on light glass */
+}
+
+/* Specific accent colors for Liquid Glass themes */
+body[data-theme="light-blue"] .cart-quantity-indicator {
+  color: #0d47a1;
+  /* Dark Blue Text */
+  border-color: #90caf9;
+}
+
+body[data-theme="light-red"] .cart-quantity-indicator {
+  color: #b71c1c;
+  /* Dark Red Text */
+  border-color: #ef9a9a;
+}
+
+/* Green Theme */
+body[data-theme="green"] .cart-quantity-indicator {
+  background-color: var(--active-green);
+  /* Yellow/Lime */
+  color: var(--text-color-dark);
+  border-color: var(--border-color);
+}
+
+/* Purple Theme */
+body[data-theme="purple"] .cart-quantity-indicator {
+  background-color: var(--active-green);
+  /* Bright Lime */
+  color: black;
+  border-color: white;
+}
+
+/* Yellow Theme */
+body[data-theme="yellow"] .cart-quantity-indicator {
+  background-color: var(--remove-red);
+  /* Deep Orange/Red */
+  color: white;
+  border-color: var(--border-color);
+}
+
+/* Orange Theme */
+body[data-theme="orange"] .cart-quantity-indicator {
+  background-color: var(--remove-red);
+  /* Light Red */
+  color: white;
+  border-color: white;
+}
+
+/* Dark Themes (Night, Dark Grey, Mono Dark) */
+body[data-theme="night"] .cart-quantity-indicator,
+body[data-theme="dark-grey"] .cart-quantity-indicator,
+body[data-theme="mono-dark"] .cart-quantity-indicator {
+  background-color: var(--active-green);
+  color: var(--main-bg-color);
+  /* Contrast text */
+  border-color: var(--main-bg-color);
+}
+
+/* Mono Light */
+body[data-theme="mono-light"] .cart-quantity-indicator {
+  background-color: black;
+  color: white;
+  border-color: white;
+}
+
+@keyframes popIn {
+  0% {
+    transform: scale(0);
+    opacity: 0;
+  }
+
+  100% {
+    transform: scale(1);
+    opacity: 1;
+  }
+}
+
+/* Ensure button is relative for absolute positioning of indicator */
+#add-to-cart-preview-button {
+  position: relative;
+  overflow: visible;
+  /* Allow indicator to spill out */
+}
