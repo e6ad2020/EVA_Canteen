@@ -147,8 +147,16 @@ function generateOrderIdOnServer() {
         }
     });
 
-    const nextSequence = maxSequenceToday + 1;
-    const newOrderId = `ORD-${nextSequence}-${day}-${month}`;
+    let nextSequence = maxSequenceToday + 1;
+    let newOrderId = `ORD-${nextSequence}-${day}-${month}`;
+
+    // Safety Check: Ensure the generated ID doesn't already exist (handling edge cases like timezone mismatches)
+    while (allOrders.some(o => o.id === newOrderId)) {
+        console.warn(`[ID Generation] Collision detected for ${newOrderId}. Incrementing sequence to avoid duplicate.`);
+        nextSequence++;
+        newOrderId = `ORD-${nextSequence}-${day}-${month}`;
+    }
+
     console.log(`Generated Server-Side Order ID: ${newOrderId} (Max sequence today was ${maxSequenceToday})`);
     return newOrderId;
 }
