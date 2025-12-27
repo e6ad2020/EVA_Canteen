@@ -726,6 +726,62 @@ wss.on('connection', (ws, req) => {
                     }
                     break;
 
+                // --- Analytics Data Request ---
+                case 'get_analytics_data':
+                    if (clientInfo.isManagement) {
+                        console.log('Calculating analytics data...');
+                        // 1. Total Revenue (sum of all order totals)
+                        const totalRevenue = allOrders.reduce((sum, order) => sum + (order.totalAmount || 0), 0);
+
+                        // 2. Total Orders
+                        const totalOrders = allOrders.length;
+
+                        // 3. Average Order Value
+                        const avgOrderValue = totalOrders > 0 ? (totalRevenue / totalOrders) : 0;
+
+                        // 4. Top Selling Items (aggregate quantities from allOrders)
+                        const productSales = {}; // Map: productId -> { quantity, ...productData }
+
+                        allOrders.forEach(order => {
+                            if (Array.isArray(order.items)) {
+                                order.items.forEach(item => {
+                                    if (!item.isDiscount && item.id) {
+                                        if (!productSales[item.id]) {
+                                            // Initialize with product details from the order item (or lookup in baseMenuData)
+                                            // Ideally lookup in baseMenuData to get current image/name, but order item has snapshot
+                                            const productInfo = baseMenuData.find(p => p.id === item.id) || item;
+                                            productSales[item.id] = {
+                                                id: item.id,
+                                                name_key: productInfo.name_key,
+                                                image: productInfo.image,
+                                                count: 0
+                                            };
+                                        }
+                                        productSales[item.id].count += (item.quantity || 0);
+                                    }
+                                });
+                            }
+                        });
+
+                        // Convert map to array and sort by count (descending)
+                        const topSellingItems = Object.values(productSales)
+                            .sort((a, b) => b.count - a.count)
+                            .slice(0, 5); // Top 5
+
+                        const analyticsData = {
+                            totalRevenue: totalRevenue,
+                            totalOrders: totalOrders,
+                            avgOrderValue: avgOrderValue,
+                            topSellingItems: topSellingItems
+                        };
+
+                        ws.send(JSON.stringify({ type: 'analytics_data', payload: analyticsData }));
+                        console.log('Sent analytics data.');
+                    } else {
+                        console.warn('Unauthorized request for analytics data.');
+                    }
+                    break;
+
                 // --- START: Admin Actions ---
                 case 'admin_product_added':
                     // Revised to check for translations in payload

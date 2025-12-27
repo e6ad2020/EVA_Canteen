@@ -414,6 +414,13 @@ document.addEventListener('DOMContentLoaded', () => {
                             console.warn('Received invalid payload for translations_updated:', message.payload);
                         }
                         break;
+                    case 'analytics_data':
+                        if (isManagementClient) {
+                            console.log('Received analytics data:', message.payload);
+                            renderAnalytics(message.payload);
+                        }
+                        break;
+
                     case 'canteen_status_updated':
                         const previousStatus = isCanteenOpen; // Store previous status
                         isCanteenOpen = message.payload.isOpen;
@@ -816,6 +823,13 @@ document.addEventListener('DOMContentLoaded', () => {
     const addCategoryButton = document.getElementById('add-new-category-button');
     const addCategoryErrorMsg = document.getElementById('add-category-error');
 
+    // Analytics Elements
+    const gotoAnalyticsButton = document.getElementById('goto-analytics-button');
+    const analyticsTotalRevenue = document.getElementById('analytics-total-revenue');
+    const analyticsTotalOrders = document.getElementById('analytics-total-orders');
+    const analyticsAvgOrderValue = document.getElementById('analytics-avg-order-value');
+    const analyticsTopItems = document.getElementById('analytics-top-items');
+
     // Edit Category Modal Elements (NEW)
     const editCategoryModalOverlay = document.getElementById('edit-category-modal-overlay');
     const editCategoryModalBox = document.getElementById('edit-category-modal-box');
@@ -1164,7 +1178,16 @@ document.addEventListener('DOMContentLoaded', () => {
         // --- ADDED: About Project Translations ---
         about_project_button: { en: "About Project", ar: "عن المشروع" },
         about_project_title: { en: "About Project", ar: "عن المشروع" },
-        about_project_description: { en: "This project was developed by students at EVA International Applied Technology School:\n\nEyad Gaber • Anwar Qasem • Dina Mahmoud • Ahmed Mohamed", ar: "تم تطوير هذا المشروع من قبل طلاب في مدرسة إيفا الدولية للتكنولوجيا التطبيقية:\n\nإياد جابر • أنور قاسم • دينا محمود • أحمد محمد" }
+        about_project_description: { en: "This project was developed by students at EVA International Applied Technology School:\n\nEyad Gaber • Anwar Qasem • Dina Mahmoud • Ahmed Mohamed", ar: "تم تطوير هذا المشروع من قبل طلاب في مدرسة إيفا الدولية للتكنولوجيا التطبيقية:\n\nإياد جابر • أنور قاسم • دينا محمود • أحمد محمد" },
+        // --- END ADDED ---
+        // --- ADDED: Analytics Translations ---
+        analytics_button: { en: "Analytics", ar: "التحليلات" },
+        analytics_title: { en: "Analytics Dashboard", ar: "لوحة التحليلات" },
+        total_revenue_label: { en: "Total Revenue", ar: "إجمالي الإيرادات" },
+        total_orders_label: { en: "Total Orders", ar: "إجمالي الطلبات" },
+        avg_order_value_label: { en: "Avg Order Value", ar: "متوسط قيمة الطلب" },
+        top_selling_items_title: { en: "Top Selling Items", ar: "المنتجات الأكثر مبيعاً" },
+        item_sold_count: { en: "{count} sold", ar: "تم بيع {count}" }
         // --- END ADDED ---
     };
 
@@ -1579,6 +1602,9 @@ document.addEventListener('DOMContentLoaded', () => {
                     if (adminLoginErrorMsg) adminLoginErrorMsg.style.display = 'none';
                     if (adminPasswordInput) adminPasswordInput.focus(); // Focus password input
                 }
+                if (id === 'screen-11') {
+                    requestAnalyticsData(); // Request fresh data when showing analytics screen
+                }
                 if (id === 'screen-3' || id === 'screen-7' || id === 'screen-8' || id === 'screen-9') updateCartBadge();
                 if (id === 'screen-8') { populateDiscoveryMode(); }
                 if (id === 'screen-3') { updateDiscoverButtonVisibility(); }
@@ -1593,7 +1619,7 @@ document.addEventListener('DOMContentLoaded', () => {
         }
 
         // **MODIFIED**: Identify as management client when switching to relevant screens
-        if ((id === 'screen-5' || id === 'screen-9') && !isManagementClient) {
+        if ((id === 'screen-5' || id === 'screen-9' || id === 'screen-11') && !isManagementClient) {
             identifyAsManagementClient();
             // Trigger reload of orders from WebSocket if connection is open
             if (ws && ws.readyState === WebSocket.OPEN) {
@@ -1602,7 +1628,7 @@ document.addEventListener('DOMContentLoaded', () => {
             } else {
                 loadOrders(); // Fallback to localStorage if WS not ready
             }
-        } else if (id !== 'screen-5' && id !== 'screen-9') {
+        } else if (id !== 'screen-5' && id !== 'screen-9' && id !== 'screen-11') {
             isManagementClient = false; // Reset flag when leaving management screens
         }
     }
@@ -3726,6 +3752,49 @@ document.addEventListener('DOMContentLoaded', () => {
         currentCancelCallback = null;
     }
     // --- END: Custom Confirmation Modal Functions ---
+
+    // --- Analytics Functions ---
+    function requestAnalyticsData() {
+        if (ws && ws.readyState === WebSocket.OPEN && isManagementClient) {
+            console.log("Requesting analytics data...");
+            ws.send(JSON.stringify({ type: 'get_analytics_data' }));
+        } else {
+            console.warn("Cannot request analytics: WebSocket not ready or not authorized.");
+        }
+    }
+
+    function renderAnalytics(data) {
+        if (!analyticsTotalRevenue || !analyticsTotalOrders || !analyticsAvgOrderValue || !analyticsTopItems) return;
+
+        // Use formatPrice for currency values (adds symbol)
+        analyticsTotalRevenue.textContent = formatPrice(data.totalRevenue);
+        analyticsTotalOrders.textContent = data.totalOrders;
+        // Fix rounding for Average Order Value
+        analyticsAvgOrderValue.textContent = formatPrice(parseFloat(data.avgOrderValue).toFixed(2));
+
+        // Render Top Items
+        analyticsTopItems.innerHTML = '';
+        if (data.topSellingItems && data.topSellingItems.length > 0) {
+            data.topSellingItems.forEach(item => {
+                const itemEl = document.createElement('div');
+                itemEl.className = 'top-item';
+                const name = getText(item.name_key) || item.id;
+                const soldText = (getText('item_sold_count') || "{count} sold").replace('{count}', item.count);
+
+                itemEl.innerHTML = `
+                    <div class="item-rank">
+                        <img src="${item.image}" alt="${name}" onerror="this.src='https://via.placeholder.com/40x40/eee?text=Img'; this.onerror=null;">
+                        <span class="item-name">${name}</span>
+                    </div>
+                    <span class="item-count">${soldText}</span>
+                `;
+                analyticsTopItems.appendChild(itemEl);
+            });
+        } else {
+            analyticsTopItems.innerHTML = '<p style="text-align:center; color:#888;">No data available.</p>';
+        }
+    }
+    // --- End Analytics Functions ---
 
     // --- START: Config Management Functions ---
 
