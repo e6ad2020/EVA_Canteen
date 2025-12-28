@@ -4,7 +4,10 @@
     "bcrypt": "^5.1.1",
     "express": "^5.1.0",
     "jsonwebtoken": "^9.0.2",
+    "open": "^11.0.0",
     "selfsigned": "^2.4.1",
+    "sqlite": "^5.1.1",
+    "sqlite3": "^5.1.7",
     "uuid": "^11.1.0",
     "ws": "^8.18.1"
   }
