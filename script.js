@@ -830,7 +830,7 @@ document.addEventListener('DOMContentLoaded', () => {
     const analyticsAvgOrderValue = document.getElementById('analytics-avg-order-value');
     const analyticsTopItems = document.getElementById('analytics-top-items');
     const analyticsLeastItems = document.getElementById('analytics-least-items');
-    const monthlyOrdersChartCanvas = document.getElementById('monthlyOrdersChart');
+    const monthlyOrdersChartCanvas = document.getElementById('monthly-orders-chart');
     let monthlyOrdersChart;
 
     // Edit Category Modal Elements (NEW)
