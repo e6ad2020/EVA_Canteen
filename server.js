@@ -322,8 +322,9 @@ wss.on('connection', async (ws, req) => {
                         count: salesMap[p.id] || 0
                     }));
 
-                    const topSellingItems = [...productStats].sort((a, b) => b.count - a.count).slice(0, 5);
-                    const leastSellingItems = [...productStats].sort((a, b) => a.count - b.count).slice(0, 5);
+                    // Item Sales Ranking (Descending, all items)
+                    const itemSalesRanking = [...productStats]
+                        .sort((a, b) => b.count - a.count);
 
                     // 5. Daily Orders
                     const nowDaily = new Date();
@@ -344,7 +345,7 @@ wss.on('connection', async (ws, req) => {
                     dailyRows.forEach(r => dailyOrders[parseInt(r.day)] = r.count);
 
                     ws.send(JSON.stringify({ type: 'analytics_data', payload: {
-                        totalRevenue, totalOrders, avgOrderValue, topSellingItems, leastSellingItems, dailyOrders
+                        totalRevenue, totalOrders, avgOrderValue, itemSalesRanking, dailyOrders
                     }}));
                     break;
 

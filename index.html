@@ -408,17 +408,18 @@
                             data-lang-key="search_button">Search</span></button>
                 </div>
 
-                <!-- Button to go to Product Management -->
-                <button class="button small-button" id="goto-product-mgmt-button" data-target="screen-9"
-                    style="margin-top: 15px; background-color: #28a745; width: auto;">
-                    <i class="fas fa-boxes"></i> <span data-lang-key="manage_products_button">Manage Products</span>
-                </button>
-                <!-- Button to go to Analytics -->
-                <button class="button small-button" id="goto-analytics-button" data-target="screen-11"
-                    style="margin-top: 15px; background-color: #17a2b8; width: auto; margin-left: 10px;">
-                    <i class="fas fa-chart-line"></i> <span data-lang-key="analytics_button">Analytics</span>
-                </button>
-                <!-- END Buttons -->
+                <!-- Admin Dashboard Actions Container -->
+                <div class="admin-dashboard-actions">
+                    <button class="button small-button" id="goto-product-mgmt-button" data-target="screen-9"
+                        style="background-color: #28a745;">
+                        <i class="fas fa-boxes"></i> <span data-lang-key="manage_products_button">Manage Products</span>
+                    </button>
+                    <button class="button small-button" id="goto-analytics-button" data-target="screen-11"
+                        style="background-color: #17a2b8;">
+                        <i class="fas fa-chart-line"></i> <span data-lang-key="analytics_button">Analytics</span>
+                    </button>
+                </div>
+                <!-- END Admin Dashboard Actions -->
 
                 <div class="order-management-layout">
                     <div class="order-log-section">
@@ -732,15 +733,9 @@
                     </div>
 
                     <div class="analytics-lists-row">
-                        <div class="analytics-section half-width">
+                    <div class="analytics-section full-width">
                             <h4 data-lang-key="top_selling_items_title">Top Selling Items</h4>
-                            <div class="top-items-list" id="analytics-top-items">
-                                <!-- Items will be populated here -->
-                            </div>
-                        </div>
-                        <div class="analytics-section half-width">
-                            <h4 data-lang-key="least_selling_items_title">Least Selling Items</h4>
-                            <div class="top-items-list" id="analytics-least-items">
+                        <div class="top-items-list scrollable-analytics-list" id="analytics-top-items">
                                 <!-- Items will be populated here -->
                             </div>
                         </div>

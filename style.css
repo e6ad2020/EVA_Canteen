@@ -5841,14 +5841,53 @@ body[data-theme="mono-dark"] .item-count {
   gap: 20px;
 }
 
-@media (min-width: 992px) {
-  .analytics-lists-row {
-    flex-direction: row;
-  }
+.analytics-section.full-width {
+  width: 100%;
+}
 
-  .analytics-section.half-width {
-    flex: 1;
-  }
+.scrollable-analytics-list {
+  max-height: 400px;
+  overflow-y: auto;
+  padding-right: 5px; /* For scrollbar space */
+}
+
+/* Admin Dashboard Actions */
+.admin-dashboard-actions {
+  display: flex;
+  justify-content: center;
+  gap: 15px;
+  margin-top: 15px;
+  flex-wrap: wrap;
+  width: 100%;
+}
+
+.admin-dashboard-actions .button.small-button {
+  margin-top: 0;
+  width: auto;
+}
+
+/* Light Theme Contrast Fixes for Analytics */
+body[data-theme="light-blue"] .stat-card,
+body[data-theme="light-red"] .stat-card {
+  background: rgba(255, 255, 255, 0.85); /* Increased opacity */
+  border: 2px solid var(--border-color); /* Stronger border */
+}
+
+body[data-theme="light-blue"] .analytics-section,
+body[data-theme="light-red"] .analytics-section {
+  background: rgba(255, 255, 255, 0.7); /* Increased opacity */
+  border: 2px solid var(--border-color);
+}
+
+body[data-theme="light-blue"] .top-item,
+body[data-theme="light-red"] .top-item {
+  background: rgba(255, 255, 255, 0.9); /* High contrast item bg */
+  border: 1px solid rgba(0,0,0,0.1);
+}
+
+body[data-theme="light-blue"] .item-name,
+body[data-theme="light-red"] .item-name {
+  color: #000; /* Ensure dark text */
 }
 
 /* RTL Support for Analytics */

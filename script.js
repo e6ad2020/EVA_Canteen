@@ -3801,13 +3801,10 @@ document.addEventListener('DOMContentLoaded', () => {
             }
         };
 
-        // Render Top Items
-        renderList(data.topSellingItems, analyticsTopItems);
-
-        // Render Least Items
-        if (analyticsLeastItems) {
-            renderList(data.leastSellingItems, analyticsLeastItems);
-        }
+        // Render Item Sales Ranking (Merged Top/Least)
+        // Use 'itemSalesRanking' from payload, backward compatible if server sends old format
+        const fullList = data.itemSalesRanking || data.topSellingItems;
+        renderList(fullList, analyticsTopItems);
 
         // Render Chart
         if (monthlyOrdersChartCanvas && data.dailyOrders) {
