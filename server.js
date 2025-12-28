@@ -739,16 +739,27 @@ wss.on('connection', (ws, req) => {
                         // 3. Average Order Value
                         const avgOrderValue = totalOrders > 0 ? (totalRevenue / totalOrders) : 0;
 
-                        // 4. Top Selling Items (aggregate quantities from allOrders)
+                        // 4. Product Sales (aggregate quantities from allOrders)
                         const productSales = {}; // Map: productId -> { quantity, ...productData }
 
+                        // Initialize ALL products with 0 sales first (so we can find least selling items that have 0 sales)
+                        baseMenuData.forEach(prod => {
+                            productSales[prod.id] = {
+                                id: prod.id,
+                                name_key: prod.name_key,
+                                image: prod.image,
+                                count: 0
+                            };
+                        });
+
+                        // Aggregate actual sales
                         allOrders.forEach(order => {
                             if (Array.isArray(order.items)) {
                                 order.items.forEach(item => {
                                     if (!item.isDiscount && item.id) {
                                         if (!productSales[item.id]) {
-                                            // Initialize with product details from the order item (or lookup in baseMenuData)
-                                            // Ideally lookup in baseMenuData to get current image/name, but order item has snapshot
+                                            // Product might have been deleted but exists in old orders
+                                            // Initialize with product details from the order item
                                             const productInfo = baseMenuData.find(p => p.id === item.id) || item;
                                             productSales[item.id] = {
                                                 id: item.id,
@@ -763,16 +774,49 @@ wss.on('connection', (ws, req) => {
                             }
                         });
 
-                        // Convert map to array and sort by count (descending)
-                        const topSellingItems = Object.values(productSales)
+                        const productSalesArray = Object.values(productSales);
+
+                        // Top Selling Items (Descending)
+                        const topSellingItems = [...productSalesArray]
                             .sort((a, b) => b.count - a.count)
-                            .slice(0, 5); // Top 5
+                            .slice(0, 5);
+
+                        // Least Selling Items (Ascending)
+                        const leastSellingItems = [...productSalesArray]
+                            .sort((a, b) => a.count - b.count)
+                            .slice(0, 5);
+
+                        // 5. Daily Orders for Graph (Current Month)
+                        const dailyOrders = {};
+                        const now = new Date();
+                        const currentMonth = now.getMonth();
+                        const currentYear = now.getFullYear();
+
+                        // Initialize all days of current month to 0
+                        const daysInMonth = new Date(currentYear, currentMonth + 1, 0).getDate();
+                        for (let d = 1; d <= daysInMonth; d++) {
+                            dailyOrders[d] = 0;
+                        }
+
+                        allOrders.forEach(order => {
+                            if (order.timestamp) {
+                                const orderDate = new Date(order.timestamp);
+                                if (orderDate.getMonth() === currentMonth && orderDate.getFullYear() === currentYear) {
+                                    const day = orderDate.getDate();
+                                    if (dailyOrders[day] !== undefined) {
+                                        dailyOrders[day]++;
+                                    }
+                                }
+                            }
+                        });
 
                         const analyticsData = {
                             totalRevenue: totalRevenue,
                             totalOrders: totalOrders,
                             avgOrderValue: avgOrderValue,
-                            topSellingItems: topSellingItems
+                            topSellingItems: topSellingItems,
+                            leastSellingItems: leastSellingItems,
+                            dailyOrders: dailyOrders
                         };
 
                         ws.send(JSON.stringify({ type: 'analytics_data', payload: analyticsData }));

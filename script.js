@@ -829,6 +829,9 @@ document.addEventListener('DOMContentLoaded', () => {
     const analyticsTotalOrders = document.getElementById('analytics-total-orders');
     const analyticsAvgOrderValue = document.getElementById('analytics-avg-order-value');
     const analyticsTopItems = document.getElementById('analytics-top-items');
+    const analyticsLeastItems = document.getElementById('analytics-least-items');
+    const monthlyOrdersChartCanvas = document.getElementById('monthlyOrdersChart');
+    let monthlyOrdersChart;
 
     // Edit Category Modal Elements (NEW)
     const editCategoryModalOverlay = document.getElementById('edit-category-modal-overlay');
@@ -1187,6 +1190,8 @@ document.addEventListener('DOMContentLoaded', () => {
         total_orders_label: { en: "Total Orders", ar: "إجمالي الطلبات" },
         avg_order_value_label: { en: "Avg Order Value", ar: "متوسط قيمة الطلب" },
         top_selling_items_title: { en: "Top Selling Items", ar: "المنتجات الأكثر مبيعاً" },
+        least_selling_items_title: { en: "Least Selling Items", ar: "المنتجات الأقل مبيعاً" },
+        monthly_orders_chart_title: { en: "Orders this Month", ar: "طلبات هذا الشهر" },
         item_sold_count: { en: "{count} sold", ar: "تم بيع {count}" }
         // --- END ADDED ---
     };
@@ -3772,27 +3777,112 @@ document.addEventListener('DOMContentLoaded', () => {
         // Fix rounding for Average Order Value
         analyticsAvgOrderValue.textContent = formatPrice(parseFloat(data.avgOrderValue).toFixed(2));
 
-        // Render Top Items
-        analyticsTopItems.innerHTML = '';
-        if (data.topSellingItems && data.topSellingItems.length > 0) {
-            data.topSellingItems.forEach(item => {
-                const itemEl = document.createElement('div');
-                itemEl.className = 'top-item';
-                const name = getText(item.name_key) || item.id;
-                const soldText = (getText('item_sold_count') || "{count} sold").replace('{count}', item.count);
+        // Helper to render items list
+        const renderList = (items, container) => {
+            container.innerHTML = '';
+            if (items && items.length > 0) {
+                items.forEach(item => {
+                    const itemEl = document.createElement('div');
+                    itemEl.className = 'top-item';
+                    const name = getText(item.name_key) || item.id;
+                    const soldText = (getText('item_sold_count') || "{count} sold").replace('{count}', item.count);
 
-                itemEl.innerHTML = `
-                    <div class="item-rank">
-                        <img src="${item.image}" alt="${name}" onerror="this.src='https://via.placeholder.com/40x40/eee?text=Img'; this.onerror=null;">
-                        <span class="item-name">${name}</span>
-                    </div>
-                    <span class="item-count">${soldText}</span>
-                `;
-                analyticsTopItems.appendChild(itemEl);
-            });
-        } else {
-            analyticsTopItems.innerHTML = '<p style="text-align:center; color:#888;">No data available.</p>';
+                    itemEl.innerHTML = `
+                        <div class="item-rank">
+                            <img src="${item.image}" alt="${name}" onerror="this.src='https://via.placeholder.com/40x40/eee?text=Img'; this.onerror=null;">
+                            <span class="item-name">${name}</span>
+                        </div>
+                        <span class="item-count">${soldText}</span>
+                    `;
+                    container.appendChild(itemEl);
+                });
+            } else {
+                container.innerHTML = '<p style="text-align:center; color:#888;">No data available.</p>';
+            }
+        };
+
+        // Render Top Items
+        renderList(data.topSellingItems, analyticsTopItems);
+
+        // Render Least Items
+        if (analyticsLeastItems) {
+            renderList(data.leastSellingItems, analyticsLeastItems);
         }
+
+        // Render Chart
+        if (monthlyOrdersChartCanvas && data.dailyOrders) {
+            renderMonthlyChart(data.dailyOrders);
+        }
+    }
+
+    function renderMonthlyChart(dailyData) {
+        const ctx = monthlyOrdersChartCanvas.getContext('2d');
+        const days = Object.keys(dailyData);
+        const counts = Object.values(dailyData);
+
+        if (monthlyOrdersChart) {
+            monthlyOrdersChart.destroy();
+        }
+
+        const isDarkTheme = ['dark-grey', 'night', 'mono-dark'].includes(currentTheme);
+        const gridColor = isDarkTheme ? 'rgba(255, 255, 255, 0.1)' : 'rgba(0, 0, 0, 0.1)';
+        const textColor = isDarkTheme ? '#eee' : '#333';
+
+        monthlyOrdersChart = new Chart(ctx, {
+            type: 'line',
+            data: {
+                labels: days,
+                datasets: [{
+                    label: getText('total_orders_label'),
+                    data: counts,
+                    borderColor: '#ffffff', // White for better contrast
+                    backgroundColor: 'rgba(255, 255, 255, 0.2)',
+                    borderWidth: 2,
+                    pointBackgroundColor: '#ffffff',
+                    pointBorderColor: '#ffffff',
+                    pointRadius: 3,
+                    pointHoverRadius: 5,
+                    fill: true,
+                    tension: 0.4
+                }]
+            },
+            options: {
+                responsive: true,
+                maintainAspectRatio: false,
+                plugins: {
+                    legend: {
+                        display: false
+                    },
+                    tooltip: {
+                        mode: 'index',
+                        intersect: false,
+                        backgroundColor: 'rgba(0, 0, 0, 0.8)',
+                        titleColor: '#fff',
+                        bodyColor: '#fff'
+                    }
+                },
+                scales: {
+                    x: {
+                        grid: {
+                            color: 'rgba(255, 255, 255, 0.1)'
+                        },
+                        ticks: {
+                            color: '#fff'
+                        }
+                    },
+                    y: {
+                        beginAtZero: true,
+                        grid: {
+                            color: 'rgba(255, 255, 255, 0.1)'
+                        },
+                        ticks: {
+                            stepSize: 1,
+                            color: '#fff'
+                        }
+                    }
+                }
+            }
+        });
     }
     // --- End Analytics Functions ---
 

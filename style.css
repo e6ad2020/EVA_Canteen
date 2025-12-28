@@ -5627,8 +5627,15 @@ body[data-theme="mono-dark"] #screen-10 .order-log-section h4 {
 
 .stats-cards-container {
   display: grid;
-  grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
-  gap: 15px;
+  grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
+  gap: 20px;
+}
+
+@media (min-width: 992px) {
+  .stats-cards-container {
+    grid-template-columns: repeat(3, 1fr);
+    /* Force 3 columns on large screens */
+  }
 }
 
 .stat-card {
@@ -5820,6 +5827,30 @@ body[data-theme="mono-dark"] .item-count {
   color: var(--text-color-light);
 }
 
+/* Chart Styles */
+.analytics-chart-section .chart-container {
+  position: relative;
+  height: 300px;
+  width: 100%;
+}
+
+/* Analytics Lists Layout */
+.analytics-lists-row {
+  display: flex;
+  flex-direction: column;
+  gap: 20px;
+}
+
+@media (min-width: 992px) {
+  .analytics-lists-row {
+    flex-direction: row;
+  }
+
+  .analytics-section.half-width {
+    flex: 1;
+  }
+}
+
 /* RTL Support for Analytics */
 html[lang="ar"] .stat-info h4 {
   text-align: right;
@@ -5831,6 +5862,16 @@ html[lang="ar"] .analytics-section h4 {
 
 html[lang="ar"] .item-rank {
   flex-direction: row; /* Ensure image and name order */
+}
+
+html[lang="ar"] .analytics-lists-row {
+  flex-direction: column;
+}
+
+@media (min-width: 992px) {
+  html[lang="ar"] .analytics-lists-row {
+    flex-direction: row-reverse;
+  }
 }
 
 #screen-10 .order-log-section h4 {
