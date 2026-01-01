@@ -411,11 +411,11 @@
                 <!-- Admin Dashboard Actions Container -->
                 <div class="admin-dashboard-actions">
                     <button class="button small-button" id="goto-product-mgmt-button" data-target="screen-9"
-                        style="background-color: #28a745;">
+                        style="background-color: #28a745; color: white;">
                         <i class="fas fa-boxes"></i> <span data-lang-key="manage_products_button">Manage Products</span>
                     </button>
                     <button class="button small-button" id="goto-analytics-button" data-target="screen-11"
-                        style="background-color: #17a2b8;">
+                        style="background-color: #17a2b8; color: white;">
                         <i class="fas fa-chart-line"></i> <span data-lang-key="analytics_button">Analytics</span>
                     </button>
                 </div>
@@ -694,10 +694,25 @@
             <div class="screen-content management-container">
                 <div class="header">
                     <button class="header-button back-button" data-target="screen-5">
-                        <i class="fas fa-arrow-left"></i> <span data-lang-key="back_to_orders_button">Back to Orders</span>
+                        <i class="fas fa-arrow-left"></i> <span data-lang-key="back_to_orders_button">Back to
+                            Orders</span>
                     </button>
                     <h3 class="screen-title" data-lang-key="analytics_title">Analytics</h3>
                     <div style="width: 80px; flex-shrink: 0;"></div> <!-- Spacer -->
+                </div>
+
+                <!-- Date Filter Navigation -->
+                <div class="analytics-nav-bar" id="analytics-nav-bar">
+                    <div class="analytics-period-selector">
+                        <button class="analytics-period-btn" id="analytics-period-btn">
+                            <i class="fas fa-calendar-alt"></i>
+                            <span id="analytics-period-label" data-lang-key="analytics_this_month">This Month</span>
+                            <i class="fas fa-chevron-down dropdown-arrow"></i>
+                        </button>
+                        <div class="analytics-unified-dropdown" id="analytics-unified-dropdown">
+                            <!-- Will be populated dynamically with Current Month + year sections -->
+                        </div>
+                    </div>
                 </div>
 
                 <div class="analytics-dashboard">
@@ -733,9 +748,9 @@
                     </div>
 
                     <div class="analytics-lists-row">
-                    <div class="analytics-section full-width">
+                        <div class="analytics-section full-width">
                             <h4 data-lang-key="top_selling_items_title">Top Selling Items</h4>
-                        <div class="top-items-list scrollable-analytics-list" id="analytics-top-items">
+                            <div class="top-items-list scrollable-analytics-list" id="analytics-top-items">
                                 <!-- Items will be populated here -->
                             </div>
                         </div>
@@ -759,7 +774,8 @@
             </div>
             <div class="settings-options-list language-options" id="language-options" role="listbox">
                 <div class="option-item active" data-lang="en" role="option" aria-selected="true"> <span>English</span>
-                    <i class="fas fa-check"></i> </div>
+                    <i class="fas fa-check"></i>
+                </div>
                 <div class="option-item" data-lang="ar" role="option" aria-selected="false"> <span>العربية</span> <i
                         class="fas fa-check"></i> </div>
             </div>

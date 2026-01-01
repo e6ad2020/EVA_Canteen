@@ -417,6 +417,17 @@ document.addEventListener('DOMContentLoaded', () => {
                     case 'analytics_data':
                         if (isManagementClient) {
                             console.log('Received analytics data:', message.payload);
+                            // Update year dropdown with available years from server
+                            if (message.payload.availableYears && message.payload.availableYears.length > 0) {
+                                populateAnalyticsYears(message.payload.availableYears);
+                            }
+                            // Update selected values to match server response
+                            if (message.payload.selectedMonth) {
+                                analyticsSelectedMonth = message.payload.selectedMonth;
+                            }
+                            if (message.payload.selectedYear) {
+                                analyticsSelectedYear = message.payload.selectedYear;
+                            }
                             renderAnalytics(message.payload);
                         }
                         break;
@@ -833,6 +844,16 @@ document.addEventListener('DOMContentLoaded', () => {
     const monthlyOrdersChartCanvas = document.getElementById('monthly-orders-chart');
     let monthlyOrdersChart;
 
+    // Analytics Unified Dropdown Elements
+    const analyticsPeriodBtn = document.getElementById('analytics-period-btn');
+    const analyticsPeriodLabel = document.getElementById('analytics-period-label');
+    const analyticsUnifiedDropdown = document.getElementById('analytics-unified-dropdown');
+    let analyticsSelectedMonth = new Date().getMonth() + 1; // 1-12
+    let analyticsSelectedYear = new Date().getFullYear();
+    let analyticsAvailableYears = []; // Will be populated from server
+    let analyticsDropdownInitialized = false;
+
+
     // Edit Category Modal Elements (NEW)
     const editCategoryModalOverlay = document.getElementById('edit-category-modal-overlay');
     const editCategoryModalBox = document.getElementById('edit-category-modal-box');
@@ -1192,7 +1213,24 @@ document.addEventListener('DOMContentLoaded', () => {
         top_selling_items_title: { en: "Top Selling Items", ar: "المنتجات الأكثر مبيعاً" },
         least_selling_items_title: { en: "Least Selling Items", ar: "المنتجات الأقل مبيعاً" },
         monthly_orders_chart_title: { en: "Orders this Month", ar: "طلبات هذا الشهر" },
-        item_sold_count: { en: "{count} sold", ar: "تم بيع {count}" }
+        item_sold_count: { en: "{count} sold", ar: "تم بيع {count}" },
+        // --- Analytics Date Filter Translations ---
+        analytics_this_month: { en: "This Month", ar: "هذا الشهر" },
+        analytics_months: { en: "Months", ar: "الشهور" },
+        analytics_last_year: { en: "Last Year", ar: "العام الماضي" },
+        month_january: { en: "January", ar: "يناير" },
+        month_february: { en: "February", ar: "فبراير" },
+        month_march: { en: "March", ar: "مارس" },
+        month_april: { en: "April", ar: "أبريل" },
+        month_may: { en: "May", ar: "مايو" },
+        month_june: { en: "June", ar: "يونيو" },
+        month_july: { en: "July", ar: "يوليو" },
+        month_august: { en: "August", ar: "أغسطس" },
+        month_september: { en: "September", ar: "سبتمبر" },
+        month_october: { en: "October", ar: "أكتوبر" },
+        month_november: { en: "November", ar: "نوفمبر" },
+        month_december: { en: "December", ar: "ديسمبر" },
+        analytics_no_data: { en: "No data available for this period", ar: "لا توجد بيانات لهذه الفترة" }
         // --- END ADDED ---
     };
 
@@ -1608,6 +1646,7 @@ document.addEventListener('DOMContentLoaded', () => {
                     if (adminPasswordInput) adminPasswordInput.focus(); // Focus password input
                 }
                 if (id === 'screen-11') {
+                    initAnalyticsDateFilters(); // Initialize date filter dropdowns
                     requestAnalyticsData(); // Request fresh data when showing analytics screen
                 }
                 if (id === 'screen-3' || id === 'screen-7' || id === 'screen-8' || id === 'screen-9') updateCartBadge();
@@ -3759,14 +3798,191 @@ document.addEventListener('DOMContentLoaded', () => {
     // --- END: Custom Confirmation Modal Functions ---
 
     // --- Analytics Functions ---
-    function requestAnalyticsData() {
+    function requestAnalyticsData(month = null, year = null) {
         if (ws && ws.readyState === WebSocket.OPEN && isManagementClient) {
-            console.log("Requesting analytics data...");
-            ws.send(JSON.stringify({ type: 'get_analytics_data' }));
+            const targetMonth = month || analyticsSelectedMonth;
+            const targetYear = year || analyticsSelectedYear;
+            console.log(`Requesting analytics data for ${targetMonth}/${targetYear}...`);
+            ws.send(JSON.stringify({
+                type: 'get_analytics_data',
+                payload: { month: targetMonth, year: targetYear }
+            }));
         } else {
             console.warn("Cannot request analytics: WebSocket not ready or not authorized.");
         }
     }
+
+    // Initialize unified analytics dropdown
+    function initAnalyticsDateFilters() {
+        if (analyticsDropdownInitialized) return;
+
+        if (!analyticsPeriodBtn || !analyticsUnifiedDropdown) {
+            console.log('[Analytics] Dropdown elements not found');
+            return;
+        }
+
+        // Toggle dropdown on button click
+        analyticsPeriodBtn.onclick = (e) => {
+            e.stopPropagation();
+            toggleUnifiedDropdown();
+        };
+
+        // Close dropdown when clicking outside
+        document.addEventListener('click', (e) => {
+            if (!e.target.closest('.analytics-period-selector')) {
+                closeUnifiedDropdown();
+            }
+        });
+
+        analyticsDropdownInitialized = true;
+        console.log('[Analytics] Unified dropdown initialized');
+    }
+
+    function populateUnifiedDropdown() {
+        if (!analyticsUnifiedDropdown) return;
+
+        const monthNames = [
+            'month_january', 'month_february', 'month_march', 'month_april',
+            'month_may', 'month_june', 'month_july', 'month_august',
+            'month_september', 'month_october', 'month_november', 'month_december'
+        ];
+
+        const currentDate = new Date();
+        const currentMonth = currentDate.getMonth() + 1;
+        const currentYear = currentDate.getFullYear();
+
+        analyticsUnifiedDropdown.innerHTML = '';
+
+        // 1. Add "Current Month" special item
+        const currentMonthDiv = document.createElement('div');
+        currentMonthDiv.className = 'dropdown-current-month';
+
+        // Check if current month is the one selected
+        if (analyticsSelectedMonth === currentMonth && analyticsSelectedYear === currentYear) {
+            currentMonthDiv.classList.add('selected');
+        }
+
+        currentMonthDiv.innerHTML = `<i class="fas fa-star"></i><span>${getText('analytics_this_month') || 'This Month'}</span>`;
+        currentMonthDiv.onclick = (e) => {
+            e.stopPropagation();
+            selectPeriod(currentMonth, currentYear, getText('analytics_this_month') || 'This Month', true);
+        };
+        analyticsUnifiedDropdown.appendChild(currentMonthDiv);
+
+        // 2. Get years to display (from availableYears or default to current + 1 previous)
+        let yearsToShow = analyticsAvailableYears.length > 0
+            ? [...analyticsAvailableYears].sort((a, b) => b - a)
+            : [currentYear, currentYear - 1];
+
+        // 3. Add sections for each year (descending order)
+        yearsToShow.forEach(year => {
+            // Determine which months to show for this year (descending)
+            let monthsToShow = [];
+
+            if (year === currentYear) {
+                // For current year: show from current month down to January
+                for (let m = currentMonth; m >= 1; m--) {
+                    monthsToShow.push(m);
+                }
+            } else {
+                // For past years: show all 12 months in descending order (Dec -> Jan)
+                for (let m = 12; m >= 1; m--) {
+                    monthsToShow.push(m);
+                }
+            }
+
+            // Skip if no months to show
+            if (monthsToShow.length === 0) return;
+
+            // Year header
+            const yearHeader = document.createElement('div');
+            yearHeader.className = 'dropdown-year-header';
+            yearHeader.textContent = year;
+            analyticsUnifiedDropdown.appendChild(yearHeader);
+
+            // Months for this year (descending order)
+            monthsToShow.forEach(monthNum => {
+                const key = monthNames[monthNum - 1];
+                const div = document.createElement('div');
+                div.className = 'analytics-month-option';
+
+                // Add selected class if this is the active selection
+                if (analyticsSelectedMonth === monthNum && analyticsSelectedYear === year) {
+                    div.classList.add('selected');
+                }
+
+                // Month number badge
+                const numSpan = document.createElement('span');
+                numSpan.className = 'month-number';
+                numSpan.textContent = monthNum;
+                div.appendChild(numSpan);
+
+                // Month name
+                const nameSpan = document.createElement('span');
+                nameSpan.textContent = getText(key) || key;
+                div.appendChild(nameSpan);
+
+                div.onclick = (e) => {
+                    e.stopPropagation();
+                    const label = `${getText(key) || key} ${year}`;
+                    selectPeriod(monthNum, year, label, false);
+                };
+
+                analyticsUnifiedDropdown.appendChild(div);
+            });
+        });
+    }
+
+    function toggleUnifiedDropdown() {
+        if (!analyticsUnifiedDropdown) return;
+
+        const isVisible = analyticsUnifiedDropdown.classList.contains('visible');
+
+        if (isVisible) {
+            closeUnifiedDropdown();
+        } else {
+            // Populate dropdown content each time (for language updates)
+            populateUnifiedDropdown();
+            analyticsUnifiedDropdown.classList.add('visible');
+            analyticsPeriodBtn.classList.add('open');
+        }
+    }
+
+    function closeUnifiedDropdown() {
+        if (analyticsUnifiedDropdown) {
+            analyticsUnifiedDropdown.classList.remove('visible');
+        }
+        if (analyticsPeriodBtn) {
+            analyticsPeriodBtn.classList.remove('open');
+        }
+    }
+
+    function selectPeriod(month, year, label, isDefaultMonth = false) {
+        analyticsSelectedMonth = month;
+        analyticsSelectedYear = year;
+
+        // Update button label and handle translation key
+        if (analyticsPeriodLabel) {
+            analyticsPeriodLabel.textContent = label;
+
+            if (isDefaultMonth) {
+                // If it's "This Month", re-attach the lang key so it translates automatically
+                analyticsPeriodLabel.setAttribute('data-lang-key', 'analytics_this_month');
+            } else {
+                // If it's a specific month/year, remove lang key to prevent reset on language change
+                analyticsPeriodLabel.removeAttribute('data-lang-key');
+            }
+        }
+
+        closeUnifiedDropdown();
+        requestAnalyticsData(month, year);
+    }
+
+    // Populate year options from server response
+    function populateAnalyticsYears(availableYears = []) {
+        analyticsAvailableYears = availableYears;
+    }
+
 
     function renderAnalytics(data) {
         if (!analyticsTotalRevenue || !analyticsTotalOrders || !analyticsAvgOrderValue || !analyticsTopItems) return;
@@ -3822,8 +4038,24 @@ document.addEventListener('DOMContentLoaded', () => {
         }
 
         const isDarkTheme = ['dark-grey', 'night', 'mono-dark'].includes(currentTheme);
+
+        // Determine chart colors based on theme
+        let chartColor = '#ffffff'; // Default white
+        let chartFillColor = 'rgba(255, 255, 255, 0.2)';
+
+        if (currentTheme === 'light-blue') {
+            chartColor = '#0D47A1'; // Blue theme color
+            chartFillColor = 'rgba(13, 71, 161, 0.2)';
+        } else if (currentTheme === 'light-red') {
+            chartColor = '#B71C1C'; // Red theme color
+            chartFillColor = 'rgba(183, 28, 28, 0.2)';
+        } else if (currentTheme === 'mono-light') {
+            chartColor = '#333333'; // Dark grey/Black for mono-light
+            chartFillColor = 'rgba(0, 0, 0, 0.1)';
+        }
+
         const gridColor = isDarkTheme ? 'rgba(255, 255, 255, 0.1)' : 'rgba(0, 0, 0, 0.1)';
-        const textColor = isDarkTheme ? '#eee' : '#333';
+        const axisColor = isDarkTheme ? '#ffffff' : '#333333';
 
         monthlyOrdersChart = new Chart(ctx, {
             type: 'line',
@@ -3832,11 +4064,11 @@ document.addEventListener('DOMContentLoaded', () => {
                 datasets: [{
                     label: getText('total_orders_label'),
                     data: counts,
-                    borderColor: '#ffffff', // White for better contrast
-                    backgroundColor: 'rgba(255, 255, 255, 0.2)',
+                    borderColor: chartColor,
+                    backgroundColor: chartFillColor,
                     borderWidth: 2,
-                    pointBackgroundColor: '#ffffff',
-                    pointBorderColor: '#ffffff',
+                    pointBackgroundColor: chartColor,
+                    pointBorderColor: chartColor,
                     pointRadius: 3,
                     pointHoverRadius: 5,
                     fill: true,
@@ -3861,20 +4093,20 @@ document.addEventListener('DOMContentLoaded', () => {
                 scales: {
                     x: {
                         grid: {
-                            color: 'rgba(255, 255, 255, 0.1)'
+                            color: gridColor
                         },
                         ticks: {
-                            color: '#fff'
+                            color: axisColor
                         }
                     },
                     y: {
                         beginAtZero: true,
                         grid: {
-                            color: 'rgba(255, 255, 255, 0.1)'
+                            color: gridColor
                         },
                         ticks: {
                             stepSize: 1,
-                            color: '#fff'
+                            color: axisColor
                         }
                     }
                 }

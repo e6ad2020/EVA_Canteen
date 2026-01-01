@@ -289,28 +289,41 @@ wss.on('connection', async (ws, req) => {
                 case 'get_analytics_data':
                     if (!clientInfo.isManagement) break;
 
-                    // 1. Revenue
-                    const revRow = await db.get('SELECT SUM(total_amount) as total FROM orders');
-                    const totalRevenue = revRow.total || 0;
+                    // Get month/year from payload (default to current month/year)
+                    const { month: reqMonth, year: reqYear } = parsedMessage.payload || {};
+                    const nowDaily = new Date();
+                    const targetMonth = reqMonth || (nowDaily.getMonth() + 1);
+                    const targetYear = reqYear || nowDaily.getFullYear();
+                    const monthStr = String(targetMonth).padStart(2, '0');
+                    const yearMonthFilter = `${targetYear}-${monthStr}`;
 
-                    // 2. Total Orders
-                    const countRow = await db.get('SELECT COUNT(*) as count FROM orders');
-                    const totalOrders = countRow.count || 0;
+                    // 1. Revenue (filtered by month/year)
+                    const revRow = await db.get(
+                        `SELECT SUM(total_amount) as total FROM orders WHERE strftime('%Y-%m', timestamp) = ?`,
+                        [yearMonthFilter]
+                    );
+                    const totalRevenue = revRow?.total || 0;
+
+                    // 2. Total Orders (filtered by month/year)
+                    const countRow = await db.get(
+                        `SELECT COUNT(*) as count FROM orders WHERE strftime('%Y-%m', timestamp) = ?`,
+                        [yearMonthFilter]
+                    );
+                    const totalOrders = countRow?.count || 0;
 
                     // 3. Avg Value
                     const avgOrderValue = totalOrders > 0 ? totalRevenue / totalOrders : 0;
 
-                    // 4. Product Sales (Top/Least)
-                    // We need all products first to include those with 0 sales
+                    // 4. Product Sales (filtered by month/year)
                     const allProds = await db.query('SELECT id, name_key, image FROM products');
 
-                    // Get sales counts
                     const salesRows = await db.query(`
-                        SELECT product_id, SUM(quantity) as sold
-                        FROM order_items
-                        WHERE is_discount = 0
-                        GROUP BY product_id
-                    `);
+                        SELECT oi.product_id, SUM(oi.quantity) as sold
+                        FROM order_items oi
+                        JOIN orders o ON oi.order_id = o.id
+                        WHERE oi.is_discount = 0 AND strftime('%Y-%m', o.timestamp) = ?
+                        GROUP BY oi.product_id
+                    `, [yearMonthFilter]);
 
                     const salesMap = {};
                     salesRows.forEach(r => salesMap[r.product_id] = r.sold);
@@ -326,27 +339,31 @@ wss.on('connection', async (ws, req) => {
                     const itemSalesRanking = [...productStats]
                         .sort((a, b) => b.count - a.count);
 
-                    // 5. Daily Orders
-                    const nowDaily = new Date();
-                    const monthStr = String(nowDaily.getMonth() + 1).padStart(2, '0');
-                    const yearStr = nowDaily.getFullYear();
-                    // SQLite strftime('%m', timestamp) ...
-
+                    // 5. Daily Orders for the selected month
                     const dailyRows = await db.query(`
                         SELECT strftime('%d', timestamp) as day, COUNT(*) as count
                         FROM orders
                         WHERE strftime('%Y-%m', timestamp) = ?
                         GROUP BY day
-                    `, [`${yearStr}-${monthStr}`]);
+                    `, [yearMonthFilter]);
 
                     const dailyOrders = {};
-                    const daysInMonth = new Date(yearStr, nowDaily.getMonth() + 1, 0).getDate();
-                    for(let d=1; d<=daysInMonth; d++) dailyOrders[d] = 0;
+                    const daysInMonth = new Date(targetYear, targetMonth, 0).getDate();
+                    for (let d = 1; d <= daysInMonth; d++) dailyOrders[d] = 0;
                     dailyRows.forEach(r => dailyOrders[parseInt(r.day)] = r.count);
 
-                    ws.send(JSON.stringify({ type: 'analytics_data', payload: {
-                        totalRevenue, totalOrders, avgOrderValue, itemSalesRanking, dailyOrders
-                    }}));
+                    // 6. Get available years from orders
+                    const yearsRows = await db.query(`
+                        SELECT DISTINCT strftime('%Y', timestamp) as year FROM orders ORDER BY year DESC
+                    `);
+                    const availableYears = yearsRows.map(r => parseInt(r.year)).filter(y => !isNaN(y));
+
+                    ws.send(JSON.stringify({
+                        type: 'analytics_data', payload: {
+                            totalRevenue, totalOrders, avgOrderValue, itemSalesRanking, dailyOrders,
+                            selectedMonth: targetMonth, selectedYear: targetYear, availableYears
+                        }
+                    }));
                     break;
 
                 case 'verify_discovery_passcode':
@@ -360,7 +377,7 @@ wss.on('connection', async (ws, req) => {
 
                 // --- Admin CRUD Handlers (Simplified) ---
                 case 'admin_product_added':
-                    if(!clientInfo.isManagement) break;
+                    if (!clientInfo.isManagement) break;
                     const { product, categoryKey, translations: newTrans } = parsedMessage.payload;
 
                     await db.run(
@@ -368,13 +385,13 @@ wss.on('connection', async (ws, req) => {
                         [product.id, product.name_key, product.description_key, product.price, product.quantity, product.image, categoryKey]
                     );
 
-                    if(newTrans) await updateTranslations(newTrans);
+                    if (newTrans) await updateTranslations(newTrans);
 
                     await broadcastFullData();
                     break;
 
                 case 'admin_product_updated':
-                    if(!clientInfo.isManagement) break;
+                    if (!clientInfo.isManagement) break;
                     const { productId, updatedFields } = parsedMessage.payload;
 
                     await db.run(
@@ -384,21 +401,21 @@ wss.on('connection', async (ws, req) => {
 
                     // Handle translation updates
                     const updates = {};
-                    if(updatedFields.name_key) updates[updatedFields.name_key] = {en: updatedFields.name_en, ar: updatedFields.name_ar};
-                    if(updatedFields.description_key) updates[updatedFields.description_key] = {en: updatedFields.description_en, ar: updatedFields.description_ar};
-                    if(Object.keys(updates).length > 0) await updateTranslations(updates);
+                    if (updatedFields.name_key) updates[updatedFields.name_key] = { en: updatedFields.name_en, ar: updatedFields.name_ar };
+                    if (updatedFields.description_key) updates[updatedFields.description_key] = { en: updatedFields.description_en, ar: updatedFields.description_ar };
+                    if (Object.keys(updates).length > 0) await updateTranslations(updates);
 
                     await broadcastFullData();
                     break;
 
                 case 'admin_product_removed':
-                    if(!clientInfo.isManagement) break;
+                    if (!clientInfo.isManagement) break;
                     await db.run('DELETE FROM products WHERE id = ?', [parsedMessage.payload.productId]);
                     await broadcastFullData();
                     break;
 
                 case 'admin_category_added':
-                    if(!clientInfo.isManagement) break;
+                    if (!clientInfo.isManagement) break;
                     const { category: cat, translations: catTrans } = parsedMessage.payload;
 
                     // Get next order
@@ -409,12 +426,12 @@ wss.on('connection', async (ws, req) => {
                         `INSERT INTO categories (key, name_key, display_order) VALUES (?, ?, ?)`,
                         [cat.key, cat.name_key, nextOrder]
                     );
-                    if(catTrans) await updateTranslations(catTrans);
+                    if (catTrans) await updateTranslations(catTrans);
                     await broadcastFullData();
                     break;
 
                 case 'admin_category_deleted':
-                    if(!clientInfo.isManagement) break;
+                    if (!clientInfo.isManagement) break;
                     // Check if empty
                     const countP = await db.get('SELECT COUNT(*) as c FROM products WHERE category_key = ?', [parsedMessage.payload.categoryKey]);
                     if (countP.c > 0) break; // Reject
@@ -424,14 +441,14 @@ wss.on('connection', async (ws, req) => {
                     break;
 
                 case 'admin_set_canteen_status':
-                    if(!clientInfo.isManagement) break;
+                    if (!clientInfo.isManagement) break;
                     const newStatusIsOpen = parsedMessage.payload.isOpen;
                     await db.run(`INSERT OR REPLACE INTO settings (key, value) VALUES ('canteen_open', ?)`, [newStatusIsOpen ? 'true' : 'false']);
                     broadcast(JSON.stringify({ type: 'canteen_status_updated', payload: { isOpen: newStatusIsOpen } }));
                     break;
 
                 case 'admin_categories_reordered':
-                    if(!clientInfo.isManagement) break;
+                    if (!clientInfo.isManagement) break;
                     const reorderedCats = parsedMessage.payload;
                     // reorderedCats is array of { key, ... } in desired order
                     for (let i = 0; i < reorderedCats.length; i++) {
@@ -441,7 +458,7 @@ wss.on('connection', async (ws, req) => {
                     break;
 
                 case 'admin_currency_updated':
-                    if(!clientInfo.isManagement) break;
+                    if (!clientInfo.isManagement) break;
                     const curr = parsedMessage.payload.currency;
                     await updateTranslations({ 'currency_symbol': curr });
                     await broadcastFullData();
@@ -557,7 +574,7 @@ async function broadcastFullData() {
 
     const tRows = await db.query('SELECT * FROM translations');
     const translations = {};
-    tRows.forEach(r => translations[r.key] = {en: r.en, ar: r.ar});
+    tRows.forEach(r => translations[r.key] = { en: r.en, ar: r.ar });
 
     broadcast(JSON.stringify({ type: 'products_updated', payload: products }));
     broadcast(JSON.stringify({ type: 'categories_updated', payload: categories }));

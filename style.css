@@ -3420,6 +3420,18 @@ body[data-theme="mono-dark"] #edit-category-save {
   border-color: #1e7e34;
 }
 
+/* Analytics Button Styles */
+#goto-analytics-button {
+  border-color: #117a8b;
+  background-color: #17a2b8;
+  color: #fff;
+}
+
+#goto-analytics-button:hover {
+  background-color: #138496;
+  border-color: #117a8b;
+}
+
 body[data-theme="dark-grey"] #goto-product-mgmt-button,
 body[data-theme="night"] #goto-product-mgmt-button,
 body[data-theme="mono-dark"] #goto-product-mgmt-button {
@@ -3432,6 +3444,20 @@ body[data-theme="dark-grey"] #goto-product-mgmt-button:hover,
 body[data-theme="night"] #goto-product-mgmt-button:hover,
 body[data-theme="mono-dark"] #goto-product-mgmt-button:hover {
   background-color: #479157;
+}
+
+body[data-theme="dark-grey"] #goto-analytics-button,
+body[data-theme="night"] #goto-analytics-button,
+body[data-theme="mono-dark"] #goto-analytics-button {
+  background-color: #3AAFBF;
+  border-color: #2A8A96;
+  color: #fff;
+}
+
+body[data-theme="dark-grey"] #goto-analytics-button:hover,
+body[data-theme="night"] #goto-analytics-button:hover,
+body[data-theme="mono-dark"] #goto-analytics-button:hover {
+  background-color: #319AA8;
 }
 
 #screen-9 .management-container {
@@ -5742,7 +5768,8 @@ body[data-theme="mono-dark"] .analytics-section {
   font-size: 1.1rem;
   border-bottom: 1px solid rgba(0, 0, 0, 0.1);
   padding-bottom: 10px;
-  text-align: left;
+  text-align: center;
+  /* Changed from left to center */
   -webkit-text-stroke: 0;
   text-stroke: 0;
 }
@@ -5848,7 +5875,8 @@ body[data-theme="mono-dark"] .item-count {
 .scrollable-analytics-list {
   max-height: 400px;
   overflow-y: auto;
-  padding-right: 5px; /* For scrollbar space */
+  padding-right: 5px;
+  /* For scrollbar space */
 }
 
 /* Admin Dashboard Actions */
@@ -5869,25 +5897,567 @@ body[data-theme="mono-dark"] .item-count {
 /* Light Theme Contrast Fixes for Analytics */
 body[data-theme="light-blue"] .stat-card,
 body[data-theme="light-red"] .stat-card {
-  background: rgba(255, 255, 255, 0.85); /* Increased opacity */
-  border: 2px solid var(--border-color); /* Stronger border */
+  background: rgba(255, 255, 255, 0.85);
+  /* Increased opacity */
+  border: 2px solid var(--border-color);
+  /* Stronger border */
 }
 
 body[data-theme="light-blue"] .analytics-section,
-body[data-theme="light-red"] .analytics-section {
-  background: rgba(255, 255, 255, 0.7); /* Increased opacity */
+body[data-theme="light-red"] .analytics-section,
+body[data-theme="mono-light"] .analytics-section {
+  background: rgba(255, 255, 255, 0.7);
+  /* Increased opacity */
   border: 2px solid var(--border-color);
 }
 
 body[data-theme="light-blue"] .top-item,
 body[data-theme="light-red"] .top-item {
-  background: rgba(255, 255, 255, 0.9); /* High contrast item bg */
-  border: 1px solid rgba(0,0,0,0.1);
+  background: rgba(255, 255, 255, 0.9);
+  /* High contrast item bg */
+  border: 1px solid rgba(0, 0, 0, 0.1);
 }
 
 body[data-theme="light-blue"] .item-name,
 body[data-theme="light-red"] .item-name {
-  color: #000; /* Ensure dark text */
+  color: #000;
+  /* Ensure dark text */
+}
+
+/* Analytics Nav Bar Styles */
+.analytics-nav-bar {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 0;
+  padding: 0;
+  margin-bottom: 20px;
+  background: rgba(255, 255, 255, 0.15);
+  backdrop-filter: blur(10px);
+  -webkit-backdrop-filter: blur(10px);
+  border-radius: 15px;
+  border: 1px solid rgba(255, 255, 255, 0.2);
+  position: relative;
+  z-index: 100;
+}
+
+/* Tab Button Styles */
+.analytics-tab {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 12px 20px;
+  background: transparent;
+  border: none;
+  border-right: 1px solid rgba(255, 255, 255, 0.2);
+  color: var(--text-color-dark);
+  font-size: 0.95rem;
+  font-weight: 600;
+  font-family: inherit;
+  cursor: pointer;
+  transition: background-color 0.2s ease, color 0.2s ease;
+}
+
+.analytics-tab:last-child {
+  border-right: none;
+}
+
+.analytics-tab:hover {
+  background: rgba(255, 255, 255, 0.2);
+}
+
+.analytics-tab.active {
+  background: var(--active-green);
+  color: #fff;
+}
+
+.analytics-tab i {
+  font-size: 1rem;
+}
+
+.analytics-tab .dropdown-arrow {
+  font-size: 0.7rem;
+  margin-left: 4px;
+  transition: transform 0.2s ease;
+}
+
+.analytics-tab-dropdown {
+  position: relative;
+  z-index: 1000;
+}
+
+.analytics-tab-dropdown:last-child .analytics-tab {
+  border-right: none;
+}
+
+/* Unified Period Selector Styles */
+.analytics-period-selector {
+  position: relative;
+  z-index: 1000;
+}
+
+.analytics-period-btn {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 12px 24px;
+  background: linear-gradient(135deg, var(--active-green), #20c997);
+  border: none;
+  border-radius: 12px;
+  color: #fff;
+  font-size: 1rem;
+  font-weight: 600;
+  font-family: inherit;
+  cursor: pointer;
+  transition: all 0.2s ease;
+  box-shadow: 0 4px 15px rgba(40, 167, 69, 0.3);
+}
+
+.analytics-period-btn:hover {
+  transform: translateY(-2px);
+  box-shadow: 0 6px 20px rgba(40, 167, 69, 0.4);
+}
+
+.analytics-period-btn .dropdown-arrow {
+  font-size: 0.75rem;
+  transition: transform 0.2s ease;
+}
+
+.analytics-period-btn.open .dropdown-arrow {
+  transform: rotate(180deg);
+}
+
+/* Unified Dropdown Menu */
+.analytics-unified-dropdown {
+  position: absolute;
+  top: calc(100% + 8px);
+  left: 50%;
+  transform: translateX(-50%) translateY(-10px);
+  min-width: 260px;
+  max-width: 320px;
+  background: #67b9eb;
+  backdrop-filter: blur(20px);
+  -webkit-backdrop-filter: blur(20px);
+  border: 1px solid rgba(255, 255, 255, 0.3);
+  border-radius: 16px;
+  box-shadow:
+    0 15px 50px rgba(0, 0, 0, 0.2),
+    0 0 0 1px rgba(255, 255, 255, 0.1) inset;
+  z-index: 1001;
+  max-height: 400px;
+  overflow-y: auto;
+  overflow-x: hidden;
+  opacity: 0;
+  visibility: hidden;
+  transition: all 0.25s cubic-bezier(0.4, 0, 0.2, 1);
+  scrollbar-width: thin;
+  scrollbar-color: rgba(0, 0, 0, 0.2) transparent;
+}
+
+.analytics-unified-dropdown.visible {
+  opacity: 1;
+  visibility: visible;
+  transform: translateX(-50%) translateY(0);
+}
+
+/* Current Month Special Item */
+.dropdown-current-month {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  padding: 14px 18px;
+  cursor: pointer;
+  background: linear-gradient(135deg, rgba(40, 167, 69, 0.1), rgba(40, 167, 69, 0.05));
+  border-bottom: 2px solid rgba(40, 167, 69, 0.2);
+  color: var(--active-green);
+  font-size: 1rem;
+  font-weight: 600;
+  transition: all 0.15s ease;
+}
+
+.dropdown-current-month:hover,
+.dropdown-current-month.selected {
+  background: linear-gradient(135deg, rgba(40, 167, 69, 0.2), rgba(40, 167, 69, 0.1));
+}
+
+.dropdown-current-month.selected {
+  border-bottom: 2px solid var(--active-green);
+  position: relative;
+}
+
+.dropdown-current-month.selected::after {
+  content: '✓';
+  position: absolute;
+  right: 15px;
+  font-weight: bold;
+}
+
+.dropdown-current-month i {
+  font-size: 1.1rem;
+}
+
+/* Year Header */
+.dropdown-year-header {
+  padding: 10px 18px;
+  background: #49a8e0;
+  color: #fff;
+  font-size: 0.9rem;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 1px;
+  border-bottom: 1px solid rgba(0, 0, 0, 0.1);
+  text-align: center;
+  position: sticky;
+  top: 0;
+  z-index: 2;
+  box-shadow: 0 2px 4px rgba(0, 0, 0, 0.05);
+}
+
+/* Modern Dropdown Menu Styles */
+.analytics-months-dropdown {
+  position: absolute;
+  top: calc(100% + 5px);
+  left: 50%;
+  transform: translateX(-50%);
+  min-width: 200px;
+  background: rgba(255, 255, 255, 0.95);
+  backdrop-filter: blur(20px);
+  -webkit-backdrop-filter: blur(20px);
+  border: 1px solid rgba(255, 255, 255, 0.3);
+  border-radius: 16px;
+  box-shadow:
+    0 10px 40px rgba(0, 0, 0, 0.2),
+    0 0 0 1px rgba(255, 255, 255, 0.1) inset;
+  z-index: 1000;
+  max-height: 320px;
+  overflow-y: auto;
+  overflow-x: hidden;
+  opacity: 0;
+  visibility: hidden;
+  transform: translateX(-50%) translateY(-10px);
+  transition: all 0.25s cubic-bezier(0.4, 0, 0.2, 1);
+  scrollbar-width: thin;
+  scrollbar-color: rgba(0, 0, 0, 0.2) transparent;
+}
+
+.analytics-months-dropdown::-webkit-scrollbar {
+  width: 6px;
+}
+
+.analytics-months-dropdown::-webkit-scrollbar-track {
+  background: transparent;
+}
+
+.analytics-months-dropdown::-webkit-scrollbar-thumb {
+  background: rgba(0, 0, 0, 0.2);
+  border-radius: 3px;
+}
+
+.analytics-months-dropdown.visible {
+  opacity: 1;
+  visibility: visible;
+  transform: translateX(-50%) translateY(0);
+}
+
+.analytics-month-option {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  padding: 12px 18px;
+  cursor: pointer;
+  color: #333;
+  font-size: 0.95rem;
+  font-weight: 500;
+  transition: all 0.15s ease;
+  border-bottom: 1px solid rgba(0, 0, 0, 0.06);
+  position: relative;
+}
+
+.analytics-month-option .month-number {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 28px;
+  height: 28px;
+  background: linear-gradient(135deg, var(--active-green), #20c997);
+  color: #fff;
+  border-radius: 8px;
+  font-size: 0.85rem;
+  font-weight: 700;
+  flex-shrink: 0;
+}
+
+.analytics-month-option:first-child {
+  border-radius: 16px 16px 0 0;
+}
+
+.analytics-month-option:last-child {
+  border-bottom: none;
+  border-radius: 0 0 16px 16px;
+}
+
+.analytics-month-option:hover {
+  background: linear-gradient(135deg, rgba(40, 167, 69, 0.1), rgba(40, 167, 69, 0.05));
+  padding-left: 22px;
+}
+
+.analytics-month-option:active {
+  background: linear-gradient(135deg, rgba(40, 167, 69, 0.2), rgba(40, 167, 69, 0.1));
+}
+
+.analytics-month-option.selected {
+  background: linear-gradient(135deg, var(--active-green), #20c997);
+  color: #fff;
+}
+
+.analytics-month-option.selected::after {
+  content: '✓';
+  position: absolute;
+  right: 15px;
+  font-weight: bold;
+}
+
+/* Dark theme styles for nav bar */
+body[data-theme="dark-grey"] .analytics-nav-bar,
+body[data-theme="night"] .analytics-nav-bar,
+body[data-theme="mono-dark"] .analytics-nav-bar {
+  background: rgba(255, 255, 255, 0.05);
+  border-color: rgba(255, 255, 255, 0.1);
+}
+
+body[data-theme="dark-grey"] .analytics-tab,
+body[data-theme="night"] .analytics-tab,
+body[data-theme="mono-dark"] .analytics-tab {
+  color: var(--text-color-light);
+  border-color: rgba(255, 255, 255, 0.1);
+}
+
+body[data-theme="dark-grey"] .analytics-tab:hover,
+body[data-theme="night"] .analytics-tab:hover,
+body[data-theme="mono-dark"] .analytics-tab:hover {
+  background: rgba(255, 255, 255, 0.1);
+}
+
+/* Monochrome Light - Analytics Tab Active override */
+body[data-theme="mono-light"] .analytics-tab.active {
+  background: #000000;
+  color: #ffffff;
+}
+
+/* Dark theme - Unified Dropdown */
+body[data-theme="dark-grey"] .analytics-unified-dropdown,
+body[data-theme="night"] .analytics-unified-dropdown,
+body[data-theme="mono-dark"] .analytics-unified-dropdown {
+  background: rgba(30, 30, 40, 0.98);
+  border: 1px solid rgba(255, 255, 255, 0.15);
+  box-shadow: 0 15px 50px rgba(0, 0, 0, 0.5);
+}
+
+body[data-theme="dark-grey"] .dropdown-year-header,
+body[data-theme="night"] .dropdown-year-header,
+body[data-theme="mono-dark"] .dropdown-year-header {
+  background: #2a2a35;
+  color: #aaa;
+  border-bottom-color: rgba(255, 255, 255, 0.1);
+}
+
+body[data-theme="dark-grey"] .dropdown-current-month,
+body[data-theme="night"] .dropdown-current-month,
+body[data-theme="mono-dark"] .dropdown-current-month {
+  background: linear-gradient(135deg, rgba(40, 167, 69, 0.2), rgba(40, 167, 69, 0.1));
+  border-bottom-color: rgba(40, 167, 69, 0.3);
+}
+
+body[data-theme="dark-grey"] .analytics-months-dropdown,
+body[data-theme="night"] .analytics-months-dropdown,
+body[data-theme="mono-dark"] .analytics-months-dropdown {
+  background: rgba(30, 30, 40, 0.95);
+  border: 1px solid rgba(255, 255, 255, 0.15);
+  box-shadow:
+    0 10px 40px rgba(0, 0, 0, 0.5),
+    0 0 0 1px rgba(255, 255, 255, 0.05) inset;
+}
+
+body[data-theme="dark-grey"] .analytics-month-option,
+body[data-theme="night"] .analytics-month-option,
+body[data-theme="mono-dark"] .analytics-month-option {
+  color: #e0e0e0;
+  border-bottom-color: rgba(255, 255, 255, 0.08);
+}
+
+body[data-theme="dark-grey"] .analytics-month-option:hover,
+body[data-theme="night"] .analytics-month-option:hover,
+body[data-theme="mono-dark"] .analytics-month-option:hover {
+  background: linear-gradient(135deg, rgba(40, 167, 69, 0.2), rgba(40, 167, 69, 0.1));
+}
+
+/* Light Blue/Red theme styles */
+body[data-theme="light-blue"] .analytics-nav-bar,
+body[data-theme="light-red"] .analytics-nav-bar {
+  background: rgba(255, 255, 255, 0.7);
+  border: 2px solid var(--border-color);
+}
+
+body[data-theme="light-blue"] .analytics-tab,
+body[data-theme="light-red"] .analytics-tab {
+  border-color: var(--border-color);
+}
+
+body[data-theme="light-blue"] .analytics-months-dropdown,
+body[data-theme="light-red"] .analytics-months-dropdown {
+  background: rgba(255, 255, 255, 0.98);
+  border: 2px solid var(--border-color);
+  box-shadow:
+    0 10px 40px rgba(0, 0, 0, 0.15),
+    0 0 0 1px rgba(0, 0, 0, 0.05) inset;
+}
+
+body[data-theme="light-blue"] .analytics-unified-dropdown,
+body[data-theme="light-red"] .analytics-unified-dropdown {
+  background: #fff;
+  border: 2px solid var(--border-color);
+  box-shadow: 0 15px 50px rgba(0, 0, 0, 0.15);
+}
+
+body[data-theme="light-blue"] .dropdown-year-header,
+body[data-theme="light-red"] .dropdown-year-header {
+  background: #e8e8e8;
+  color: #555;
+  border-bottom-color: rgba(0, 0, 0, 0.1);
+}
+
+body[data-theme="light-blue"] .dropdown-current-month,
+body[data-theme="light-red"] .dropdown-current-month {
+  background: linear-gradient(135deg, rgba(40, 167, 69, 0.15), rgba(40, 167, 69, 0.08));
+}
+
+body[data-theme="light-blue"] .analytics-month-option,
+body[data-theme="light-red"] .analytics-month-option {
+  color: #333;
+  border-bottom-color: rgba(0, 0, 0, 0.08);
+}
+
+/* Green Theme - Unified Dropdown */
+body[data-theme="green"] .analytics-unified-dropdown {
+  background: #4CAF50;
+  border: 1px solid rgba(255, 255, 255, 0.2);
+}
+
+body[data-theme="green"] .dropdown-year-header {
+  background: #81C784;
+  color: #fff;
+}
+
+body[data-theme="green"] .dropdown-current-month {
+  background: rgba(255, 255, 255, 0.15);
+  color: #fff;
+}
+
+body[data-theme="green"] .analytics-month-option {
+  color: #fff;
+}
+
+/* Purple Theme - Unified Dropdown */
+body[data-theme="purple"] .analytics-unified-dropdown {
+  background: #9C27B0;
+}
+
+body[data-theme="purple"] .dropdown-year-header {
+  background: #CE93D8;
+  color: #fff;
+}
+
+/* Monochrome Light - Unified Dropdown */
+body[data-theme="mono-light"] .analytics-unified-dropdown {
+  background: #ffffff;
+  border: 2px solid #000000;
+}
+
+body[data-theme="mono-light"] .dropdown-year-header {
+  background: #e0e0e0;
+  color: #000;
+}
+
+body[data-theme="mono-light"] .dropdown-current-month {
+  background: #f5f5f5;
+  color: #000;
+  border-bottom: 2px solid #000;
+}
+
+body[data-theme="mono-light"] .analytics-month-option {
+  color: #000;
+}
+
+/* Yellow Theme - Unified Dropdown */
+body[data-theme="yellow"] .analytics-unified-dropdown {
+  background: #FFC107;
+}
+
+body[data-theme="yellow"] .dropdown-year-header {
+  background: #FFA000;
+  color: #fff;
+}
+
+/* Orange Theme - Unified Dropdown */
+body[data-theme="orange"] .analytics-unified-dropdown {
+  background: #FF9800;
+}
+
+body[data-theme="orange"] .dropdown-year-header {
+  background: #F57C00;
+  color: #fff;
+}
+
+/* RTL Support for Analytics Nav Bar */
+html[lang="ar"] .analytics-nav-bar {
+  flex-direction: row-reverse;
+}
+
+html[lang="ar"] .analytics-tab {
+  flex-direction: row-reverse;
+  border-right: none;
+  border-left: 1px solid rgba(255, 255, 255, 0.2);
+}
+
+html[lang="ar"] .analytics-tab:last-child {
+  border-left: none;
+}
+
+html[lang="ar"] .analytics-unified-dropdown {
+  left: 50%;
+  right: auto;
+  transform: translateX(-50%) translateY(-10px);
+}
+
+html[lang="ar"] .analytics-unified-dropdown.visible {
+  transform: translateX(-50%) translateY(0);
+}
+
+html[lang="ar"] .analytics-period-btn {
+  flex-direction: row-reverse;
+}
+
+html[lang="ar"] .dropdown-current-month,
+html[lang="ar"] .analytics-month-option {
+  flex-direction: row;
+  /* Default RTL row (Right to Left) */
+  text-align: right;
+  padding-right: 18px;
+  padding-left: 45px;
+  /* Space for checkmark on the left */
+}
+
+html[lang="ar"] .analytics-month-option:hover {
+  background: rgba(40, 167, 69, 0.1);
+  padding-right: 22px;
+  padding-left: 45px;
+}
+
+/* Ensure checkmark appears on the left in RTL */
+html[lang="ar"] .dropdown-current-month.selected::after,
+html[lang="ar"] .analytics-month-option.selected::after {
+  right: auto;
+  left: 15px;
 }
 
 /* RTL Support for Analytics */
@@ -5896,11 +6466,12 @@ html[lang="ar"] .stat-info h4 {
 }
 
 html[lang="ar"] .analytics-section h4 {
-  text-align: right;
+  text-align: center;
 }
 
 html[lang="ar"] .item-rank {
-  flex-direction: row; /* Ensure image and name order */
+  flex-direction: row;
+  /* Ensure image and name order */
 }
 
 html[lang="ar"] .analytics-lists-row {
