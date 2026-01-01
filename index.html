@@ -35,6 +35,8 @@
 
     <!-- Link to your external CSS file -->
     <link rel="stylesheet" href="style.css">
+    <!-- Chart.js CDN -->
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
 
 </head>
 
@@ -406,12 +408,18 @@
                             data-lang-key="search_button">Search</span></button>
                 </div>
 
-                <!-- Button to go to Product Management -->
-                <button class="button small-button" id="goto-product-mgmt-button" data-target="screen-9"
-                    style="margin-top: 15px; background-color: #28a745; width: auto;">
-                    <i class="fas fa-boxes"></i> <span data-lang-key="manage_products_button">Manage Products</span>
-                </button>
-                <!-- END Button -->
+                <!-- Admin Dashboard Actions Container -->
+                <div class="admin-dashboard-actions">
+                    <button class="button small-button" id="goto-product-mgmt-button" data-target="screen-9"
+                        style="background-color: #28a745;">
+                        <i class="fas fa-boxes"></i> <span data-lang-key="manage_products_button">Manage Products</span>
+                    </button>
+                    <button class="button small-button" id="goto-analytics-button" data-target="screen-11"
+                        style="background-color: #17a2b8;">
+                        <i class="fas fa-chart-line"></i> <span data-lang-key="analytics_button">Analytics</span>
+                    </button>
+                </div>
+                <!-- END Admin Dashboard Actions -->
 
                 <div class="order-management-layout">
                     <div class="order-log-section">
@@ -680,6 +688,62 @@
         <!-- START: Screen 10: Order History -->
         <!-- Removed Screen 10 content -->
         <!-- END: Screen 10: Order History -->
+
+        <!-- START: Screen 11: Analytics -->
+        <div class="screen" id="screen-11">
+            <div class="screen-content management-container">
+                <div class="header">
+                    <button class="header-button back-button" data-target="screen-5">
+                        <i class="fas fa-arrow-left"></i> <span data-lang-key="back_to_orders_button">Back to Orders</span>
+                    </button>
+                    <h3 class="screen-title" data-lang-key="analytics_title">Analytics</h3>
+                    <div style="width: 80px; flex-shrink: 0;"></div> <!-- Spacer -->
+                </div>
+
+                <div class="analytics-dashboard">
+                    <div class="stats-cards-container">
+                        <div class="stat-card">
+                            <div class="stat-icon revenue-icon"><i class="fas fa-money-bill-wave"></i></div>
+                            <div class="stat-info">
+                                <h4 data-lang-key="total_revenue_label">Total Revenue</h4>
+                                <p id="analytics-total-revenue">0 L.E</p>
+                            </div>
+                        </div>
+                        <div class="stat-card">
+                            <div class="stat-icon orders-icon"><i class="fas fa-shopping-bag"></i></div>
+                            <div class="stat-info">
+                                <h4 data-lang-key="total_orders_label">Total Orders</h4>
+                                <p id="analytics-total-orders">0</p>
+                            </div>
+                        </div>
+                        <div class="stat-card">
+                            <div class="stat-icon avg-icon"><i class="fas fa-chart-pie"></i></div>
+                            <div class="stat-info">
+                                <h4 data-lang-key="avg_order_value_label">Avg Order Value</h4>
+                                <p id="analytics-avg-order-value">0 L.E</p>
+                            </div>
+                        </div>
+                    </div>
+
+                    <div class="analytics-chart-section analytics-section">
+                        <h4 data-lang-key="monthly_orders_chart_title">Orders this Month</h4>
+                        <div class="chart-container">
+                            <canvas id="monthly-orders-chart"></canvas>
+                        </div>
+                    </div>
+
+                    <div class="analytics-lists-row">
+                    <div class="analytics-section full-width">
+                            <h4 data-lang-key="top_selling_items_title">Top Selling Items</h4>
+                        <div class="top-items-list scrollable-analytics-list" id="analytics-top-items">
+                                <!-- Items will be populated here -->
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+        <!-- END: Screen 11: Analytics -->
 
     </div><!-- end app-container -->
 
