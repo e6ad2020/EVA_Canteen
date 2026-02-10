@@ -139,7 +139,7 @@ eva-canteen/
     ```
 
 5.  **Access the app:**
-    Open your browser and navigate to `http://localhost:3000` (or the port specified in your console).
+    Open your browser and navigate to `http://localhost:8080` (or the port specified in your console).
 
 ---
 
@@ -167,7 +167,7 @@ node db_cli.js "SELECT * FROM users"
 
 Developed by the talented students at **EVA International School for Applied Technology**:
 
-- **Ayad Jaber**
+- **Eyad Gaber**
 - **Anwar Qasem**
 - **Dina Mahmoud**
 - **Ahmed Mohamed**
