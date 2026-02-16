@@ -176,9 +176,6 @@ document.addEventListener('DOMContentLoaded', () => {
             isWebSocketConnected = true;
             hideConnectingScreen();
             debugLog('WebSocket connected');
-            // Request initial data from server upon connection
-            sendWebSocketMessage({ type: 'request_initial_data' });
-            debugLog('Sent request_initial_data to server.');
 
             // If this is the management screen, identify itself AFTER requesting general data
             if (currentScreen && (currentScreen.id === 'screen-5' || currentScreen.id === 'screen-9')) {
@@ -2408,7 +2405,11 @@ document.addEventListener('DOMContentLoaded', () => {
     // Builds categories based ONLY on current baseMenuData
     function buildInitialCategories() {
         console.log("Building initial category structure...");
-        const categoryKeys = [...new Set(baseMenuData.map(p => p.category))];
+        const categoryKeys = [...new Set(
+            baseMenuData
+                .map(p => (typeof p?.category === 'string' ? p.category.trim() : ''))
+                .filter(Boolean)
+        )];
 
         // Ensure archive category exists
         if (!categoryKeys.includes('archive')) {
@@ -2442,7 +2443,11 @@ document.addEventListener('DOMContentLoaded', () => {
     }
     function syncCategoriesWithBaseData() {
         const allProductIds = new Set(baseMenuData.map(p => p.id));
-        const categoryKeysInBase = new Set(baseMenuData.map(p => p.category));
+        const categoryKeysInBase = new Set(
+            baseMenuData
+                .map(p => (typeof p?.category === 'string' ? p.category.trim() : ''))
+                .filter(Boolean)
+        );
 
         // Ensure archive category always exists
         categoryKeysInBase.add('archive');
@@ -2544,7 +2549,9 @@ document.addEventListener('DOMContentLoaded', () => {
                 return;
             }
 
-            const currentProductsInCategory = baseMenuData.filter(p => p.category === category.key);
+            const currentProductsInCategory = baseMenuData.filter(
+                p => (typeof p?.category === 'string' ? p.category.trim() : '') === category.key
+            );
             const currentProductIdsInCategory = new Set(currentProductsInCategory.map(p => p.id));
 
             // Filter out productIds from the category list that no longer exist in baseMenuData or changed category
@@ -4209,11 +4216,13 @@ document.addEventListener('DOMContentLoaded', () => {
                 productRelatedTranslations[key] = translations[key];
             }
         });
+        const currency = translations.currency_symbol || null;
 
         const configData = {
             products: baseMenuData,
             categories: categories,
-            productRelatedTranslations: productRelatedTranslations // MODIFIED: Export only relevant translations
+            productRelatedTranslations: productRelatedTranslations, // MODIFIED: Export only relevant translations
+            currency: currency
             // REMOVED: orders, settings
         };
         const jsonString = JSON.stringify(configData, null, 2); // Beautify JSON with 2 spaces
@@ -4253,7 +4262,9 @@ document.addEventListener('DOMContentLoaded', () => {
                 if (!importedData || typeof importedData !== 'object' ||
                     !Array.isArray(importedData.products) ||
                     !Array.isArray(importedData.categories) ||
-                    typeof importedData.productRelatedTranslations !== 'object'
+                    !importedData.productRelatedTranslations ||
+                    typeof importedData.productRelatedTranslations !== 'object' ||
+                    Array.isArray(importedData.productRelatedTranslations)
                     // REMOVED: validation for orders and settings
                 ) {
                     console.error("Imported product/category data structure is invalid.");
@@ -4282,6 +4293,9 @@ document.addEventListener('DOMContentLoaded', () => {
                         if (importedData.productRelatedTranslations) {
                             Object.assign(translations, importedData.productRelatedTranslations);
                         }
+                        if (importedData.currency && typeof importedData.currency === 'object' && !Array.isArray(importedData.currency)) {
+                            upsertTranslationEntry('currency_symbol', importedData.currency);
+                        }
 
                         // Save imported data to localStorage
                         saveProducts();
@@ -4297,7 +4311,8 @@ document.addEventListener('DOMContentLoaded', () => {
                             payload: {
                                 products: baseMenuData,
                                 categories: categories,
-                                productRelatedTranslations: importedData.productRelatedTranslations
+                                productRelatedTranslations: importedData.productRelatedTranslations,
+                                currency: importedData.currency
                             }
                         });
                         console.log("Sent imported product/category config to server.");

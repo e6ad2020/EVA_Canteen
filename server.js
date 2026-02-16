@@ -32,6 +32,7 @@ const ADMIN_LOCKOUT_DURATION_MS = 5 * 60 * 1000;
 const LANGUAGE_CODE_PATTERN = /^[a-z]{2,3}(?:-[a-z0-9]{2,8})*$/i;
 const MAX_WS_MESSAGE_BYTES = 64 * 1024;
 const WS_HEARTBEAT_INTERVAL_MS = 30 * 1000;
+const SETTINGS_KEY_PRODUCT_ORDER_MAP = 'category_product_order_map';
 
 const VALID_ORDER_STATUSES = new Set(['pending', 'preparing', 'delivered']);
 const VALID_PROFILE_PICS = new Set(['pic1', 'pic2', 'pic3']);
@@ -450,9 +451,70 @@ async function getAllProducts() {
     return rows.map(mapProductRow);
 }
 
+function normalizeProductOrderMap(rawValue, categoryKeySet = null) {
+    if (!rawValue || typeof rawValue !== 'object' || Array.isArray(rawValue)) {
+        return {};
+    }
+
+    const normalized = {};
+
+    for (const [rawCategoryKey, rawProductIds] of Object.entries(rawValue)) {
+        const categoryKey = sanitizeString(rawCategoryKey, { maxLength: 128 });
+        if (!categoryKey) {
+            continue;
+        }
+        if (categoryKeySet && !categoryKeySet.has(categoryKey)) {
+            continue;
+        }
+        if (!Array.isArray(rawProductIds)) {
+            continue;
+        }
+
+        const productIdSet = new Set();
+        const productIds = [];
+
+        for (const rawProductId of rawProductIds) {
+            const productId = sanitizeString(rawProductId, { maxLength: 128 });
+            if (!productId || productIdSet.has(productId)) {
+                continue;
+            }
+
+            productIdSet.add(productId);
+            productIds.push(productId);
+        }
+
+        normalized[categoryKey] = productIds;
+    }
+
+    return normalized;
+}
+
+async function getStoredProductOrderMap() {
+    const row = await db.get('SELECT value FROM settings WHERE key = ?', [SETTINGS_KEY_PRODUCT_ORDER_MAP]);
+    if (!row?.value) {
+        return {};
+    }
+
+    try {
+        const parsed = JSON.parse(row.value);
+        return normalizeProductOrderMap(parsed);
+    } catch {
+        return {};
+    }
+}
+
+async function saveProductOrderMap(productOrderMap) {
+    const sanitizedMap = normalizeProductOrderMap(productOrderMap);
+    await db.run(
+        `INSERT OR REPLACE INTO settings (key, value) VALUES (?, ?)`,
+        [SETTINGS_KEY_PRODUCT_ORDER_MAP, JSON.stringify(sanitizedMap)]
+    );
+}
+
 async function getAllCategories(products = null) {
     const productList = products || (await getAllProducts());
     const rows = await db.query('SELECT * FROM categories ORDER BY display_order, key');
+    const storedProductOrderMap = await getStoredProductOrderMap();
     const productIdsByCategory = new Map();
 
     for (const product of productList) {
@@ -468,11 +530,28 @@ async function getAllCategories(products = null) {
         productIdsByCategory.get(categoryKey).push(product.id);
     }
 
-    return rows.map((cat) => ({
-        key: cat.key,
-        name_key: cat.name_key,
-        productIds: productIdsByCategory.get(cat.key) || []
-    }));
+    return rows.map((cat) => {
+        const actualProductIds = productIdsByCategory.get(cat.key) || [];
+        const actualProductIdSet = new Set(actualProductIds);
+        const storedProductIds = Array.isArray(storedProductOrderMap[cat.key])
+            ? storedProductOrderMap[cat.key]
+            : [];
+
+        const orderedProductIds = storedProductIds.filter((productId) => actualProductIdSet.has(productId));
+        const orderedProductIdSet = new Set(orderedProductIds);
+
+        for (const productId of actualProductIds) {
+            if (!orderedProductIdSet.has(productId)) {
+                orderedProductIds.push(productId);
+            }
+        }
+
+        return {
+            key: cat.key,
+            name_key: cat.name_key,
+            productIds: orderedProductIds
+        };
+    });
 }
 
 async function getProductsAndCategories() {
@@ -693,11 +772,6 @@ async function generateOrderIdOnServer() {
 }
 
 async function handleRequestInitialData(ws) {
-    const status = await getCanteenStatus();
-    if (!status.isOpen) {
-        return;
-    }
-
     const { products, categories } = await getProductsAndCategories();
     sendMessage(ws, 'initial_products', products);
     sendMessage(ws, 'initial_categories', categories);
@@ -1276,6 +1350,7 @@ async function handleAdminConfigImported(clientInfo, payload) {
 
     const categories = [];
     const categoryKeySet = new Set();
+    const importedProductOrderMap = {};
 
     for (let index = 0; index < rawCategories.length; index += 1) {
         const category = normalizeCategoryPayload(rawCategories[index], index);
@@ -1285,6 +1360,11 @@ async function handleAdminConfigImported(clientInfo, payload) {
 
         categoryKeySet.add(category.key);
         categories.push(category);
+
+        const rawProductIds = Array.isArray(rawCategories[index]?.productIds)
+            ? rawCategories[index].productIds
+            : [];
+        importedProductOrderMap[category.key] = rawProductIds;
     }
 
     const products = [];
@@ -1331,8 +1411,14 @@ async function handleAdminConfigImported(clientInfo, payload) {
             );
         }
 
+        await saveProductOrderMap(normalizeProductOrderMap(importedProductOrderMap, categoryKeySet));
+
         if (payload.productRelatedTranslations && typeof payload.productRelatedTranslations === 'object') {
             await updateTranslations(payload.productRelatedTranslations);
+        }
+
+        if (payload.currency && typeof payload.currency === 'object' && !Array.isArray(payload.currency)) {
+            await updateTranslations({ currency_symbol: payload.currency });
         }
     });
 
