@@ -17,6 +17,7 @@
  */
 
 let connectingScreenEverTimedOut = false;
+let isWebSocketConnected = false;
 document.addEventListener('DOMContentLoaded', () => {
 
     setTimeout(() => {
@@ -66,6 +67,7 @@ document.addEventListener('DOMContentLoaded', () => {
     // --- Constants & State ---
     const LS_KEYS = {
         LANGUAGE: 'canteenAppLanguage',
+        TRANSLATIONS: 'canteenAppTranslations_v2',
         THEME: 'canteenAppTheme',
         CURRENT_USER: 'canteenAppCurrentUser',
         CART: 'canteenAppCart',
@@ -101,7 +103,8 @@ document.addEventListener('DOMContentLoaded', () => {
     let currentOrderLogView = 'current'; // New state variable for order log view: 'current' or 'archived'
     let previewButtonTimeout = null; // Timeout for preview button state
     let draggedElement = null; // For drag and drop
-    let currentProductMgmtCategory = null; // Track which category is being viewed in product management
+    let currentMgmtView = 'categories';
+    let currentMgmtCategory = null;
     let isDiscoveryModeActivated = localStorage.getItem(LS_KEYS.DISCOVERY_MODE) === 'true';
     let selectedPaymentMethod = 'cash'; // Initialize default payment method state
     let isCanteenOpen = false; // <<< CHANGE DEFAULT TO FALSE
@@ -115,6 +118,13 @@ document.addEventListener('DOMContentLoaded', () => {
 
     let suggestionButtonTimeouts = {}; // Added: For discovery mode button timeouts
     let bundleButtonTimeouts = {};   // Added: For discovery mode button timeouts
+    const DEBUG_MODE = localStorage.getItem('canteenDebugMode') === 'true';
+
+    function debugLog(...args) {
+        if (DEBUG_MODE) {
+            console.log(...args);
+        }
+    }
 
     // --- DOM Elements Caching ---
     // Cache frequently accessed DOM elements
@@ -162,13 +172,13 @@ document.addEventListener('DOMContentLoaded', () => {
         ws = new WebSocket(WS_URL);
 
         ws.onopen = () => {
-            console.log('[DEBUG] ws.onopen - connection established');
+            debugLog('[DEBUG] ws.onopen - connection established');
             isWebSocketConnected = true;
             hideConnectingScreen();
-            console.log('WebSocket connected');
+            debugLog('WebSocket connected');
             // Request initial data from server upon connection
             sendWebSocketMessage({ type: 'request_initial_data' });
-            console.log('Sent request_initial_data to server.');
+            debugLog('Sent request_initial_data to server.');
 
             // If this is the management screen, identify itself AFTER requesting general data
             if (currentScreen && (currentScreen.id === 'screen-5' || currentScreen.id === 'screen-9')) {
@@ -195,7 +205,7 @@ document.addEventListener('DOMContentLoaded', () => {
                     case 'initial_products':
                         // *** ADDED CHECK: Ensure payload is an array ***
                         if (Array.isArray(message.payload)) {
-                            console.log('Received initial products', message.payload.length);
+                            debugLog('Received initial products', message.payload.length);
                             baseMenuData = message.payload;
                             isInitialProductsLoaded = true;
                             renderInitialUIIfNeeded(); // Call check after update
@@ -207,7 +217,7 @@ document.addEventListener('DOMContentLoaded', () => {
                     case 'initial_categories':
                         // *** ADDED CHECK: Ensure payload is an array ***
                         if (Array.isArray(message.payload)) {
-                            console.log('Received initial categories', message.payload.length);
+                            debugLog('Received initial categories', message.payload.length);
                             categories = message.payload;
                             isInitialCategoriesLoaded = true;
                             renderInitialUIIfNeeded(); // Call check after update
@@ -216,30 +226,8 @@ document.addEventListener('DOMContentLoaded', () => {
                         }
                         break;
                     case 'initial_translations':
-                        if (message.payload && typeof message.payload === 'object') {
-                            // translations = message.payload; // OLD: Direct assignment overwrites defaults
-                            // NEW: Merge server translations into existing defaults/localStorage translations
-                            console.log('[WebSocket] Merging initial_translations from server into existing translations.');
-                            for (const key in message.payload) {
-                                if (message.payload.hasOwnProperty(key)) {
-                                    const incomingValue = message.payload[key];
-                                    if (translations.hasOwnProperty(key) && typeof translations[key] === 'object') {
-                                        if (typeof incomingValue === 'object') {
-                                            Object.assign(translations[key], incomingValue);
-                                        } else {
-                                            console.warn(`[initial_translations] Ignoring update for key '${key}' because existing is object but incoming is not. Incoming:`, incomingValue);
-                                        }
-                                    } else {
-                                        if (typeof incomingValue === 'object' || typeof incomingValue === 'string') {
-                                            translations[key] = incomingValue;
-                                        } else {
-                                            console.warn(`[initial_translations] Ignoring update for new/non-object key '${key}' because incoming type is not object/string. Incoming:`, incomingValue);
-                                        }
-                                    }
-                                }
-                            }
-                            // After merging, ensure translations are saved to local storage so they persist
-                            // if the server is later offline, and also so that they are the base for next session.
+                        if (isPlainObject(message.payload)) {
+                            mergeTranslationsInto(translations, message.payload);
                             saveTranslations();
 
                             isInitialTranslationsLoaded = true;
@@ -250,7 +238,7 @@ document.addEventListener('DOMContentLoaded', () => {
                         }
                         break;
                     case 'initial_canteen_status': // <<< Handle initial status
-                        console.log('Received initial canteen status', message.payload);
+                        debugLog('Received initial canteen status', message.payload);
                         if (message.payload && typeof message.payload.isOpen === 'boolean') {
                             isCanteenOpen = message.payload.isOpen;
                             console.log('[Log] isCanteenOpen set by initial_canteen_status to:', isCanteenOpen); // <-- Log Added
@@ -263,7 +251,11 @@ document.addEventListener('DOMContentLoaded', () => {
                     case 'initial_orders':
                         // Only process if we are on the management screen
                         if (isManagementClient) {
-                            console.log('Received initial orders from server:', message.payload);
+                            if (!Array.isArray(message.payload)) {
+                                console.warn('Received invalid payload for initial_orders:', message.payload);
+                                break;
+                            }
+                            debugLog('Received initial orders from server:', message.payload);
                             // Replace local orders with server orders if management
                             // Be careful with merging strategies if needed
                             allOrders = message.payload;
@@ -329,7 +321,11 @@ document.addEventListener('DOMContentLoaded', () => {
 
                     // --- START: Handling Server Broadcasts for Data Updates ---
                     case 'products_updated':
-                        console.log('Received updated products from server:', message.payload.length, 'items');
+                        if (!Array.isArray(message.payload)) {
+                            console.warn('Received invalid payload for products_updated:', message.payload);
+                            break;
+                        }
+                        debugLog('Received updated products from server:', message.payload.length, 'items');
                         // Log quantity of a specific item for debugging (e.g., coffee)
                         const oldCoffeeQty = baseMenuData.find(p => p.id === 'coffee')?.quantity;
                         baseMenuData = message.payload;
@@ -355,7 +351,11 @@ document.addEventListener('DOMContentLoaded', () => {
                         break;
 
                     case 'categories_updated':
-                        console.log('Received updated categories from server:', message.payload.length, 'categories');
+                        if (!Array.isArray(message.payload)) {
+                            console.warn('Received invalid payload for categories_updated:', message.payload);
+                            break;
+                        }
+                        debugLog('Received updated categories from server:', message.payload.length, 'categories');
                         categories = message.payload;
                         // saveCategories(); // Optional: Client save
                         // Refresh UI elements that depend on categories
@@ -381,33 +381,9 @@ document.addEventListener('DOMContentLoaded', () => {
                         break;
 
                     case 'translations_updated':
-                        console.log('Received updated translations from server', message.payload); // Log payload too
-                        if (message.payload && typeof message.payload === 'object') {
-                            // Merge received translations into the existing object
-                            // This prevents accidentally wiping out translations if payload is empty or partial
-                            // Object.assign(translations, message.payload); // OLD LINE
-                            for (const key in message.payload) {
-                                if (message.payload.hasOwnProperty(key)) {
-                                    const incomingValue = message.payload[key];
-                                    // If the existing translation is an object (i.e., {en: ..., ar: ...})
-                                    // only accept an incoming value if it's also an object.
-                                    if (translations.hasOwnProperty(key) && typeof translations[key] === 'object') {
-                                        if (typeof incomingValue === 'object') {
-                                            Object.assign(translations[key], incomingValue); // Merge into the existing language object
-                                        } else {
-                                            console.warn(`[translations_updated] Ignoring update for key '${key}' because existing is an object but incoming is not. Incoming:`, incomingValue);
-                                        }
-                                    } else {
-                                        // If existing is not an object or doesn't exist, accept object or string.
-                                        if (typeof incomingValue === 'object' || typeof incomingValue === 'string') {
-                                            translations[key] = incomingValue;
-                                        } else {
-                                            console.warn(`[translations_updated] Ignoring update for new/non-object key '${key}' because incoming type is not object/string. Incoming:`, incomingValue);
-                                        }
-                                    }
-                                }
-                            }
-                            console.log('Translations merged from server.');
+                        debugLog('Received updated translations from server', message.payload);
+                        if (isPlainObject(message.payload)) {
+                            mergeTranslationsInto(translations, message.payload);
                             saveTranslations(); // Re-enable saving after server update
                             updateLanguageUI(); // Refresh UI with potentially updated translations
                         } else {
@@ -416,6 +392,10 @@ document.addEventListener('DOMContentLoaded', () => {
                         break;
                     case 'analytics_data':
                         if (isManagementClient) {
+                            if (!isPlainObject(message.payload)) {
+                                console.warn('Received invalid payload for analytics_data:', message.payload);
+                                break;
+                            }
                             console.log('Received analytics data:', message.payload);
                             // Update year dropdown with available years from server
                             if (message.payload.availableYears && message.payload.availableYears.length > 0) {
@@ -434,6 +414,10 @@ document.addEventListener('DOMContentLoaded', () => {
 
                     case 'canteen_status_updated':
                         const previousStatus = isCanteenOpen; // Store previous status
+                        if (!isPlainObject(message.payload) || typeof message.payload.isOpen !== 'boolean') {
+                            console.warn('Received invalid payload for canteen_status_updated:', message.payload);
+                            break;
+                        }
                         isCanteenOpen = message.payload.isOpen;
                         console.log(`[WebSocket] Canteen status received/updated. isCanteenOpen = ${isCanteenOpen}`);
                         updateCanteenStatusIndicator();
@@ -507,10 +491,11 @@ document.addEventListener('DOMContentLoaded', () => {
                         showScreen('screen-3');
                         break;
                     case 'register_error':
-                        console.error('Registration error:', message.payload.message);
+                        const registerPayload = isPlainObject(message.payload) ? message.payload : {};
+                        console.error('Registration error:', registerPayload.message || message.payload);
                         if (registerErrorMsg) {
                             // Attempt to translate server message key, fallback to raw message
-                            const serverMsg = message.payload.message;
+                            const serverMsg = registerPayload.message || 'register_error_fields';
                             registerErrorMsg.textContent = getText(serverMsg) || serverMsg;
                             registerErrorMsg.style.display = 'block';
                         }
@@ -534,10 +519,11 @@ document.addEventListener('DOMContentLoaded', () => {
                         showScreen('screen-3');
                         break;
                     case 'login_error':
-                        console.error('Login error:', message.payload.message);
+                        const loginPayload = isPlainObject(message.payload) ? message.payload : {};
+                        console.error('Login error:', loginPayload.message || message.payload);
                         if (loginErrorMsg) {
                             // Attempt to translate server message key, fallback to raw message
-                            const serverMsg = message.payload.message;
+                            const serverMsg = loginPayload.message || 'login_error_fields';
                             loginErrorMsg.textContent = getText(serverMsg) || serverMsg;
                             loginErrorMsg.style.display = 'block';
                         }
@@ -546,7 +532,7 @@ document.addEventListener('DOMContentLoaded', () => {
 
                     // --- START: Handle Admin Auth Responses ---
                     case 'admin_login_success':
-                        console.log("Admin login successful (verified by server):", message.payload.message);
+                        debugLog("Admin login successful (verified by server):", message.payload?.message);
                         identifyAsManagementClient(); // Sets isManagementClient = true and informs server (server might ignore if already knows)
                         if (adminLoginErrorMsg) adminLoginErrorMsg.style.display = 'none';
                         // Clear admin login fields on success
@@ -609,7 +595,7 @@ document.addEventListener('DOMContentLoaded', () => {
                     case 'discovery_passcode_error':
                         console.warn("Discovery passcode incorrect (verified by server).");
                         if (passcodeModalError) {
-                            passcodeModalError.textContent = message.payload.message || getText('discovery_passcode_incorrect_message');
+                            passcodeModalError.textContent = message.payload?.message || getText('discovery_passcode_incorrect_message');
                             passcodeModalError.style.display = 'block';
                         }
                         if (passcodeModalInput) passcodeModalInput.value = '';
@@ -617,7 +603,7 @@ document.addEventListener('DOMContentLoaded', () => {
                     // --- END: Handle Discovery Passcode Responses ---
 
                     default:
-                        console.log('Unknown message type received:', message.type);
+                        debugLog('Unknown message type received:', message.type);
                 }
             } catch (error) {
                 console.error('Error processing WebSocket message:', error);
@@ -625,7 +611,7 @@ document.addEventListener('DOMContentLoaded', () => {
         };
 
         ws.onclose = () => {
-            console.log('[DEBUG] ws.onclose - connection lost');
+            debugLog('[DEBUG] ws.onclose - connection lost');
             showConnectingScreen();
             console.log('WebSocket disconnected. Attempting to reconnect...');
             ws = null; // Ensure ws is nullified
@@ -1236,21 +1222,137 @@ document.addEventListener('DOMContentLoaded', () => {
 
 
     // --- Helper Functions ---
-    function getText(key, specificLang = null) { // Added specificLang parameter
-        console.log(`[getText] Called with key: "${key}", currentLanguage: "${currentLanguage}", specificLang: "${specificLang}"`); // DEBUG
-        const lang = specificLang || currentLanguage || 'en';
-        const translationSet = translations[key];
-        let text = key;
-        if (translationSet && typeof translationSet === 'object') {
-            text = translationSet[lang] || translationSet.en || key;
-            console.log(`[getText] Found translationSet for "${key}". Attempting lang "${lang}". Result: "${text}"`); // DEBUG
-        } else if (typeof translationSet === 'string') {
-            text = translationSet;
-            console.log(`[getText] Found string translation for "${key}": "${text}"`); // DEBUG
-        } else {
-            console.log(`[getText] No translationSet found for key: "${key}". Returning key itself.`); // DEBUG
+    const LANGUAGE_CODE_PATTERN = /^[a-z]{2,3}(?:-[a-z0-9]{2,8})*$/i;
+
+    function isPlainObject(value) {
+        return !!value && typeof value === 'object' && !Array.isArray(value);
+    }
+
+    function normalizeTranslationEntry(value) {
+        if (typeof value === 'string') {
+            const text = value.trim();
+            return text ? { en: text, ar: text } : null;
         }
-        return text;
+
+        if (!isPlainObject(value)) {
+            return null;
+        }
+
+        const normalized = {};
+        for (const [rawCode, rawText] of Object.entries(value)) {
+            const code = typeof rawCode === 'string' ? rawCode.trim().toLowerCase() : '';
+            if (!LANGUAGE_CODE_PATTERN.test(code) || typeof rawText !== 'string') {
+                continue;
+            }
+
+            const text = rawText.trim();
+            if (text) {
+                normalized[code] = text;
+            }
+        }
+
+        return Object.keys(normalized).length > 0 ? normalized : null;
+    }
+
+    function mergeTranslationsInto(targetTranslations, incomingTranslations) {
+        if (!isPlainObject(targetTranslations) || !isPlainObject(incomingTranslations)) {
+            return;
+        }
+
+        for (const [translationKey, rawValue] of Object.entries(incomingTranslations)) {
+            const normalizedValue = normalizeTranslationEntry(rawValue);
+            if (!normalizedValue) {
+                continue;
+            }
+
+            if (isPlainObject(targetTranslations[translationKey])) {
+                targetTranslations[translationKey] = {
+                    ...targetTranslations[translationKey],
+                    ...normalizedValue
+                };
+            } else {
+                targetTranslations[translationKey] = normalizedValue;
+            }
+        }
+    }
+
+    function cloneTranslationsMap(sourceTranslations) {
+        const cloned = {};
+        if (!isPlainObject(sourceTranslations)) {
+            return cloned;
+        }
+
+        mergeTranslationsInto(cloned, sourceTranslations);
+        return cloned;
+    }
+
+    function upsertTranslationEntry(translationKey, languageValues, preserveExisting = true) {
+        const normalizedKey = typeof translationKey === 'string' ? translationKey.trim() : '';
+        if (!normalizedKey || !isPlainObject(languageValues)) {
+            return null;
+        }
+
+        const nextEntry = preserveExisting && isPlainObject(translations[normalizedKey])
+            ? { ...translations[normalizedKey] }
+            : {};
+
+        for (const [rawCode, rawText] of Object.entries(languageValues)) {
+            const code = typeof rawCode === 'string' ? rawCode.trim().toLowerCase() : '';
+            if (!code) {
+                continue;
+            }
+
+            const text = typeof rawText === 'string' ? rawText.trim() : '';
+            if (text) {
+                nextEntry[code] = text;
+            }
+        }
+
+        if (Object.keys(nextEntry).length === 0) {
+            return null;
+        }
+
+        translations[normalizedKey] = nextEntry;
+        return nextEntry;
+    }
+
+    function getText(key, specificLang = null) {
+        const translationSet = translations[key];
+        if (!isPlainObject(translationSet)) {
+            return key;
+        }
+
+        const preferredLanguages = [];
+        if (typeof specificLang === 'string' && specificLang.trim()) {
+            preferredLanguages.push(specificLang.trim().toLowerCase());
+        }
+        if (typeof currentLanguage === 'string' && currentLanguage.trim()) {
+            preferredLanguages.push(currentLanguage.trim().toLowerCase());
+        }
+        preferredLanguages.push('en', 'ar');
+
+        for (const languageCode of [...new Set(preferredLanguages)]) {
+            const text = translationSet[languageCode];
+            if (typeof text === 'string' && text.trim()) {
+                return text;
+            }
+        }
+
+        const firstAvailableText = Object.values(translationSet).find(
+            (value) => typeof value === 'string' && value.trim()
+        );
+        return firstAvailableText || key;
+    }
+    function getLocaleForLanguage(languageCode) {
+        const normalizedLanguage = typeof languageCode === 'string'
+            ? languageCode.trim().toLowerCase()
+            : 'en';
+
+        if (!normalizedLanguage) return 'en-GB';
+        if (normalizedLanguage === 'ar') return 'ar-EG-u-nu-latn';
+        if (normalizedLanguage === 'en') return 'en-GB';
+
+        return normalizedLanguage;
     }
     function getCurrency() { return getText('currency_symbol'); }
     function formatPrice(p) { return `${p} ${getCurrency()}`; }
@@ -1266,7 +1368,6 @@ document.addEventListener('DOMContentLoaded', () => {
         }
         // Use the correct variable name: isCanteenOpen
         if (!isCanteenOpen) {
-            console.log("DEBUG: Entering block to SHOW indicator (isCanteenOpen is false)"); // <<< ADD DEBUG LOG
             indicatorElement.textContent = getText('canteen_closed_indicator');
             indicatorElement.style.display = 'block';
             // console.log('[Log] Indicator set to visible (Closed)');
@@ -1295,46 +1396,18 @@ document.addEventListener('DOMContentLoaded', () => {
 
     // --- Load Functions ---
     function loadTranslations() {
-        // Start with the default translations defined in the code
-        let finalTranslations = { ...translations }; // Create a copy of the defaults
-        console.log("[loadTranslations] Starting with default keys:", Object.keys(finalTranslations).length);
-
-        // Load from localStorage IF available
+        let finalTranslations = cloneTranslationsMap(translations);
         try {
-            // <<< FIX localStorage KEY HERE >>>
             const storedTranslations = localStorage.getItem(LS_KEYS.TRANSLATIONS);
             if (storedTranslations) {
                 const loadedTranslations = JSON.parse(storedTranslations);
-                console.log("[loadTranslations] Found stored translations with keys:", Object.keys(loadedTranslations).length);
-
-                // <<< CORRECTED MERGE LOGIC >>>
-                // Merge loaded translations ON TOP of the defaults
-                for (const key in loadedTranslations) {
-                    if (loadedTranslations.hasOwnProperty(key)) {
-                        // If the key exists in defaults, merge safely
-                        if (finalTranslations[key]) {
-                            if (typeof finalTranslations[key] === 'object' && typeof loadedTranslations[key] === 'object') {
-                                finalTranslations[key] = { ...finalTranslations[key], ...loadedTranslations[key] };
-                            } else {
-                                // Overwrite if types don't match or default isn't object
-                                finalTranslations[key] = loadedTranslations[key];
-                            }
-                        } else {
-                            // If the key is only in loaded, add it
-                            finalTranslations[key] = loadedTranslations[key];
-                        }
-                    }
-                }
-                console.log("[loadTranslations] Translations loaded and merged from localStorage. Final keys:", Object.keys(finalTranslations).length);
-            } else {
-                console.log("[loadTranslations] No stored translations found, using defaults.");
+                mergeTranslationsInto(finalTranslations, loadedTranslations);
             }
         } catch (e) {
-            console.error("[loadTranslations] Error loading/merging translations:", e);
-            // Fallback to the initial defaults if error occurs
-            finalTranslations = { ...translations };
+            console.error("[loadTranslations] Error loading translations:", e);
+            finalTranslations = cloneTranslationsMap(translations);
         }
-        // Assign the final merged object back to the global variable
+
         translations = finalTranslations;
     }
 
@@ -1376,7 +1449,7 @@ document.addEventListener('DOMContentLoaded', () => {
                 const storedOrders = localStorage.getItem(LS_KEYS.ORDERS);
                 allOrders = storedOrders ? JSON.parse(storedOrders) : [];
                 // If management screen is loaded without WS connection, render from local storage
-                if (currentScreen === 'screen-5' || currentScreen === 'screen-9') {
+                if (currentScreen && (currentScreen.id === 'screen-5' || currentScreen.id === 'screen-9')) {
                     renderOrderLog(allOrders);
                     clearOrderPreview(); // Clear preview initially
                 }
@@ -1457,26 +1530,28 @@ document.addEventListener('DOMContentLoaded', () => {
     function handleOutsideSettingsClick(e) { if (settingsPanel && !settingsPanel.contains(e.target) && settingsBtn && !settingsBtn.contains(e.target)) { toggleSettingsPanel(false); } else { const isDropdownControl = currentLanguageDisplay?.contains(e.target) || currentThemeDisplay?.contains(e.target); const isDropdownList = languageOptions?.contains(e.target) || themeOptions?.contains(e.target); const isToggleControl = discoveryModeToggle?.contains(e.target); if (settingsPanel && settingsPanel.contains(e.target) && !isDropdownControl && !isDropdownList && !isToggleControl) { closeAllSettingsDropdowns(); } } }
     function toggleSettingsDropdown(g) { if (!g) return; const o = g === languageGroup ? themeGroup : languageGroup; const i = !g.classList.contains('open'); const d = g.querySelector('.settings-current-display'); const l = g.querySelector('.settings-options-list'); if (i && o && o.classList.contains('open')) { o.classList.remove('open', 'open-upward'); const oD = o.querySelector('.settings-current-display'); if (oD) oD.setAttribute('aria-expanded', 'false'); } let u = false; if (i && d && l) { const e = 150; const r = d.getBoundingClientRect(); const sB = window.innerHeight - r.bottom - 10; const sA = r.top - 10; if (sB < e && sA > sB) { u = true; } } g.classList.remove('open-upward'); if (i) { if (u) { g.classList.add('open-upward'); } g.classList.add('open'); } else { g.classList.remove('open'); } if (d) d.setAttribute('aria-expanded', i); }
     function closeAllSettingsDropdowns() { if (languageGroup) languageGroup.classList.remove('open', 'open-upward'); if (themeGroup) themeGroup.classList.remove('open', 'open-upward'); if (currentLanguageDisplay) currentLanguageDisplay.setAttribute('aria-expanded', 'false'); if (currentThemeDisplay) currentThemeDisplay.setAttribute('aria-expanded', 'false'); }
-    function updateLanguageDisplay() { const s = languageOptions?.querySelector(`.option-item[data-lang="${currentLanguage}"]`); if (s && currentLanguageText) { currentLanguageText.textContent = s.querySelector('span').textContent; languageOptions?.querySelectorAll('.option-item').forEach(i => { const a = i.dataset.lang === currentLanguage; i.classList.toggle('active', a); i.setAttribute('aria-selected', a); }); } }
+    function updateLanguageDisplay() {
+        const selectedOption = languageOptions?.querySelector(`.option-item[data-lang="${currentLanguage}"]`);
+        if (selectedOption && currentLanguageText) {
+            currentLanguageText.textContent = selectedOption.querySelector('span').textContent;
+        } else if (currentLanguageText) {
+            currentLanguageText.textContent = (currentLanguage || 'en').toUpperCase();
+        }
+
+        languageOptions?.querySelectorAll('.option-item').forEach(i => {
+            const isActive = i.dataset.lang === currentLanguage;
+            i.classList.toggle('active', isActive);
+            i.setAttribute('aria-selected', isActive);
+        });
+    }
     function updateThemeDisplay() {
         const s = themeOptions?.querySelector(`.option-item[data-theme="${currentTheme}"]`);
         if (s && currentThemeText && currentThemeSwatch) {
             const tK = s.querySelector('span:not(.theme-swatch)')?.dataset.langKey;
-            console.log(`[updateThemeDisplay] Current theme: "${currentTheme}", Extracted langKey (tK): "${tK}"`); // DEBUG
-            console.log(`[updateThemeDisplay] --- Dumping translations object ---`); // DEBUG
-            console.log(translations); // DEBUG
-            if (translations['theme_light_red']) { // DEBUG
-                console.log(`[updateThemeDisplay] translations['theme_light_red'] exists:`, translations['theme_light_red']); // DEBUG
-            } else { // DEBUG
-                console.log(`[updateThemeDisplay] !!! translations['theme_light_red'] NOT FOUND !!!`); // DEBUG
-            } // DEBUG
             if (tK) {
-                const translatedText = getText(tK);
-                console.log(`[updateThemeDisplay] getText("${tK}") returned: "${translatedText}"`); // DEBUG
-                currentThemeText.textContent = translatedText;
+                currentThemeText.textContent = getText(tK);
             } else {
                 currentThemeText.textContent = s.querySelector('span:not(.theme-swatch)')?.textContent || currentTheme;
-                console.log(`[updateThemeDisplay] No langKey (tK) found. Fallback to textContent or currentTheme.`); // DEBUG
             }
             const w = s.querySelector('.theme-swatch');
             if (w) {
@@ -1600,17 +1675,17 @@ document.addEventListener('DOMContentLoaded', () => {
             // Updated logic for previousScreenId
             if (fromScreenId && id !== 'screen-1') { // Store previous screen unless navigating to the main login screen
                 previousScreenId = fromScreenId;
-                console.log(`[Debug] Navigating from ${fromScreenId} to ${id}. previousScreenId set to: ${previousScreenId}`); // DEBUG
+            debugLog(`[Debug] Navigating from ${fromScreenId} to ${id}. previousScreenId set to: ${previousScreenId}`); // DEBUG
             } else if (id === 'screen-1') { // Clear when going to main login
                 previousScreenId = null;
-                console.log(`[Debug] Navigating to ${id} (screen-1). previousScreenId cleared.`); // DEBUG
+                debugLog(`[Debug] Navigating to ${id} (screen-1). previousScreenId cleared.`); // DEBUG
             } else if (fromScreenId) {
                 // This case handles when fromScreenId is not null, but id is screen-1 (already handled above) or fromScreenId was null initially.
                 // If fromScreenId exists but previousScreenId wasn't set by the conditions above, it means we came from screen-1 or previousScreenId was null.
                 // It's safer to log if previousScreenId remains unchanged here for clarity, though it should be null if coming from screen-1 or initially null.
-                console.log(`[Debug] Navigating from ${fromScreenId} to ${id}. previousScreenId remains: ${previousScreenId}`); // DEBUG
+                debugLog(`[Debug] Navigating from ${fromScreenId} to ${id}. previousScreenId remains: ${previousScreenId}`); // DEBUG
             } else {
-                console.log(`[Debug] Navigating to ${id} (no fromScreenId). previousScreenId remains: ${previousScreenId}`); // DEBUG
+                debugLog(`[Debug] Navigating to ${id} (no fromScreenId). previousScreenId remains: ${previousScreenId}`); // DEBUG
             }
             // Note: If navigating away from screen-7, the specific logic for screen-7's back button (item-preview-back-button)
             // might still use its own previousScreenId which is set when entering screen-7. This general previousScreenId
@@ -1707,8 +1782,8 @@ document.addEventListener('DOMContentLoaded', () => {
         menuSortButtonsContainer.innerHTML = ''; // Clear existing
 
         // *** ADDED LOGS ***
-        console.log("[Debug] Populating Sort Buttons. Categories:", JSON.stringify(categories));
-        console.log("[Debug] Populating Sort Buttons. Translations:", JSON.stringify(translations));
+        debugLog("[Debug] Populating Sort Buttons. Categories count:", categories.length);
+        debugLog("[Debug] Populating Sort Buttons. Translation keys:", Object.keys(translations).length);
         // *** END LOGS ***
 
         // Filter out archive category for regular users
@@ -2247,7 +2322,7 @@ document.addEventListener('DOMContentLoaded', () => {
             userDisplayHtml = getText('user_guest');
         }
 
-        const orderTime = new Date(o.timestamp).toLocaleString(currentLanguage === 'ar' ? 'ar-EG-u-nu-latn' : 'en-GB', {
+        const orderTime = new Date(o.timestamp).toLocaleString(getLocaleForLanguage(currentLanguage), {
             day: '2-digit', month: '2-digit', year: 'numeric',
             hour: '2-digit', minute: '2-digit', hour12: true
         });
@@ -2357,7 +2432,7 @@ document.addEventListener('DOMContentLoaded', () => {
         };
         Object.keys(defaultCategoryTranslations).forEach(key => {
             if (!translations[key]) {
-                translations[key] = defaultCategoryTranslations[key];
+                upsertTranslationEntry(key, defaultCategoryTranslations[key], false);
             }
         });
         saveTranslations(); // Save any added default translations
@@ -2387,7 +2462,7 @@ document.addEventListener('DOMContentLoaded', () => {
 
                 // If using a new name_key, ensure it has default translations
                 if (!translations[newNameKey]) {
-                    translations[newNameKey] = { en: catKey, ar: catKey }; // Default to key name in both languages
+                    upsertTranslationEntry(newNameKey, { en: catKey, ar: catKey }, false); // Default to key name in both languages
                     console.log(`Sync: Added default translation for new category key '${newNameKey}'.`);
                     // Note: User will need to edit this translation later in the Edit Category modal
                 }
@@ -2734,8 +2809,8 @@ document.addEventListener('DOMContentLoaded', () => {
 
 
         console.log("Validation passed. Adding category data..."); // <<< ADD LOG
-        // Add to translations
-        translations[newNameKey] = { en: nameEn, ar: nameAr };
+        // Add to translations (preserve future non-EN/AR fields if the key already exists)
+        upsertTranslationEntry(newNameKey, { en: nameEn, ar: nameAr });
         saveTranslations(); // *** SAVE TRANSLATIONS ***
         // Add to categories array
         categories.push({ key: newCategoryKey, name_key: newNameKey, productIds: [] });
@@ -2779,7 +2854,7 @@ document.addEventListener('DOMContentLoaded', () => {
         const nameData = translations[category.name_key] || { en: '', ar: '' };
         // Ensure translation exists, create a placeholder if not
         if (!translations[category.name_key]) {
-            translations[category.name_key] = { en: category.key, ar: category.key }; // Default to key if translation missing
+            upsertTranslationEntry(category.name_key, { en: category.key, ar: category.key }, false); // Default to key if translation missing
             saveTranslations(); // Save the new placeholder translation
             nameData.en = category.key;
             nameData.ar = category.key;
@@ -2846,13 +2921,12 @@ document.addEventListener('DOMContentLoaded', () => {
         }
 
 
-        // Update translations object
-        if (translations[nameKey]) {
-            translations[nameKey].en = nameEn;
-            translations[nameKey].ar = nameAr;
-        } else {
-            translations[nameKey] = { en: nameEn, ar: nameAr };
-            console.warn(`Translation key ${nameKey} was missing during edit, created new entry.`);
+        // Update translations object while preserving any extra language fields
+        const categoryTranslationEntry = upsertTranslationEntry(nameKey, { en: nameEn, ar: nameAr });
+        if (!categoryTranslationEntry) {
+            editCategoryErrorMsg.textContent = getText('edit_category_error_generic');
+            editCategoryErrorMsg.style.display = 'block';
+            return;
         }
         saveTranslations(); // *** SAVE TRANSLATIONS ***
 
@@ -2870,7 +2944,7 @@ document.addEventListener('DOMContentLoaded', () => {
         // Send update via WebSocket
         sendWebSocketMessage({
             type: 'admin_category_updated',
-            payload: { categoryKey: categoryKey, nameKey: nameKey, translations: { [nameKey]: translations[nameKey] } }
+            payload: { categoryKey: categoryKey, nameKey: nameKey, translations: { [nameKey]: categoryTranslationEntry } }
         });
         console.log("Sent 'admin_category_updated' message via WebSocket.");
     }
@@ -3014,7 +3088,7 @@ document.addEventListener('DOMContentLoaded', () => {
         console.log("Validation passed. Updating currency data..."); // <<< ADD LOG
 
         // Update translations
-        translations.currency_symbol = { en: symbolEn, ar: symbolAr };
+        upsertTranslationEntry('currency_symbol', { en: symbolEn, ar: symbolAr });
         saveTranslations(); // *** SAVE TRANSLATIONS ***
 
         // Update language UI to reflect changes
@@ -3125,8 +3199,8 @@ document.addEventListener('DOMContentLoaded', () => {
         const descKey = `item_desc_${newId}`;
 
         // Populate translations with both languages
-        translations[nameKey] = { en: nameEn, ar: nameAr };
-        translations[descKey] = { en: descriptionEn, ar: descriptionAr };
+        const nameTranslationEntry = upsertTranslationEntry(nameKey, { en: nameEn, ar: nameAr });
+        const descriptionTranslationEntry = upsertTranslationEntry(descKey, { en: descriptionEn, ar: descriptionAr });
         saveTranslations(); // *** SAVE TRANSLATIONS ***
 
         const newProduct = {
@@ -3166,8 +3240,8 @@ document.addEventListener('DOMContentLoaded', () => {
                 categoryKey: currentCategoryKey,
                 // Include the translations for the new keys
                 translations: {
-                    [nameKey]: translations[nameKey], // Send the name translation object {en: ..., ar: ...}
-                    [descKey]: translations[descKey]  // Send the desc translation object {en: ..., ar: ...}
+                    [nameKey]: nameTranslationEntry, // Send the name translation object
+                    [descKey]: descriptionTranslationEntry  // Send the description translation object
                 }
             }
         });
@@ -3409,15 +3483,14 @@ document.addEventListener('DOMContentLoaded', () => {
 
         saveProducts(); // *** SAVE PRODUCTS ***
 
-        // Update translations
-        if (translations[originalNameKey]) {
-            translations[originalNameKey].en = nameEn;
-            translations[originalNameKey].ar = nameAr;
-        } else { translations[originalNameKey] = { en: nameEn, ar: nameAr }; console.warn(`Translation key ${originalNameKey} was missing during edit update, created new entry.`); }
-        if (translations[originalDescKey]) {
-            translations[originalDescKey].en = descriptionEn;
-            translations[originalDescKey].ar = descriptionAr;
-        } else { translations[originalDescKey] = { en: descriptionEn, ar: descriptionAr }; console.warn(`Translation key ${originalDescKey} was missing during edit update, created new entry.`); }
+        // Update translations while preserving any future language fields
+        const updatedNameTranslation = upsertTranslationEntry(originalNameKey, { en: nameEn, ar: nameAr });
+        const updatedDescriptionTranslation = upsertTranslationEntry(originalDescKey, { en: descriptionEn, ar: descriptionAr });
+        if (!updatedNameTranslation || !updatedDescriptionTranslation) {
+            editProductErrorMsg.textContent = getText('edit_product_error_generic');
+            editProductErrorMsg.style.display = 'block';
+            return;
+        }
         saveTranslations(); // *** SAVE TRANSLATIONS ***
 
 
@@ -3464,8 +3537,6 @@ document.addEventListener('DOMContentLoaded', () => {
         }
 
 
-        populateMenuGrid(); // Refresh main menu (screen 3) - essential as products or categories change
-        updateProductCategoryDropdowns(); // Refresh category dropdowns in modals/forms (in case category names changed via Category Edit modal)
         updateLanguageUI(); // Refresh UI for updated translation keys and potentially category names in dropdowns
 
         const alertProductName = currentLanguage === 'ar' ? nameAr : nameEn;
@@ -3490,6 +3561,10 @@ document.addEventListener('DOMContentLoaded', () => {
                     // Include the keys for the server to update the correct translation entry
                     name_key: originalNameKey,
                     description_key: originalDescKey
+                },
+                translations: {
+                    [originalNameKey]: updatedNameTranslation,
+                    [originalDescKey]: updatedDescriptionTranslation
                 },
                 originalCategoryKey: originalCategory, // Still needed for category list update
                 newCategoryKey: newCategory             // Still needed for category list update
@@ -4369,8 +4444,19 @@ document.addEventListener('DOMContentLoaded', () => {
             return;
         }
 
-        // --- NEW: Client-side email format validation ---\n            if (!emailRegex.test(email)) {\n                loginErrorMsg.textContent = getText('login_error_invalid_email') || 'Please enter a valid email address.'; // Need translation key\n                loginErrorMsg.style.display = 'block';\n                return; // Don't proceed if email format is invalid\n            }\n            // --- END: Email validation ---\n\n            // --- Check if canteen is open BEFORE trying to log in ---\n            if (!isCanteenOpen) {\n                showCustomAlert(getText('canteen_closed_login_alert'), 'error_title');\n                return; // Prevent sending login request\n            }\n            // --- End check ---\n\n            // Send login request to server
-        console.log(`[Client] Preparing to send login_user message for: ${email}`); // <-- ADDED LOG
+        if (!emailRegex.test(email)) {
+            loginErrorMsg.textContent = getText('login_error_invalid_email') || 'Please enter a valid email address.';
+            loginErrorMsg.style.display = 'block';
+            return;
+        }
+
+        // Check if canteen is open before trying to log in.
+        if (!isCanteenOpen) {
+            showCustomAlert(getText('canteen_closed_login_alert'), 'error_title');
+            return;
+        }
+
+        debugLog(`[Client] Preparing to send login_user message for: ${email}`);
         sendWebSocketMessage({ type: 'login_user', payload: { email: email, password: password } });
 
     });
@@ -4922,135 +5008,39 @@ document.addEventListener('DOMContentLoaded', () => {
     connectWebSocket();
 }); // <<< ENSURE THIS IS THE ACTUAL END of the DOMContentLoaded listener
 
-// Add a loading/connecting screen if not present
-if (!document.getElementById('screen-0')) {
-    const loadingScreen = document.createElement('div');
-    loadingScreen.className = 'screen';
-    loadingScreen.id = 'screen-0';
-    loadingScreen.innerHTML = '<div class="screen-content"><h2>Connecting...</h2><p>Please wait while connecting to the server.</p></div>';
-    document.querySelector('.app-container').prepend(loadingScreen);
-}
-
-let isWebSocketConnected = false;
-
-// --- إخفاء شاشة التحميل بعد 5 ثواني مهما كان ---
-setTimeout(() => {
-    const loader = document.getElementById('loader-overlay');
-    if (loader) loader.remove();
-}, 5000);
-
-// --- إخفاء شاشة connecting (screen-0) بعد 5 ثواني ---
-setTimeout(() => {
-    const connectingScreen = document.getElementById('screen-0');
-    if (connectingScreen) connectingScreen.style.display = 'none';
-}, 5000);
-
-// --- حذف جميع عناصر screen-0 بعد 5 ثواني ---
-setTimeout(() => {
-    document.querySelectorAll('#screen-0').forEach(el => el.remove());
-}, 5000);
-
-// --- منع إعادة إنشاء شاشة connecting بعد 5 ثواني ---
-setTimeout(() => {
-    window.disableConnectingScreen = true;
-    document.querySelectorAll('#screen-0').forEach(el => el.remove());
-}, 5000);
-
-// عند إنشاء شاشة connecting في نهاية الملف:
-if (!window.disableConnectingScreen && !document.getElementById('screen-0')) {
-    const loadingScreen = document.createElement('div');
-    loadingScreen.className = 'screen';
-    loadingScreen.id = 'screen-0';
-    loadingScreen.innerHTML = '<div class="screen-content"><h2>Connecting...</h2><p>Please wait while connecting to the server.</p></div>';
-    document.querySelector('.app-container').prepend(loadingScreen);
-}
-
-// --- مراقبة مستمرة لحذف screen-0 إذا ظهرت بعد 5 ثواني ---
-setInterval(() => {
-    if (window.disableConnectingScreen) {
-        document.querySelectorAll('#screen-0').forEach(el => el.remove());
+function ensureConnectingScreen() {
+    const appContainer = document.querySelector('.app-container');
+    if (!appContainer || document.getElementById('screen-0')) {
+        return;
     }
-}, 1000);
 
-// بعد DOMContentLoaded مباشرة:
-setTimeout(() => {
-    window.disableConnectingScreen = true;
-    document.querySelectorAll('#screen-0').forEach(el => el.remove());
-}, 5000);
-// ... existing code ...
-// عند أي محاولة لإنشاء شاشة connecting:
-if (!window.disableConnectingScreen && !document.getElementById('screen-0')) {
     const loadingScreen = document.createElement('div');
     loadingScreen.className = 'screen';
     loadingScreen.id = 'screen-0';
     loadingScreen.innerHTML = '<div class="screen-content"><h2>Connecting...</h2><p>Please wait while connecting to the server.</p></div>';
-    document.querySelector('.app-container').prepend(loadingScreen);
+    appContainer.prepend(loadingScreen);
 }
-// ... existing code ...
-
-// بعد DOMContentLoaded مباشرة:
-const connectingScreenTimeout = Date.now() + 5000;
-setInterval(() => {
-    if (Date.now() > connectingScreenTimeout) {
-        document.querySelectorAll('#screen-0').forEach(el => el.remove());
-        window.disableConnectingScreen = true;
-    }
-}, 500);
-// ... existing code ...
-// عند أي محاولة لإنشاء شاشة connecting:
-if (!window.disableConnectingScreen && !document.getElementById('screen-0')) {
-    const loadingScreen = document.createElement('div');
-    loadingScreen.className = 'screen';
-    loadingScreen.id = 'screen-0';
-    loadingScreen.innerHTML = '<div class="screen-content"><h2>Connecting...</h2><p>Please wait while connecting to the server.</p></div>';
-    document.querySelector('.app-container').prepend(loadingScreen);
-}
-// ... existing code ...
-
-// ... existing code ...\n    // عند أي محاولة لإنشاء شاشة connecting:\n    // if ((Date.now() - connectingScreenStart) < 5000 && !document.getElementById('screen-0')) {\n    //     const loadingScreen = document.createElement('div');\n    //     loadingScreen.className = 'screen';\n    //     loadingScreen.id = 'screen-0';\n    //     loadingScreen.innerHTML = '<div class=\"screen-content\"><h2>Connecting...</h2><p>Please wait while connecting to the server.</p></div>';\n    //     document.querySelector('.app-container').prepend(loadingScreen);\n    // }\n    // ... existing code ...
 
 // دالة لإظهار شاشة connecting
 function showConnectingScreen() {
     if (connectingScreenEverTimedOut) return;
-    console.log('[DEBUG] showConnectingScreen called');
-    if (!document.getElementById('screen-0')) {
-        const loadingScreen = document.createElement('div');
-        loadingScreen.className = 'screen';
-        loadingScreen.id = 'screen-0';
-        loadingScreen.innerHTML = '<div class="screen-content"><h2>Connecting...</h2><p>Please wait while connecting to the server.</p></div>';
-        document.querySelector('.app-container').prepend(loadingScreen);
-        console.log('[DEBUG] screen-0 created');
-    }
+    ensureConnectingScreen();
+
     // فقط أول مرة: شغل التايمر
     if (!window.connectingScreenTimeout) {
         window.connectingScreenTimeout = setTimeout(() => {
             connectingScreenEverTimedOut = true;
             hideConnectingScreen();
-            console.log('[DEBUG] 5 seconds passed, auto-hiding connecting screen');
         }, 5000);
     }
 }
+
 // دالة لإخفاء شاشة connecting
 function hideConnectingScreen() {
-    console.log('[DEBUG] hideConnectingScreen called');
     const els = document.querySelectorAll('#screen-0');
     for (const el of els) {
         el.remove();
-        console.log('[DEBUG] screen-0 removed');
     }
     if (window.connectingScreenTimeout) clearTimeout(window.connectingScreenTimeout);
     window.connectingScreenTimeout = null;
 }
-// ... existing code ...
-// في connectWebSocket:
-ws.onopen = () => {
-    console.log('[DEBUG] ws.onopen - connection established');
-    isWebSocketConnected = true;
-    hideConnectingScreen();
-    // ... باقي الكود ...
-};
-ws.onclose = () => {
-    console.log('[DEBUG] ws.onclose - connection lost');
-    showConnectingScreen();
-    // ... باقي الكود ...
-};

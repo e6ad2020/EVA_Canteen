@@ -76,6 +76,7 @@ The application supports **English** and **Arabic** out of the box and features 
 
 ### 🎨 Customization
 - **Bilingual Support:** Full English and Arabic UI translations.
+- **Extensible Localization Model:** Translation entries now support additional language codes (e.g., `fr`, `es`, `de`) without schema redesign.
 - **Theming Engine:** Choose from over 10 themes including:
     - Default Blue, Light Blue, Light Red
     - Dark Grey, Night Mode (Dark Themes)
@@ -88,7 +89,7 @@ The application supports **English** and **Arabic** out of the box and features 
 
 - **Frontend:** HTML5, CSS3, Vanilla JavaScript, Chart.js
 - **Backend:** Node.js, Express.js
-- **Database:** SQLite (with `sqlite3` and `sqlite` wrapper)
+- **Database:** SQLite (with `better-sqlite3`)
 - **Real-time:** `ws` (WebSocket library)
 - **Security:** `bcrypt` (Password hashing), `jsonwebtoken` (Sessions/Auth)
 
@@ -110,6 +111,14 @@ eva-canteen/
 ├── script.js               # Frontend logic
 └── style.css               # Global styles & themes
 ```
+
+### Translation Architecture Notes
+- The frontend translation object supports arbitrary language keys per translation entry.
+- The database keeps `en`/`ar` columns for compatibility and stores extra languages in `translations.extra_languages_json`.
+- To add a new UI language later:
+  1. Add a language option in the settings UI.
+  2. Set `currentLanguage` to the new code.
+  3. Start adding that code (e.g., `fr`) in translation entries.
 
 ---
 

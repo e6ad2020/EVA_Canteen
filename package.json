@@ -1,13 +1,22 @@
 {
+  "name": "eva-canteen",
+  "version": "1.0.0",
+  "private": true,
   "license": "GPL-3.0-or-later",
+  "scripts": {
+    "start": "node server.js",
+    "dev": "node server.js",
+    "check": "node --check server.js && node --check script.js && node --check database.js && node --check db_cli.js && node --check hash_tool.js",
+    "db:cli": "node db_cli.js",
+    "hash": "node hash_tool.js"
+  },
   "dependencies": {
-    "bcrypt": "^5.1.1",
+    "bcrypt": "^6.0.0",
+    "better-sqlite3": "^12.6.2",
     "express": "^5.1.0",
     "jsonwebtoken": "^9.0.2",
     "open": "^11.0.0",
     "selfsigned": "^2.4.1",
-    "sqlite": "^5.1.1",
-    "sqlite3": "^5.1.7",
     "uuid": "^11.1.0",
     "ws": "^8.18.1"
   }

@@ -1,133 +1,169 @@
-const sqlite3 = require('sqlite3').verbose();
-const path = require('path');
 const fs = require('fs');
+const path = require('path');
+const Database = require('better-sqlite3');
 
 const DB_PATH = path.join(__dirname, 'data', 'canteen.db');
 
-// Ensure data directory exists
 if (!fs.existsSync(path.dirname(DB_PATH))) {
     fs.mkdirSync(path.dirname(DB_PATH), { recursive: true });
 }
 
-const db = new sqlite3.Database(DB_PATH, (err) => {
-    if (err) {
-        console.error('Error opening database:', err.message);
-    } else {
-        console.log('Connected to the SQLite database.');
-        // Enable foreign keys
-        db.run('PRAGMA foreign_keys = ON;');
+const db = new Database(DB_PATH);
+console.log('Connected to the SQLite database.');
+db.pragma('foreign_keys = ON');
+db.pragma('busy_timeout = 5000');
+db.pragma('journal_mode = WAL');
+db.pragma('synchronous = NORMAL');
+
+function normalizeParams(params) {
+    if (params === undefined || params === null) {
+        return [];
     }
-});
-
-function initDatabase() {
-    return new Promise((resolve, reject) => {
-        db.serialize(() => {
-            // Users Table
-            db.run(`CREATE TABLE IF NOT EXISTS users (
-                email TEXT PRIMARY KEY,
-                password_hash TEXT,
-                profile_pic TEXT,
-                role TEXT DEFAULT 'user',
-                created_at DATETIME DEFAULT CURRENT_TIMESTAMP
-            )`);
-
-            // Categories Table
-            db.run(`CREATE TABLE IF NOT EXISTS categories (
-                key TEXT PRIMARY KEY,
-                name_key TEXT,
-                display_order INTEGER
-            )`);
-
-            // Products Table
-            db.run(`CREATE TABLE IF NOT EXISTS products (
-                id TEXT PRIMARY KEY,
-                name_key TEXT,
-                description_key TEXT,
-                price REAL,
-                quantity INTEGER,
-                image TEXT,
-                category_key TEXT,
-                FOREIGN KEY (category_key) REFERENCES categories(key) ON DELETE SET NULL
-            )`);
-
-            // Orders Table
-            db.run(`CREATE TABLE IF NOT EXISTS orders (
-                id TEXT PRIMARY KEY,
-                user_email TEXT,
-                total_amount REAL,
-                status TEXT,
-                payment_method TEXT,
-                timestamp DATETIME,
-                FOREIGN KEY (user_email) REFERENCES users(email) ON DELETE SET NULL
-            )`);
-
-            // Order Items Table
-            db.run(`CREATE TABLE IF NOT EXISTS order_items (
-                id INTEGER PRIMARY KEY AUTOINCREMENT,
-                order_id TEXT,
-                product_id TEXT,
-                quantity INTEGER,
-                price_at_purchase REAL,
-                is_discount INTEGER DEFAULT 0,
-                name_key_at_purchase TEXT,
-                FOREIGN KEY (order_id) REFERENCES orders(id) ON DELETE CASCADE
-                -- Note: We don't enforce FK on product_id strictly to allow keeping order history even if product is deleted physically,
-                -- or we can enforce it but handle soft deletes. For simplicity here, we rely on the ID string.
-            )`);
-
-            // Translations Table (Key-Value for simpler lookups)
-            db.run(`CREATE TABLE IF NOT EXISTS translations (
-                key TEXT PRIMARY KEY,
-                en TEXT,
-                ar TEXT
-            )`);
-
-            // Settings Table (Key-Value)
-            db.run(`CREATE TABLE IF NOT EXISTS settings (
-                key TEXT PRIMARY KEY,
-                value TEXT
-            )`, (err) => {
-                if (err) reject(err);
-                else resolve();
-            });
-        });
-    });
+    return params;
 }
 
-// Wrapper for db.all (Promise based)
 function query(sql, params = []) {
-    return new Promise((resolve, reject) => {
-        db.all(sql, params, (err, rows) => {
-            if (err) reject(err);
-            else resolve(rows);
-        });
+    return Promise.resolve().then(() => {
+        const stmt = db.prepare(sql);
+        return stmt.all(normalizeParams(params));
     });
 }
 
-// Wrapper for db.run (Promise based)
 function run(sql, params = []) {
-    return new Promise((resolve, reject) => {
-        db.run(sql, params, function (err) {
-            if (err) reject(err);
-            else resolve(this);
-        });
+    return Promise.resolve().then(() => {
+        const stmt = db.prepare(sql);
+        const result = stmt.run(normalizeParams(params));
+        return {
+            changes: result.changes,
+            lastID: Number(result.lastInsertRowid),
+            lastInsertRowid: Number(result.lastInsertRowid)
+        };
     });
 }
 
-// Wrapper for db.get (Promise based)
 function get(sql, params = []) {
-    return new Promise((resolve, reject) => {
-        db.get(sql, params, (err, row) => {
-            if (err) reject(err);
-            else resolve(row);
-        });
+    return Promise.resolve().then(() => {
+        const stmt = db.prepare(sql);
+        return stmt.get(normalizeParams(params));
     });
+}
+
+function close() {
+    return Promise.resolve().then(() => {
+        db.close();
+    });
+}
+
+function assertIdentifier(identifier, label) {
+    if (typeof identifier !== 'string' || !/^[a-zA-Z_][a-zA-Z0-9_]*$/.test(identifier)) {
+        throw new Error(`Invalid ${label} identifier: ${identifier}`);
+    }
+}
+
+async function withTransaction(work) {
+    await run('BEGIN IMMEDIATE TRANSACTION');
+    try {
+        const result = await work();
+        await run('COMMIT');
+        return result;
+    } catch (err) {
+        try {
+            await run('ROLLBACK');
+        } catch (rollbackErr) {
+            console.error('Failed to rollback transaction:', rollbackErr);
+        }
+        throw err;
+    }
+}
+
+async function ensureColumnExists(tableName, columnName, definitionSql) {
+    assertIdentifier(tableName, 'table');
+    assertIdentifier(columnName, 'column');
+    const columns = await query(`PRAGMA table_info(${tableName})`);
+    const hasColumn = columns.some((column) => column.name === columnName);
+    if (!hasColumn) {
+        await run(`ALTER TABLE ${tableName} ADD COLUMN ${columnName} ${definitionSql}`);
+    }
+}
+
+async function initDatabase() {
+    const schemaStatements = [
+        `CREATE TABLE IF NOT EXISTS users (
+            email TEXT PRIMARY KEY,
+            password_hash TEXT,
+            profile_pic TEXT,
+            role TEXT DEFAULT 'user',
+            created_at DATETIME DEFAULT CURRENT_TIMESTAMP
+        )`,
+        `CREATE TABLE IF NOT EXISTS categories (
+            key TEXT PRIMARY KEY,
+            name_key TEXT,
+            display_order INTEGER
+        )`,
+        `CREATE TABLE IF NOT EXISTS products (
+            id TEXT PRIMARY KEY,
+            name_key TEXT,
+            description_key TEXT,
+            price REAL,
+            quantity INTEGER,
+            image TEXT,
+            category_key TEXT,
+            FOREIGN KEY (category_key) REFERENCES categories(key) ON DELETE SET NULL
+        )`,
+        `CREATE TABLE IF NOT EXISTS orders (
+            id TEXT PRIMARY KEY,
+            user_email TEXT,
+            total_amount REAL,
+            status TEXT,
+            payment_method TEXT,
+            timestamp DATETIME,
+            FOREIGN KEY (user_email) REFERENCES users(email) ON DELETE SET NULL
+        )`,
+        `CREATE TABLE IF NOT EXISTS order_items (
+            id INTEGER PRIMARY KEY AUTOINCREMENT,
+            order_id TEXT,
+            product_id TEXT,
+            quantity INTEGER,
+            price_at_purchase REAL,
+            is_discount INTEGER DEFAULT 0,
+            name_key_at_purchase TEXT,
+            FOREIGN KEY (order_id) REFERENCES orders(id) ON DELETE CASCADE
+        )`,
+        `CREATE TABLE IF NOT EXISTS translations (
+            key TEXT PRIMARY KEY,
+            en TEXT,
+            ar TEXT,
+            extra_languages_json TEXT DEFAULT '{}'
+        )`,
+        `CREATE TABLE IF NOT EXISTS settings (
+            key TEXT PRIMARY KEY,
+            value TEXT
+        )`,
+        `CREATE INDEX IF NOT EXISTS idx_orders_timestamp ON orders(timestamp)`,
+        `CREATE INDEX IF NOT EXISTS idx_orders_status ON orders(status)`,
+        `CREATE INDEX IF NOT EXISTS idx_order_items_order_id ON order_items(order_id)`,
+        `CREATE INDEX IF NOT EXISTS idx_order_items_product_id ON order_items(product_id)`,
+        `CREATE INDEX IF NOT EXISTS idx_products_category_key ON products(category_key)`,
+        `CREATE INDEX IF NOT EXISTS idx_categories_display_order ON categories(display_order)`
+    ];
+
+    for (const statement of schemaStatements) {
+        await run(statement);
+    }
+
+    await ensureColumnExists('translations', 'extra_languages_json', `TEXT DEFAULT '{}'`);
+
+    await run(
+        `INSERT OR IGNORE INTO settings (key, value) VALUES ('canteen_open', 'true')`
+    );
 }
 
 module.exports = {
+    close,
     db,
+    get,
     initDatabase,
     query,
     run,
-    get
+    withTransaction
 };

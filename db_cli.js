@@ -1,16 +1,16 @@
-const sqlite3 = require('sqlite3').verbose();
+const Database = require('better-sqlite3');
 const path = require('path');
 
 // Path to your database
 const DB_PATH = path.join(__dirname, 'data', 'canteen.db');
 
-// Connect to Database
-const db = new sqlite3.Database(DB_PATH, sqlite3.OPEN_READWRITE, (err) => {
-    if (err) {
-        console.error('Error opening database:', err.message);
-        process.exit(1);
-    }
-});
+let db;
+try {
+    db = new Database(DB_PATH);
+} catch (err) {
+    console.error('Error opening database:', err.message);
+    process.exit(1);
+}
 
 // Get the SQL query from command line arguments
 const query = process.argv[2];
@@ -29,43 +29,33 @@ Examples:
 }
 
 // Handle special commands
-if (query.trim() === '.tables') {
-    db.all("SELECT name FROM sqlite_master WHERE type='table'", [], (err, rows) => {
-        if (err) console.error(err.message);
-        else {
-            console.log("Tables in database:");
+try {
+    if (query.trim() === '.tables') {
+        const rows = db.prepare("SELECT name FROM sqlite_master WHERE type='table' ORDER BY name").all();
+        console.log("Tables in database:");
+        console.table(rows);
+        process.exit(0);
+    }
+
+    // Determine if it's a query that returns rows
+    const returnsRows = /^\s*(SELECT|PRAGMA|WITH|EXPLAIN)\b/i.test(query);
+
+    if (returnsRows) {
+        const rows = db.prepare(query).all();
+        if (rows.length === 0) {
+            console.log("No results found.");
+        } else {
             console.table(rows);
         }
-        db.close();
-    });
-    return;
-}
-
-// Determine if it's a SELECT query (returns data) or others (RUN)
-const isSelect = query.trim().toUpperCase().startsWith('SELECT');
-
-if (isSelect) {
-    db.all(query, [], (err, rows) => {
-        if (err) {
-            console.error("SQL Error:", err.message);
-        } else {
-            if (rows.length === 0) {
-                console.log("No results found.");
-            } else {
-                console.table(rows); // Pretty print results as a table
-            }
-        }
-        db.close();
-    });
-} else {
-    db.run(query, function (err) {
-        if (err) {
-            console.error("SQL Error:", err.message);
-        } else {
-            console.log(`Query executed successfully.`);
-            console.log(`Rows affected: ${this.changes}`);
-            console.log(`Last Insert ID: ${this.lastID}`);
-        }
-        db.close();
-    });
+    } else {
+        const result = db.prepare(query).run();
+        console.log(`Query executed successfully.`);
+        console.log(`Rows affected: ${result.changes}`);
+        console.log(`Last Insert ID: ${Number(result.lastInsertRowid)}`);
+    }
+} catch (err) {
+    console.error("SQL Error:", err.message);
+    process.exitCode = 1;
+} finally {
+    db.close();
 }

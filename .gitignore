@@ -39,3 +39,7 @@ Desktop.ini
 *.temp
 .cache/
 .temp/
+
+# SQLite runtime sidecar files (generated when WAL mode is enabled)
+*.db-shm
+*.db-wal
