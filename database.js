@@ -2,7 +2,7 @@ const fs = require('fs');
 const path = require('path');
 const Database = require('better-sqlite3');
 
-const DB_PATH = path.join(__dirname, 'data', 'canteen.db');
+const DB_PATH = process.env.DB_PATH || path.join(__dirname, 'data', 'canteen.db');
 
 if (!fs.existsSync(path.dirname(DB_PATH))) {
     fs.mkdirSync(path.dirname(DB_PATH), { recursive: true });
@@ -144,7 +144,28 @@ async function initDatabase() {
         `CREATE INDEX IF NOT EXISTS idx_order_items_order_id ON order_items(order_id)`,
         `CREATE INDEX IF NOT EXISTS idx_order_items_product_id ON order_items(product_id)`,
         `CREATE INDEX IF NOT EXISTS idx_products_category_key ON products(category_key)`,
-        `CREATE INDEX IF NOT EXISTS idx_categories_display_order ON categories(display_order)`
+        `CREATE INDEX IF NOT EXISTS idx_categories_display_order ON categories(display_order)`,
+        `CREATE TABLE IF NOT EXISTS wallet_transactions (
+            id INTEGER PRIMARY KEY AUTOINCREMENT,
+            user_email TEXT NOT NULL,
+            delta REAL NOT NULL,
+            balance_after REAL NOT NULL,
+            reason TEXT,
+            actor TEXT DEFAULT 'system',
+            timestamp DATETIME DEFAULT CURRENT_TIMESTAMP,
+            FOREIGN KEY (user_email) REFERENCES users(email) ON DELETE CASCADE
+        )`,
+        `CREATE INDEX IF NOT EXISTS idx_wallet_tx_email ON wallet_transactions(user_email, timestamp DESC)`,
+        `CREATE TABLE IF NOT EXISTS bundles (
+            id TEXT PRIMARY KEY,
+            name_key TEXT NOT NULL,
+            description_key TEXT NOT NULL,
+            item_ids_json TEXT NOT NULL DEFAULT '[]',
+            discount_percent REAL NOT NULL DEFAULT 0,
+            is_suggestion INTEGER NOT NULL DEFAULT 0,
+            active INTEGER NOT NULL DEFAULT 1,
+            display_order INTEGER NOT NULL DEFAULT 0
+        )`
     ];
 
     for (const statement of schemaStatements) {
@@ -152,10 +173,101 @@ async function initDatabase() {
     }
 
     await ensureColumnExists('translations', 'extra_languages_json', `TEXT DEFAULT '{}'`);
+    await ensureColumnExists('users', 'balance', `REAL NOT NULL DEFAULT 0`);
 
     await run(
         `INSERT OR IGNORE INTO settings (key, value) VALUES ('canteen_open', 'true')`
     );
+    await run(
+        `INSERT OR IGNORE INTO settings (key, value) VALUES ('payment_methods', '{"cash":true,"card":true,"wallet":true}')`
+    );
+
+    const existingBundlesCount = await get(`SELECT COUNT(*) AS count FROM bundles`);
+    if (!existingBundlesCount || existingBundlesCount.count === 0) {
+        const defaultBundles = [
+            {
+                id: 'bundle-lunch-deal',
+                nameKey: 'bundle_lunch_deal_name',
+                descKey: 'bundle_lunch_deal_desc',
+                itemIds: ['pizza', 'salad', 'soda'],
+                discount: 15,
+                isSuggestion: 0,
+                order: 0,
+                enName: 'Lunch Power Deal',
+                arName: 'عرض الغداء القوي',
+                enDesc: 'Grab a Pizza, Salad, and Soda together and save!',
+                arDesc: 'احصل على بيتزا وسلطة وصودا معًا ووفر!'
+            },
+            {
+                id: 'bundle-sweet-treat',
+                nameKey: 'bundle_sweet_treat_name',
+                descKey: 'bundle_sweet_treat_desc',
+                itemIds: ['cake', 'coffee', 'croissant'],
+                discount: 20,
+                isSuggestion: 0,
+                order: 1,
+                enName: 'Sweet Treat Bundle',
+                arName: 'حزمة الحلوى اللذيذة',
+                enDesc: 'Indulge with Cake, Coffee, and a Croissant at a special price.',
+                arDesc: 'دلل نفسك بالكيك والقهوة والكرواسون بسعر خاص.'
+            },
+            {
+                id: 'sugg-1',
+                nameKey: 'suggestion_burger_combo_name',
+                descKey: 'suggestion_burger_combo_desc',
+                itemIds: ['burger', 'fries', 'soda'],
+                discount: 0,
+                isSuggestion: 1,
+                order: 2,
+                enName: 'Classic Combo',
+                arName: 'كومبو كلاسيك',
+                enDesc: 'The perfect trio: Burger, Fries, and Soda.',
+                arDesc: 'الثلاثي المثالي: برجر، بطاطس، وصودا.'
+            },
+            {
+                id: 'sugg-2',
+                nameKey: 'suggestion_coffee_break_name',
+                descKey: 'suggestion_coffee_break_desc',
+                itemIds: ['coffee', 'muffin'],
+                discount: 0,
+                isSuggestion: 1,
+                order: 3,
+                enName: 'Coffee Break',
+                arName: 'استراحة قهوة',
+                enDesc: 'Relax with a warm Coffee and a soft Muffin.',
+                arDesc: 'استرخِ مع قهوة دافئة ومافن طري.'
+            },
+            {
+                id: 'sugg-3',
+                nameKey: 'suggestion_lunch_light_name',
+                descKey: 'suggestion_lunch_light_desc',
+                itemIds: ['salad', 'juice'],
+                discount: 0,
+                isSuggestion: 1,
+                order: 4,
+                enName: 'Light Lunch',
+                arName: 'غداء خفيف',
+                enDesc: 'A healthy and refreshing Salad paired with Juice.',
+                arDesc: 'سلطة صحية ومنعشة مع عصير.'
+            }
+        ];
+
+        for (const b of defaultBundles) {
+            await run(
+                `INSERT OR IGNORE INTO bundles (id, name_key, description_key, item_ids_json, discount_percent, is_suggestion, active, display_order)
+                 VALUES (?, ?, ?, ?, ?, ?, 1, ?)`,
+                [b.id, b.nameKey, b.descKey, JSON.stringify(b.itemIds), b.discount, b.isSuggestion, b.order]
+            );
+            await run(
+                `INSERT OR IGNORE INTO translations (key, en, ar, extra_languages_json) VALUES (?, ?, ?, '{}')`,
+                [b.nameKey, b.enName, b.arName]
+            );
+            await run(
+                `INSERT OR IGNORE INTO translations (key, en, ar, extra_languages_json) VALUES (?, ?, ?, '{}')`,
+                [b.descKey, b.enDesc, b.arDesc]
+            );
+        }
+    }
 }
 
 module.exports = {

@@ -43,3 +43,6 @@ Desktop.ini
 # SQLite runtime sidecar files (generated when WAL mode is enabled)
 *.db-shm
 *.db-wal
+
+# Runtime uploaded product images
+uploads/

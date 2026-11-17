@@ -4,8 +4,11 @@
  */
 
 const bcrypt = require('bcrypt');
+const crypto = require('crypto');
 const express = require('express');
+const fs = require('fs');
 const http = require('http');
+const jwt = require('jsonwebtoken');
 const os = require('os');
 const path = require('path');
 const WebSocket = require('ws');
@@ -19,13 +22,23 @@ const wss = new WebSocket.Server({
     maxPayload: 64 * 1024
 });
 
-app.use(express.static(path.join(__dirname, '')));
-
 const PORT = Number(process.env.PORT) || 8080;
 
-const SERVER_ADMIN_EMAIL = process.env.ADMIN_EMAIL || 'admin@canteen.app';
+const SERVER_ADMIN_EMAIL = (process.env.ADMIN_EMAIL || 'admin@canteen.app').trim().toLowerCase();
 const SERVER_ADMIN_PASSWORD = process.env.ADMIN_PASSWORD || 'admin123';
 const SERVER_DISCOVERY_PASSPHRASE = process.env.DISCOVERY_PASSPHRASE || '12345';
+const JWT_SECRET =
+    process.env.JWT_SECRET ||
+    crypto
+        .createHash('sha256')
+        .update(`${SERVER_ADMIN_EMAIL}:${SERVER_ADMIN_PASSWORD}:eva-canteen-jwt-v1`)
+        .digest('hex');
+
+const UPLOADS_DIR = path.join(__dirname, 'uploads');
+const FLUTTER_WEB_DIR = path.join(__dirname, 'flutter_app', 'build', 'web');
+if (!fs.existsSync(UPLOADS_DIR)) {
+    fs.mkdirSync(UPLOADS_DIR, { recursive: true });
+}
 
 const MAX_ADMIN_FAILED_ATTEMPTS = 5;
 const ADMIN_LOCKOUT_DURATION_MS = 5 * 60 * 1000;
@@ -33,12 +46,113 @@ const LANGUAGE_CODE_PATTERN = /^[a-z]{2,3}(?:-[a-z0-9]{2,8})*$/i;
 const MAX_WS_MESSAGE_BYTES = 64 * 1024;
 const WS_HEARTBEAT_INTERVAL_MS = 30 * 1000;
 const SETTINGS_KEY_PRODUCT_ORDER_MAP = 'category_product_order_map';
+const SETTINGS_KEY_PAYMENT_METHODS = 'payment_methods';
 
 const VALID_ORDER_STATUSES = new Set(['pending', 'preparing', 'delivered']);
 const VALID_PROFILE_PICS = new Set(['pic1', 'pic2', 'pic3']);
+const VALID_PAYMENT_METHODS = new Set(['cash', 'card', 'wallet']);
 
 const clients = new Map();
 const failedAdminLoginAttempts = new Map();
+
+function signAuthToken(claims) {
+    return jwt.sign(claims, JWT_SECRET, { expiresIn: '30d' });
+}
+
+function verifyAuthToken(token) {
+    if (typeof token !== 'string' || !token.trim()) {
+        return null;
+    }
+    try {
+        const decoded = jwt.verify(token.trim(), JWT_SECRET);
+        return decoded && typeof decoded === 'object' ? decoded : null;
+    } catch {
+        return null;
+    }
+}
+
+function normalizeProfilePic(rawPic) {
+    if (typeof rawPic !== 'string' || !rawPic.trim()) {
+        return 'pic2';
+    }
+    const trimmed = rawPic.trim();
+    if (VALID_PROFILE_PICS.has(trimmed)) {
+        return trimmed;
+    }
+    if (trimmed.includes('pfp1') || trimmed.includes('6pkqNQdB')) {
+        return 'pic1';
+    }
+    if (trimmed.includes('pfp3') || trimmed.includes('sXy2v068')) {
+        return 'pic3';
+    }
+    return 'pic2';
+}
+
+app.use(express.json({ limit: '6mb' }));
+app.use((req, res, next) => {
+    res.setHeader('Access-Control-Allow-Origin', '*');
+    res.setHeader('Access-Control-Allow-Headers', 'Content-Type, Authorization');
+    res.setHeader('Access-Control-Allow-Methods', 'GET, POST, OPTIONS');
+    if (req.method === 'OPTIONS') {
+        res.sendStatus(204);
+        return;
+    }
+    next();
+});
+
+app.get('/api/health', (_req, res) => {
+    res.json({ ok: true, version: '1.1.0' });
+});
+
+app.post('/api/upload-image', (req, res) => {
+    const authHeader = req.headers.authorization || '';
+    const bearerToken = authHeader.startsWith('Bearer ') ? authHeader.slice(7) : null;
+    const decoded = verifyAuthToken(bearerToken);
+    if (!decoded || decoded.role !== 'admin') {
+        res.status(401).json({ error: 'Unauthorized' });
+        return;
+    }
+
+    const dataUrl = typeof req.body?.dataUrl === 'string' ? req.body.dataUrl.trim() : '';
+    const match = /^data:image\/(png|jpeg|jpg|webp|gif);base64,([A-Za-z0-9+/=\s]+)$/i.exec(dataUrl);
+    if (!match) {
+        res.status(400).json({ error: 'Invalid image payload. Expected base64 data URL.' });
+        return;
+    }
+
+    const rawExt = match[1].toLowerCase();
+    const ext = rawExt === 'jpeg' ? 'jpg' : rawExt;
+    const buffer = Buffer.from(match[2].replace(/\s+/g, ''), 'base64');
+    if (buffer.length === 0 || buffer.length > 5 * 1024 * 1024) {
+        res.status(400).json({ error: 'Image size must be between 1 byte and 5 MB.' });
+        return;
+    }
+
+    const filename = `prod-${Date.now()}-${crypto.randomBytes(4).toString('hex')}.${ext}`;
+    fs.writeFileSync(path.join(UPLOADS_DIR, filename), buffer);
+    res.json({ url: `/uploads/${filename}` });
+});
+
+app.use('/uploads', express.static(UPLOADS_DIR));
+app.use('/releases', express.static(path.join(__dirname, 'releases'), {
+    setHeaders: (res, filePath) => {
+        if (filePath.endsWith('.apk')) {
+            res.setHeader('Content-Type', 'application/vnd.android.package-archive');
+            res.setHeader('Content-Disposition', `attachment; filename="${path.basename(filePath)}"`);
+        }
+    }
+}));
+app.use('/assets', express.static(path.join(__dirname, 'assets')));
+app.use('/fonts', express.static(path.join(__dirname, 'fonts')));
+app.use('/legacy', express.static(path.join(__dirname, '')));
+app.use((req, res, next) => {
+    if (process.env.SERVE_LEGACY_ROOT !== 'true' && fs.existsSync(path.join(FLUTTER_WEB_DIR, 'index.html'))) {
+        express.static(FLUTTER_WEB_DIR)(req, res, next);
+        return;
+    }
+    next();
+});
+app.use(express.static(path.join(__dirname, '')));
 
 class ClientError extends Error {
     constructor(message, payload = {}) {
@@ -106,6 +220,18 @@ function broadcast(type, payload, excludeWs = null) {
 function broadcastToManagement(type, payload) {
     for (const [ws, info] of clients.entries()) {
         if (info.isManagement && ws.readyState === WebSocket.OPEN) {
+            sendMessage(ws, type, payload);
+        }
+    }
+}
+
+function sendToUser(email, type, payload) {
+    const normalizedEmail = sanitizeEmail(email);
+    if (!normalizedEmail) {
+        return;
+    }
+    for (const [ws, info] of clients.entries()) {
+        if (info.userEmail === normalizedEmail && ws.readyState === WebSocket.OPEN) {
             sendMessage(ws, type, payload);
         }
     }
@@ -284,7 +410,7 @@ function splitTranslationForStorage(translationMap) {
     };
 }
 
-function normalizeOrderPayload(payload) {
+function normalizeOrderPayload(payload, authenticatedEmail = null) {
     if (!payload || typeof payload !== 'object') {
         throw new ClientError('Invalid order payload.', { reason: 'InvalidOrder' });
     }
@@ -294,8 +420,9 @@ function normalizeOrderPayload(payload) {
         throw new ClientError('Invalid order total.', { reason: 'InvalidOrderTotal' });
     }
 
-    const paymentMethod = sanitizeString(payload.paymentMethod, { maxLength: 24 }) || 'cash';
-    const userEmail = sanitizeEmail(payload.user?.email);
+    const rawMethod = (sanitizeString(payload.paymentMethod, { maxLength: 24 }) || 'cash').toLowerCase();
+    const paymentMethod = VALID_PAYMENT_METHODS.has(rawMethod) ? rawMethod : 'cash';
+    const userEmail = sanitizeEmail(authenticatedEmail) || sanitizeEmail(payload.user?.email);
 
     if (!Array.isArray(payload.items) || payload.items.length === 0) {
         throw new ClientError('Order has no items.', { reason: 'EmptyOrder' });
@@ -304,8 +431,12 @@ function normalizeOrderPayload(payload) {
     const items = payload.items.map((item, index) => {
         const id = sanitizeString(item?.id, { maxLength: 128 });
         const quantity = sanitizeInteger(item?.quantity, { min: 1, max: 9999 });
-        const price = sanitizeNumber(item?.price, { min: 0, max: 1_000_000 });
+        const isDiscount = Boolean(item?.isDiscount);
+        const price = isDiscount
+            ? sanitizeNumber(item?.price, { min: -1_000_000, max: 1_000_000 })
+            : sanitizeNumber(item?.price, { min: 0, max: 1_000_000 });
         const nameKey = sanitizeOptionalString(item?.name_key, { maxLength: 256 }) || '';
+        const bundleId = sanitizeOptionalString(item?.bundleId, { maxLength: 128 }) || null;
 
         if (!id || quantity === null || price === null) {
             throw new ClientError('Invalid order item.', {
@@ -318,7 +449,8 @@ function normalizeOrderPayload(payload) {
             id,
             quantity,
             price,
-            isDiscount: Boolean(item?.isDiscount),
+            isDiscount,
+            bundleId,
             name_key: nameKey
         };
     });
@@ -578,15 +710,55 @@ async function getCanteenStatus() {
     };
 }
 
-async function getAllOrders() {
-    const orders = await db.query(
-        `SELECT o.*, u.email AS resolved_user_email, u.profile_pic AS resolved_profile_pic
-         FROM orders o
-         LEFT JOIN users u ON o.user_email = u.email
-         ORDER BY o.timestamp DESC`
-    );
+async function getPaymentMethods() {
+    const row = await db.get('SELECT value FROM settings WHERE key = ?', [SETTINGS_KEY_PAYMENT_METHODS]);
+    const defaults = { cash: true, card: true, wallet: true };
+    if (!row?.value) {
+        return defaults;
+    }
+    try {
+        const parsed = JSON.parse(row.value);
+        return {
+            cash: parsed?.cash !== false,
+            card: parsed?.card !== false,
+            wallet: parsed?.wallet !== false
+        };
+    } catch {
+        return defaults;
+    }
+}
 
-    const items = await db.query('SELECT * FROM order_items ORDER BY id ASC');
+async function getAllBundles({ activeOnly = false } = {}) {
+    const sql = activeOnly
+        ? 'SELECT * FROM bundles WHERE active = 1 ORDER BY display_order ASC, id ASC'
+        : 'SELECT * FROM bundles ORDER BY display_order ASC, id ASC';
+    const rows = await db.query(sql);
+    return rows.map((row) => {
+        let itemIds = [];
+        try {
+            const parsed = JSON.parse(row.item_ids_json || '[]');
+            if (Array.isArray(parsed)) {
+                itemIds = parsed
+                    .map((id) => sanitizeString(id, { maxLength: 128 }))
+                    .filter(Boolean);
+            }
+        } catch {
+            itemIds = [];
+        }
+        return {
+            id: row.id,
+            name_key: row.name_key,
+            description_key: row.description_key,
+            itemIds,
+            discountPercent: Number(row.discount_percent || 0),
+            isSuggestion: Boolean(row.is_suggestion),
+            active: Boolean(row.active),
+            displayOrder: Number(row.display_order || 0)
+        };
+    });
+}
+
+function formatMappedOrders(orders, items) {
     const itemsByOrder = {};
 
     for (const item of items) {
@@ -616,10 +788,48 @@ async function getAllOrders() {
                 profilePic: order.resolved_profile_pic || 'pic2'
             }
             : {
-                email: 'Guest',
+                email: order.user_email || 'Guest',
                 profilePic: 'pic2'
             }
     }));
+}
+
+async function getAllOrders() {
+    const orders = await db.query(
+        `SELECT o.*, u.email AS resolved_user_email, u.profile_pic AS resolved_profile_pic
+         FROM orders o
+         LEFT JOIN users u ON o.user_email = u.email
+         ORDER BY o.timestamp DESC`
+    );
+
+    const items = await db.query('SELECT * FROM order_items ORDER BY id ASC');
+    return formatMappedOrders(orders, items);
+}
+
+async function getOrdersByUserEmail(email) {
+    const normalizedEmail = sanitizeEmail(email);
+    if (!normalizedEmail) {
+        return [];
+    }
+
+    const orders = await db.query(
+        `SELECT o.*, u.email AS resolved_user_email, u.profile_pic AS resolved_profile_pic
+         FROM orders o
+         LEFT JOIN users u ON o.user_email = u.email
+         WHERE LOWER(o.user_email) = ?
+         ORDER BY o.timestamp DESC`,
+        [normalizedEmail]
+    );
+    if (orders.length === 0) {
+        return [];
+    }
+
+    const placeholders = orders.map(() => '?').join(', ');
+    const items = await db.query(
+        `SELECT * FROM order_items WHERE order_id IN (${placeholders}) ORDER BY id ASC`,
+        orders.map((o) => o.id)
+    );
+    return formatMappedOrders(orders, items);
 }
 
 async function getOrderById(orderId) {
@@ -636,30 +846,7 @@ async function getOrderById(orderId) {
     }
 
     const items = await db.query('SELECT * FROM order_items WHERE order_id = ? ORDER BY id ASC', [orderId]);
-
-    return {
-        id: order.id,
-        totalAmount: order.total_amount,
-        status: order.status,
-        paymentMethod: order.payment_method,
-        timestamp: order.timestamp,
-        items: items.map((item) => ({
-            id: item.product_id,
-            quantity: item.quantity,
-            price: item.price_at_purchase,
-            isDiscount: Boolean(item.is_discount),
-            name_key: item.name_key_at_purchase
-        })),
-        user: order.resolved_user_email
-            ? {
-                email: order.resolved_user_email,
-                profilePic: order.resolved_profile_pic || 'pic2'
-            }
-            : {
-                email: 'Guest',
-                profilePic: 'pic2'
-            }
-    };
+    return formatMappedOrders([order], items)[0] || null;
 }
 
 async function updateTranslations(newTranslations) {
@@ -720,30 +907,42 @@ async function updateTranslations(newTranslations) {
 async function broadcastFullData() {
     const { products, categories } = await getProductsAndCategories();
     const translations = await getTranslations();
+    const activeBundles = await getAllBundles({ activeOnly: true });
+    const allBundles = await getAllBundles({ activeOnly: false });
 
     broadcast('products_updated', products);
     broadcast('categories_updated', categories);
     broadcast('translations_updated', translations);
+    broadcast('bundles_updated', activeBundles);
+    broadcastToManagement('admin_bundles_updated', allBundles);
 }
 
 async function sendInitialPublicData(ws) {
     const translations = await getTranslations();
     const status = await getCanteenStatus();
     const { products, categories } = await getProductsAndCategories();
+    const bundles = await getAllBundles({ activeOnly: true });
+    const paymentMethods = await getPaymentMethods();
 
     sendMessage(ws, 'initial_translations', translations);
     sendMessage(ws, 'initial_canteen_status', status);
     sendMessage(ws, 'initial_products', products);
     sendMessage(ws, 'initial_categories', categories);
+    sendMessage(ws, 'initial_bundles', bundles);
+    sendMessage(ws, 'initial_payment_methods', paymentMethods);
 }
 
 async function sendInitialManagementData(ws) {
     const orders = await getAllOrders();
     const { products, categories } = await getProductsAndCategories();
+    const allBundles = await getAllBundles({ activeOnly: false });
+    const paymentMethods = await getPaymentMethods();
 
     sendMessage(ws, 'initial_orders', orders);
     sendMessage(ws, 'initial_products', products);
     sendMessage(ws, 'initial_categories', categories);
+    sendMessage(ws, 'admin_bundles_updated', allBundles);
+    sendMessage(ws, 'initial_payment_methods', paymentMethods);
 }
 
 async function generateOrderIdOnServer() {
@@ -773,16 +972,94 @@ async function generateOrderIdOnServer() {
 
 async function handleRequestInitialData(ws) {
     const { products, categories } = await getProductsAndCategories();
+    const bundles = await getAllBundles({ activeOnly: true });
+    const paymentMethods = await getPaymentMethods();
     sendMessage(ws, 'initial_products', products);
     sendMessage(ws, 'initial_categories', categories);
+    sendMessage(ws, 'initial_bundles', bundles);
+    sendMessage(ws, 'initial_payment_methods', paymentMethods);
 }
 
-async function handleIdentifyManagement(ws, clientInfo) {
-    clientInfo.isManagement = true;
-    clients.set(ws, clientInfo);
+async function handleIdentifyManagement(ws, clientInfo, payload) {
+    if (!clientInfo.isManagement) {
+        const decoded = verifyAuthToken(payload?.token);
+        if (!decoded || decoded.role !== 'admin') {
+            sendMessage(ws, 'admin_auth_required', {
+                message: 'Valid management session token is required.'
+            });
+            return;
+        }
+        clientInfo.isManagement = true;
+        clients.set(ws, clientInfo);
+    }
 
     console.log('Management client identified');
     await sendInitialManagementData(ws);
+}
+
+async function handleAuthenticateSession(ws, clientInfo, payload) {
+    const decoded = verifyAuthToken(payload?.token);
+    if (!decoded) {
+        sendMessage(ws, 'session_expired', { message: 'Session token expired or invalid.' });
+        return;
+    }
+
+    if (decoded.role === 'admin') {
+        clientInfo.isManagement = true;
+        clients.set(ws, clientInfo);
+        sendMessage(ws, 'session_restored', {
+            role: 'admin',
+            email: decoded.email || SERVER_ADMIN_EMAIL
+        });
+        await sendInitialManagementData(ws);
+        return;
+    }
+
+    if (decoded.role === 'user' && decoded.email) {
+        const user = await db.get('SELECT email, profile_pic, balance FROM users WHERE email = ?', [
+            sanitizeEmail(decoded.email)
+        ]);
+        if (!user) {
+            sendMessage(ws, 'session_expired', { message: 'Account not found.' });
+            return;
+        }
+
+        clientInfo.userEmail = user.email;
+        clients.set(ws, clientInfo);
+
+        sendMessage(ws, 'session_restored', {
+            role: 'user',
+            email: user.email,
+            profilePic: user.profile_pic || 'pic2',
+            balance: Number(user.balance || 0)
+        });
+
+        const myOrders = await getOrdersByUserEmail(user.email);
+        sendMessage(ws, 'my_orders', myOrders);
+        return;
+    }
+
+    sendMessage(ws, 'session_expired', { message: 'Unrecognized session role.' });
+}
+
+async function handleGetMyOrders(ws, clientInfo, payload) {
+    let email = clientInfo.userEmail;
+    if (!email && payload?.token) {
+        const decoded = verifyAuthToken(payload.token);
+        if (decoded?.role === 'user' && decoded.email) {
+            email = sanitizeEmail(decoded.email);
+            clientInfo.userEmail = email;
+            clients.set(ws, clientInfo);
+        }
+    }
+
+    if (!email) {
+        sendMessage(ws, 'my_orders', []);
+        return;
+    }
+
+    const orders = await getOrdersByUserEmail(email);
+    sendMessage(ws, 'my_orders', orders);
 }
 
 async function handleGetOrders(ws, clientInfo) {
@@ -813,14 +1090,19 @@ async function handleUpdateOrderStatus(clientInfo, payload) {
         return;
     }
 
-    broadcastToManagement('order_status_updated_broadcast', {
+    const updatePayload = {
         orderId,
         newStatus,
         updatedOrder
-    });
+    };
+
+    broadcastToManagement('order_status_updated_broadcast', updatePayload);
+    if (updatedOrder.user?.email && updatedOrder.user.email !== 'Guest') {
+        sendToUser(updatedOrder.user.email, 'my_order_updated', updatePayload);
+    }
 }
 
-async function handleRegisterUser(ws, payload) {
+async function handleRegisterUser(ws, clientInfo, payload) {
     const email = sanitizeEmail(payload?.email);
     const password = sanitizeString(payload?.password, { maxLength: 256 });
 
@@ -835,21 +1117,28 @@ async function handleRegisterUser(ws, payload) {
         return;
     }
 
-    const profilePic = VALID_PROFILE_PICS.has(payload?.profilePic) ? payload.profilePic : 'pic2';
+    const profilePic = normalizeProfilePic(payload?.profilePic);
     const passwordHash = await bcrypt.hash(password, 10);
 
     await db.run(
-        'INSERT INTO users (email, password_hash, profile_pic) VALUES (?, ?, ?)',
+        'INSERT INTO users (email, password_hash, profile_pic, balance) VALUES (?, ?, ?, 0)',
         [email, passwordHash, profilePic]
     );
 
+    clientInfo.userEmail = email;
+    clients.set(ws, clientInfo);
+    const token = signAuthToken({ role: 'user', email });
+
     sendMessage(ws, 'register_success', {
         email,
-        profilePic
+        profilePic,
+        balance: 0,
+        token
     });
+    sendMessage(ws, 'my_orders', []);
 }
 
-async function handleLoginUser(ws, payload) {
+async function handleLoginUser(ws, clientInfo, payload) {
     const email = sanitizeEmail(payload?.email);
     const password = sanitizeString(payload?.password, { maxLength: 256 });
 
@@ -870,10 +1159,19 @@ async function handleLoginUser(ws, payload) {
         return;
     }
 
+    clientInfo.userEmail = user.email;
+    clients.set(ws, clientInfo);
+    const token = signAuthToken({ role: 'user', email: user.email });
+
     sendMessage(ws, 'login_success', {
         email: user.email,
-        profilePic: user.profile_pic
+        profilePic: user.profile_pic || 'pic2',
+        balance: Number(user.balance || 0),
+        token
     });
+
+    const myOrders = await getOrdersByUserEmail(user.email);
+    sendMessage(ws, 'my_orders', myOrders);
 }
 
 async function handleAdminLogin(ws, clientInfo, payload) {
@@ -900,8 +1198,14 @@ async function handleAdminLogin(ws, clientInfo, payload) {
         clearAdminLoginFailures(clientInfo.ip);
         clientInfo.isManagement = true;
         clients.set(ws, clientInfo);
+        const token = signAuthToken({ role: 'admin', email: SERVER_ADMIN_EMAIL });
 
-        sendMessage(ws, 'admin_login_success', { message: 'Success' });
+        sendMessage(ws, 'admin_login_success', {
+            message: 'Success',
+            email: SERVER_ADMIN_EMAIL,
+            token
+        });
+        await sendInitialManagementData(ws);
         return;
     }
 
@@ -924,7 +1228,7 @@ async function handlePlaceOrder(ws, clientInfo, payload) {
 
     let normalizedOrder;
     try {
-        normalizedOrder = normalizeOrderPayload(payload);
+        normalizedOrder = normalizeOrderPayload(payload, clientInfo.userEmail);
     } catch (err) {
         if (err instanceof ClientError) {
             sendMessage(ws, 'order_rejected', err.payload);
@@ -933,27 +1237,184 @@ async function handlePlaceOrder(ws, clientInfo, payload) {
         throw err;
     }
 
+    const paymentMethods = await getPaymentMethods();
+    if (!paymentMethods[normalizedOrder.paymentMethod]) {
+        sendMessage(ws, 'order_rejected', {
+            reason: 'PaymentMethodDisabled',
+            paymentMethod: normalizedOrder.paymentMethod
+        });
+        return;
+    }
+
+    const regularItems = normalizedOrder.items.filter((item) => !item.isDiscount);
+    if (regularItems.length === 0) {
+        sendMessage(ws, 'order_rejected', { reason: 'EmptyOrder' });
+        return;
+    }
+
     let orderId;
+    let updatedWalletBalance = null;
 
     try {
         await db.withTransaction(async () => {
             orderId = await generateOrderIdOnServer();
             const timestamp = new Date().toISOString();
 
+            const productMap = new Map();
+            const itemQtyByProductId = new Map();
+            let authoritativeSubtotal = 0;
+
+            for (const item of regularItems) {
+                const product = await db.get('SELECT * FROM products WHERE id = ?', [item.id]);
+                if (!product || product.category_key === 'archive') {
+                    throw new ClientError('Unavailable item.', {
+                        reason: 'UnavailableItem',
+                        itemId: item.id
+                    });
+                }
+
+                productMap.set(item.id, product);
+                const aggregatedQty = (itemQtyByProductId.get(item.id) || 0) + item.quantity;
+                itemQtyByProductId.set(item.id, aggregatedQty);
+
+                if (product.quantity !== 999) {
+                    const currentQuantity = sanitizeInteger(product.quantity, { min: 0, max: 999999 });
+                    if (currentQuantity === null || currentQuantity < aggregatedQty) {
+                        throw new ClientError('Insufficient stock.', {
+                            reason: 'InsufficientStock',
+                            itemId: item.id
+                        });
+                    }
+                }
+
+                authoritativeSubtotal += Number(product.price) * item.quantity;
+            }
+
+            const activeBundles = await getAllBundles({ activeOnly: true });
+            const activeBundlesById = new Map(
+                activeBundles.filter((b) => !b.isSuggestion && b.discountPercent > 0).map((b) => [b.id, b])
+            );
+
+            const appliedBundleIds = new Set();
+            const validatedDiscountItems = [];
+            let totalDiscountAmount = 0;
+
+            for (const discountReq of normalizedOrder.items.filter((item) => item.isDiscount)) {
+                let resolvedBundleId = discountReq.bundleId;
+                if (!resolvedBundleId && discountReq.id.startsWith('discount-')) {
+                    for (const candidateId of activeBundlesById.keys()) {
+                        if (discountReq.id.startsWith(`discount-${candidateId}`)) {
+                            resolvedBundleId = candidateId;
+                            break;
+                        }
+                    }
+                }
+
+                const bundle = resolvedBundleId ? activeBundlesById.get(resolvedBundleId) : null;
+                if (!bundle || appliedBundleIds.has(bundle.id) || bundle.itemIds.length === 0) {
+                    continue;
+                }
+
+                let qualifyingSets = Number.POSITIVE_INFINITY;
+                let singleBundleBaseSum = 0;
+                let qualifies = true;
+
+                for (const reqItemId of bundle.itemIds) {
+                    const qtyInCart = itemQtyByProductId.get(reqItemId) || 0;
+                    const prod = productMap.get(reqItemId);
+                    if (qtyInCart < 1 || !prod) {
+                        qualifies = false;
+                        break;
+                    }
+                    qualifyingSets = Math.min(qualifyingSets, qtyInCart);
+                    singleBundleBaseSum += Number(prod.price);
+                }
+
+                if (!qualifies || !Number.isFinite(qualifyingSets) || qualifyingSets < 1) {
+                    continue;
+                }
+
+                const setsToApply = Math.max(1, Math.min(qualifyingSets, discountReq.quantity || 1));
+                const singleDiscount = singleBundleBaseSum - Math.round(singleBundleBaseSum * ((100 - bundle.discountPercent) / 100));
+                const discountValue = Math.max(0, Number((singleDiscount * setsToApply).toFixed(2)));
+
+                if (discountValue > 0) {
+                    appliedBundleIds.add(bundle.id);
+                    totalDiscountAmount += discountValue;
+                    validatedDiscountItems.push({
+                        id: discountReq.id,
+                        quantity: 1,
+                        price: -discountValue,
+                        isDiscount: true,
+                        name_key: discountReq.name_key || 'bundle_discount_applied'
+                    });
+                }
+            }
+
+            const authoritativeTotal = Math.max(
+                0,
+                Number((authoritativeSubtotal - Math.min(authoritativeSubtotal, totalDiscountAmount)).toFixed(2))
+            );
+
+            let resolvedUserEmail = null;
+            if (normalizedOrder.userEmail) {
+                const existingUser = await db.get('SELECT email, balance FROM users WHERE email = ?', [
+                    normalizedOrder.userEmail
+                ]);
+                if (existingUser) {
+                    resolvedUserEmail = existingUser.email;
+
+                    if (normalizedOrder.paymentMethod === 'wallet') {
+                        const currentBalance = Number(existingUser.balance || 0);
+                        if (currentBalance + 1e-9 < authoritativeTotal) {
+                            throw new ClientError('Insufficient wallet balance.', {
+                                reason: 'InsufficientBalance',
+                                balance: Number(currentBalance.toFixed(2)),
+                                required: authoritativeTotal
+                            });
+                        }
+
+                        updatedWalletBalance = Number((currentBalance - authoritativeTotal).toFixed(2));
+                        await db.run('UPDATE users SET balance = ? WHERE email = ?', [
+                            updatedWalletBalance,
+                            resolvedUserEmail
+                        ]);
+                        await db.run(
+                            `INSERT INTO wallet_transactions (user_email, delta, balance_after, reason, actor, timestamp)
+                             VALUES (?, ?, ?, ?, 'order', ?)`,
+                            [
+                                resolvedUserEmail,
+                                -authoritativeTotal,
+                                updatedWalletBalance,
+                                `Order ${orderId}`,
+                                timestamp
+                            ]
+                        );
+                    }
+                }
+            }
+
+            if (normalizedOrder.paymentMethod === 'wallet' && !resolvedUserEmail) {
+                throw new ClientError('Wallet payment requires a signed-in student account.', {
+                    reason: 'AuthRequiredForWallet'
+                });
+            }
+
             await db.run(
                 `INSERT INTO orders (id, user_email, total_amount, status, payment_method, timestamp)
                  VALUES (?, ?, ?, ?, ?, ?)`,
                 [
                     orderId,
-                    normalizedOrder.userEmail,
-                    normalizedOrder.totalAmount,
+                    resolvedUserEmail,
+                    authoritativeTotal,
                     'pending',
                     normalizedOrder.paymentMethod,
                     timestamp
                 ]
             );
 
-            for (const item of normalizedOrder.items) {
+            for (const item of regularItems) {
+                const product = productMap.get(item.id);
                 await db.run(
                     `INSERT INTO order_items (
                         order_id,
@@ -962,44 +1423,46 @@ async function handlePlaceOrder(ws, clientInfo, payload) {
                         price_at_purchase,
                         is_discount,
                         name_key_at_purchase
-                    ) VALUES (?, ?, ?, ?, ?, ?)`,
+                    ) VALUES (?, ?, ?, ?, 0, ?)`,
                     [
                         orderId,
                         item.id,
                         item.quantity,
-                        item.price,
-                        item.isDiscount ? 1 : 0,
-                        item.name_key
+                        Number(product.price),
+                        product.name_key || item.name_key
                     ]
                 );
+            }
 
-                if (item.isDiscount) {
-                    continue;
-                }
-
-                const product = await db.get('SELECT quantity FROM products WHERE id = ?', [item.id]);
-                if (!product) {
-                    throw new ClientError('Unavailable item.', {
-                        reason: 'UnavailableItem',
-                        itemId: item.id
-                    });
-                }
-
+            for (const [prodId, totalOrderedQty] of itemQtyByProductId.entries()) {
+                const product = productMap.get(prodId);
                 if (product.quantity === 999) {
                     continue;
                 }
-
                 const currentQuantity = sanitizeInteger(product.quantity, { min: 0, max: 999999 });
-                if (currentQuantity === null || currentQuantity < item.quantity) {
-                    throw new ClientError('Insufficient stock.', {
-                        reason: 'InsufficientStock',
-                        itemId: item.id
-                    });
-                }
+                await db.run('UPDATE products SET quantity = ? WHERE id = ?', [
+                    currentQuantity - totalOrderedQty,
+                    prodId
+                ]);
+            }
 
+            for (const discountItem of validatedDiscountItems) {
                 await db.run(
-                    'UPDATE products SET quantity = ? WHERE id = ?',
-                    [currentQuantity - item.quantity, item.id]
+                    `INSERT INTO order_items (
+                        order_id,
+                        product_id,
+                        quantity,
+                        price_at_purchase,
+                        is_discount,
+                        name_key_at_purchase
+                    ) VALUES (?, ?, ?, ?, 1, ?)`,
+                    [
+                        orderId,
+                        discountItem.id,
+                        discountItem.quantity,
+                        discountItem.price,
+                        discountItem.name_key
+                    ]
                 );
             }
         });
@@ -1017,6 +1480,18 @@ async function handlePlaceOrder(ws, clientInfo, payload) {
     if (fullOrder) {
         broadcastToManagement('new_order', fullOrder);
         sendMessage(ws, 'order_confirmed_by_server', fullOrder);
+
+        if (fullOrder.user?.email && fullOrder.user.email !== 'Guest') {
+            const myOrders = await getOrdersByUserEmail(fullOrder.user.email);
+            sendToUser(fullOrder.user.email, 'my_orders', myOrders);
+        }
+
+        if (updatedWalletBalance !== null && fullOrder.user?.email) {
+            sendToUser(fullOrder.user.email, 'wallet_balance_updated', {
+                email: fullOrder.user.email,
+                balance: updatedWalletBalance
+            });
+        }
     }
 
     broadcast('products_updated', updatedProducts);
@@ -1044,13 +1519,13 @@ async function handleGetAnalyticsData(ws, clientInfo, payload) {
         [yearMonthFilter]
     );
 
-    const totalRevenue = totalRevenueRow?.total || 0;
+    const totalRevenue = Number((totalRevenueRow?.total || 0).toFixed(2));
     const totalOrders = totalOrdersRow?.count || 0;
-    const avgOrderValue = totalOrders > 0 ? totalRevenue / totalOrders : 0;
+    const avgOrderValue = totalOrders > 0 ? Number((totalRevenue / totalOrders).toFixed(2)) : 0;
 
-    const products = await db.query('SELECT id, name_key, image FROM products');
+    const products = await db.query('SELECT id, name_key, image, quantity, price, category_key FROM products');
     const salesRows = await db.query(
-        `SELECT oi.product_id, SUM(oi.quantity) AS sold
+        `SELECT oi.product_id, SUM(oi.quantity) AS sold, SUM(oi.quantity * oi.price_at_purchase) AS revenue
          FROM order_items oi
          JOIN orders o ON oi.order_id = o.id
          WHERE oi.is_discount = 0 AND strftime('%Y-%m', o.timestamp) = ?
@@ -1059,21 +1534,37 @@ async function handleGetAnalyticsData(ws, clientInfo, payload) {
     );
 
     const salesByProductId = {};
+    const revenueByProductId = {};
     for (const row of salesRows) {
         salesByProductId[row.product_id] = row.sold;
+        revenueByProductId[row.product_id] = Number((row.revenue || 0).toFixed(2));
     }
 
     const itemSalesRanking = products
+        .filter((product) => product.category_key !== 'archive')
         .map((product) => ({
             id: product.id,
             name_key: product.name_key,
             image: product.image,
-            count: salesByProductId[product.id] || 0
+            quantity: product.quantity,
+            price: product.price,
+            count: salesByProductId[product.id] || 0,
+            revenue: revenueByProductId[product.id] || 0
         }))
         .sort((a, b) => b.count - a.count);
 
+    const lowStockProducts = products
+        .filter((p) => p.category_key !== 'archive' && p.quantity !== 999 && p.quantity <= 5)
+        .map((p) => ({
+            id: p.id,
+            name_key: p.name_key,
+            image: p.image,
+            quantity: p.quantity
+        }))
+        .sort((a, b) => a.quantity - b.quantity);
+
     const dailyRows = await db.query(
-        `SELECT strftime('%d', timestamp) AS day, COUNT(*) AS count
+        `SELECT strftime('%d', timestamp) AS day, COUNT(*) AS count, SUM(total_amount) AS revenue
          FROM orders
          WHERE strftime('%Y-%m', timestamp) = ?
          GROUP BY day`,
@@ -1081,16 +1572,44 @@ async function handleGetAnalyticsData(ws, clientInfo, payload) {
     );
 
     const dailyOrders = {};
+    const dailyRevenue = {};
     const daysInMonth = new Date(requestedYear, requestedMonth, 0).getDate();
     for (let day = 1; day <= daysInMonth; day += 1) {
         dailyOrders[day] = 0;
+        dailyRevenue[day] = 0;
     }
 
     for (const row of dailyRows) {
         const day = Number.parseInt(row.day, 10);
         if (Number.isInteger(day) && dailyOrders[day] !== undefined) {
             dailyOrders[day] = row.count;
+            dailyRevenue[day] = Number((row.revenue || 0).toFixed(2));
         }
+    }
+
+    const statusRows = await db.query(
+        `SELECT status, COUNT(*) AS count FROM orders WHERE strftime('%Y-%m', timestamp) = ? GROUP BY status`,
+        [yearMonthFilter]
+    );
+    const ordersByStatus = { pending: 0, preparing: 0, delivered: 0 };
+    for (const row of statusRows) {
+        if (row.status && ordersByStatus[row.status] !== undefined) {
+            ordersByStatus[row.status] = row.count;
+        }
+    }
+
+    const methodRows = await db.query(
+        `SELECT payment_method, SUM(total_amount) AS total, COUNT(*) AS count
+         FROM orders WHERE strftime('%Y-%m', timestamp) = ? GROUP BY payment_method`,
+        [yearMonthFilter]
+    );
+    const revenueByPaymentMethod = {};
+    for (const row of methodRows) {
+        const key = row.payment_method || 'cash';
+        revenueByPaymentMethod[key] = {
+            revenue: Number((row.total || 0).toFixed(2)),
+            orders: row.count || 0
+        };
     }
 
     const availableYearsRows = await db.query(
@@ -1100,13 +1619,20 @@ async function handleGetAnalyticsData(ws, clientInfo, payload) {
     const availableYears = availableYearsRows
         .map((row) => Number.parseInt(row.year, 10))
         .filter((year) => Number.isInteger(year));
+    if (!availableYears.includes(now.getFullYear())) {
+        availableYears.unshift(now.getFullYear());
+    }
 
     sendMessage(ws, 'analytics_data', {
         totalRevenue,
         totalOrders,
         avgOrderValue,
         itemSalesRanking,
+        lowStockProducts,
         dailyOrders,
+        dailyRevenue,
+        ordersByStatus,
+        revenueByPaymentMethod,
         selectedMonth: requestedMonth,
         selectedYear: requestedYear,
         availableYears
@@ -1311,6 +1837,9 @@ async function handleAdminCategoriesReordered(clientInfo, payload) {
         return;
     }
 
+    const existingOrderMap = await getStoredProductOrderMap();
+    const updatedOrderMap = { ...existingOrderMap };
+
     await db.withTransaction(async () => {
         for (let index = 0; index < payload.length; index += 1) {
             const categoryKey = sanitizeString(payload[index]?.key, { maxLength: 128 });
@@ -1321,7 +1850,15 @@ async function handleAdminCategoriesReordered(clientInfo, payload) {
                 'UPDATE categories SET display_order = ? WHERE key = ?',
                 [index, categoryKey]
             );
+
+            if (Array.isArray(payload[index]?.productIds)) {
+                updatedOrderMap[categoryKey] = payload[index].productIds
+                    .map((id) => sanitizeString(id, { maxLength: 128 }))
+                    .filter(Boolean);
+            }
         }
+
+        await saveProductOrderMap(updatedOrderMap);
     });
 
     await broadcastFullData();
@@ -1334,6 +1871,194 @@ async function handleAdminCurrencyUpdated(clientInfo, payload) {
 
     await updateTranslations({ currency_symbol: payload?.currency });
     await broadcastFullData();
+}
+
+async function handleAdminBundleSaved(clientInfo, payload) {
+    if (!clientInfo.isManagement || !payload || typeof payload !== 'object') {
+        return;
+    }
+
+    const bundleRaw = payload.bundle || payload;
+    const id = sanitizeString(bundleRaw.id, { maxLength: 128 });
+    const nameKey = sanitizeString(bundleRaw.name_key, { maxLength: 256 }) || `bundle_name_${id}`;
+    const descKey = sanitizeString(bundleRaw.description_key, { maxLength: 256 }) || `bundle_desc_${id}`;
+    const rawItems = Array.isArray(bundleRaw.itemIds) ? bundleRaw.itemIds : [];
+    const itemIds = rawItems.map((itemId) => sanitizeString(itemId, { maxLength: 128 })).filter(Boolean);
+    const isSuggestion = Boolean(bundleRaw.isSuggestion);
+    const discountPercent = isSuggestion
+        ? 0
+        : sanitizeNumber(bundleRaw.discountPercent, { min: 1, max: 90 }) ?? 15;
+    const active = bundleRaw.active !== false;
+    const displayOrder = sanitizeInteger(bundleRaw.displayOrder, { min: 0, max: 10000 }) ?? 0;
+
+    if (!id || itemIds.length === 0) {
+        return;
+    }
+
+    await db.run(
+        `INSERT INTO bundles (id, name_key, description_key, item_ids_json, discount_percent, is_suggestion, active, display_order)
+         VALUES (?, ?, ?, ?, ?, ?, ?, ?)
+         ON CONFLICT(id) DO UPDATE SET
+            name_key = excluded.name_key,
+            description_key = excluded.description_key,
+            item_ids_json = excluded.item_ids_json,
+            discount_percent = excluded.discount_percent,
+            is_suggestion = excluded.is_suggestion,
+            active = excluded.active,
+            display_order = excluded.display_order`,
+        [id, nameKey, descKey, JSON.stringify(itemIds), discountPercent, isSuggestion ? 1 : 0, active ? 1 : 0, displayOrder]
+    );
+
+    if (payload.translations && typeof payload.translations === 'object') {
+        await updateTranslations(payload.translations);
+    }
+
+    await broadcastFullData();
+}
+
+async function handleAdminBundleDeleted(clientInfo, payload) {
+    if (!clientInfo.isManagement) {
+        return;
+    }
+
+    const bundleId = sanitizeString(payload?.bundleId || payload?.id, { maxLength: 128 });
+    if (!bundleId) {
+        return;
+    }
+
+    await db.run('DELETE FROM bundles WHERE id = ?', [bundleId]);
+    await broadcastFullData();
+}
+
+async function handleAdminPaymentMethodsUpdated(ws, clientInfo, payload) {
+    if (!clientInfo.isManagement || !payload || typeof payload !== 'object') {
+        return;
+    }
+
+    const nextMethods = {
+        cash: payload.cash !== false,
+        card: payload.card !== false,
+        wallet: payload.wallet !== false
+    };
+
+    if (!nextMethods.cash && !nextMethods.card && !nextMethods.wallet) {
+        sendMessage(ws, 'request_error', {
+            message: 'At least one payment method must remain enabled.'
+        });
+        return;
+    }
+
+    await db.run(
+        'INSERT OR REPLACE INTO settings (key, value) VALUES (?, ?)',
+        [SETTINGS_KEY_PAYMENT_METHODS, JSON.stringify(nextMethods)]
+    );
+
+    broadcast('payment_methods_updated', nextMethods);
+}
+
+async function getAdminWalletsSnapshot() {
+    const users = await db.query(
+        `SELECT u.email, u.profile_pic, u.balance, u.created_at,
+                COUNT(o.id) AS order_count,
+                COALESCE(SUM(o.total_amount), 0) AS total_spent
+         FROM users u
+         LEFT JOIN orders o ON LOWER(o.user_email) = LOWER(u.email)
+         GROUP BY u.email
+         ORDER BY u.created_at DESC, u.email ASC`
+    );
+
+    const recentTransactions = await db.query(
+        `SELECT id, user_email, delta, balance_after, reason, actor, timestamp
+         FROM wallet_transactions
+         ORDER BY id DESC
+         LIMIT 60`
+    );
+
+    return {
+        users: users.map((u) => ({
+            email: u.email,
+            profilePic: u.profile_pic || 'pic2',
+            balance: Number((u.balance || 0).toFixed(2)),
+            createdAt: u.created_at,
+            orderCount: u.order_count || 0,
+            totalSpent: Number((u.total_spent || 0).toFixed(2))
+        })),
+        recentTransactions: recentTransactions.map((tx) => ({
+            id: tx.id,
+            email: tx.user_email,
+            delta: Number((tx.delta || 0).toFixed(2)),
+            balanceAfter: Number((tx.balance_after || 0).toFixed(2)),
+            reason: tx.reason || '',
+            actor: tx.actor || 'admin',
+            timestamp: tx.timestamp
+        }))
+    };
+}
+
+async function handleAdminGetUsersWallets(ws, clientInfo) {
+    if (!clientInfo.isManagement) {
+        return;
+    }
+
+    const snapshot = await getAdminWalletsSnapshot();
+    sendMessage(ws, 'admin_wallets_data', snapshot);
+}
+
+async function handleAdminAdjustWallet(ws, clientInfo, payload) {
+    if (!clientInfo.isManagement) {
+        return;
+    }
+
+    const email = sanitizeEmail(payload?.email);
+    const mode = sanitizeString(payload?.mode, { maxLength: 16 }) || 'add';
+    const amount = sanitizeNumber(payload?.amount, { min: 0, max: 1_000_000 });
+    const reason = sanitizeOptionalString(payload?.reason, { maxLength: 200 }) || `Admin ${mode}`;
+
+    if (!email || amount === null || !['add', 'deduct', 'set'].includes(mode)) {
+        sendMessage(ws, 'request_error', { message: 'Invalid wallet adjustment parameters.' });
+        return;
+    }
+
+    let nextBalance = 0;
+
+    try {
+        await db.withTransaction(async () => {
+            const user = await db.get('SELECT email, balance FROM users WHERE email = ?', [email]);
+            if (!user) {
+                throw new ClientError('Student account not found.', { reason: 'UserNotFound' });
+            }
+
+            const prevBalance = Number(user.balance || 0);
+            if (mode === 'add') {
+                nextBalance = Number((prevBalance + amount).toFixed(2));
+            } else if (mode === 'deduct') {
+                nextBalance = Math.max(0, Number((prevBalance - amount).toFixed(2)));
+            } else {
+                nextBalance = Number(amount.toFixed(2));
+            }
+
+            const delta = Number((nextBalance - prevBalance).toFixed(2));
+            await db.run('UPDATE users SET balance = ? WHERE email = ?', [nextBalance, email]);
+            await db.run(
+                `INSERT INTO wallet_transactions (user_email, delta, balance_after, reason, actor, timestamp)
+                 VALUES (?, ?, ?, ?, 'admin', ?)`,
+                [email, delta, nextBalance, reason, new Date().toISOString()]
+            );
+        });
+    } catch (err) {
+        if (err instanceof ClientError) {
+            sendMessage(ws, 'request_error', { message: err.message, ...err.payload });
+            return;
+        }
+        throw err;
+    }
+
+    const snapshot = await getAdminWalletsSnapshot();
+    broadcastToManagement('admin_wallets_data', snapshot);
+    sendToUser(email, 'wallet_balance_updated', {
+        email,
+        balance: nextBalance
+    });
 }
 
 async function handleAdminConfigImported(clientInfo, payload) {
@@ -1427,11 +2152,13 @@ async function handleAdminConfigImported(clientInfo, payload) {
 
 const messageHandlers = {
     request_initial_data: async ({ ws }) => handleRequestInitialData(ws),
-    identify_management: async ({ ws, clientInfo }) => handleIdentifyManagement(ws, clientInfo),
+    authenticate_session: async ({ ws, clientInfo, payload }) => handleAuthenticateSession(ws, clientInfo, payload),
+    identify_management: async ({ ws, clientInfo, payload }) => handleIdentifyManagement(ws, clientInfo, payload),
     get_orders: async ({ ws, clientInfo }) => handleGetOrders(ws, clientInfo),
+    get_my_orders: async ({ ws, clientInfo, payload }) => handleGetMyOrders(ws, clientInfo, payload),
     update_order_status: async ({ clientInfo, payload }) => handleUpdateOrderStatus(clientInfo, payload),
-    register_user: async ({ ws, payload }) => handleRegisterUser(ws, payload),
-    login_user: async ({ ws, payload }) => handleLoginUser(ws, payload),
+    register_user: async ({ ws, clientInfo, payload }) => handleRegisterUser(ws, clientInfo, payload),
+    login_user: async ({ ws, clientInfo, payload }) => handleLoginUser(ws, clientInfo, payload),
     admin_login: async ({ ws, clientInfo, payload }) => handleAdminLogin(ws, clientInfo, payload),
     place_order: async ({ ws, clientInfo, payload }) => handlePlaceOrder(ws, clientInfo, payload),
     get_analytics_data: async ({ ws, clientInfo, payload }) => handleGetAnalyticsData(ws, clientInfo, payload),
@@ -1445,7 +2172,13 @@ const messageHandlers = {
     admin_set_canteen_status: async ({ clientInfo, payload }) => handleAdminSetCanteenStatus(clientInfo, payload),
     admin_categories_reordered: async ({ clientInfo, payload }) => handleAdminCategoriesReordered(clientInfo, payload),
     admin_currency_updated: async ({ clientInfo, payload }) => handleAdminCurrencyUpdated(clientInfo, payload),
-    admin_config_imported: async ({ clientInfo, payload }) => handleAdminConfigImported(clientInfo, payload)
+    admin_config_imported: async ({ clientInfo, payload }) => handleAdminConfigImported(clientInfo, payload),
+    admin_bundle_saved: async ({ clientInfo, payload }) => handleAdminBundleSaved(clientInfo, payload),
+    admin_bundle_deleted: async ({ clientInfo, payload }) => handleAdminBundleDeleted(clientInfo, payload),
+    admin_payment_methods_updated: async ({ ws, clientInfo, payload }) =>
+        handleAdminPaymentMethodsUpdated(ws, clientInfo, payload),
+    admin_get_users_wallets: async ({ ws, clientInfo }) => handleAdminGetUsersWallets(ws, clientInfo),
+    admin_adjust_wallet: async ({ ws, clientInfo, payload }) => handleAdminAdjustWallet(ws, clientInfo, payload)
 };
 
 function markConnectionAlive() {

@@ -7,6 +7,10 @@
     "start": "node server.js",
     "dev": "node server.js",
     "check": "node --check server.js && node --check script.js && node --check database.js && node --check db_cli.js && node --check hash_tool.js",
+    "verify": "node verification/verify_backend_v1_1.js",
+    "build:flutter": "cd flutter_app && flutter build web --no-web-resources-cdn",
+    "build:android": "cd flutter_app && flutter build apk --release --target-platform android-arm64 --split-per-abi",
+    "test:flutter": "cd flutter_app && flutter test && flutter analyze",
     "db:cli": "node db_cli.js",
     "hash": "node hash_tool.js"
   },
