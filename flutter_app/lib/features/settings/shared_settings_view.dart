@@ -15,11 +15,10 @@ class SharedSettingsView extends ConsumerWidget {
   Widget build(BuildContext context, WidgetRef ref) {
     final prefs = ref.watch(appPreferencesProvider);
     final prefsNotifier = ref.read(appPreferencesProvider.notifier);
-    final store = ref.watch(canteenStoreProvider);
+    final user = ref.watch(canteenStoreProvider.select((s) => s.currentUser));
     final socket = ref.watch(socketClientProvider);
     final i18n = ref.watch(i18nProvider);
     final tokens = EvaTokens.of(context);
-    final user = store.currentUser;
 
     return EvaFloatingHeaderScaffold(
       initialHeaderHeight: 66.0,

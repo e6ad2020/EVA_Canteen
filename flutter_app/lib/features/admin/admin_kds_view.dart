@@ -19,6 +19,8 @@ class AdminKdsView extends ConsumerStatefulWidget {
 }
 
 class _AdminKdsViewState extends ConsumerState<AdminKdsView> {
+  static final _archiveDateBtnFmt = DateFormat('yyyy-MM-dd');
+
   bool _archiveMode = false;
   OrderStatus _mobileStageTab = OrderStatus.pending;
   OrderStatus? _archiveStatusFilter;
@@ -26,7 +28,9 @@ class _AdminKdsViewState extends ConsumerState<AdminKdsView> {
   String _searchQuery = '';
   final _searchCtrl = TextEditingController();
 
-  DateTime _now = DateTime.now();
+  late final ValueNotifier<DateTime> _nowNotifier = ValueNotifier<DateTime>(
+    DateTime.now(),
+  );
   Timer? _clockTimer;
 
   @override
@@ -34,7 +38,7 @@ class _AdminKdsViewState extends ConsumerState<AdminKdsView> {
     super.initState();
     _clockTimer = Timer.periodic(const Duration(seconds: 1), (_) {
       if (mounted && !_archiveMode) {
-        setState(() => _now = DateTime.now());
+        _nowNotifier.value = DateTime.now();
       }
     });
   }
@@ -42,6 +46,7 @@ class _AdminKdsViewState extends ConsumerState<AdminKdsView> {
   @override
   void dispose() {
     _clockTimer?.cancel();
+    _nowNotifier.dispose();
     _searchCtrl.dispose();
     super.dispose();
   }
@@ -71,8 +76,9 @@ class _AdminKdsViewState extends ConsumerState<AdminKdsView> {
   Widget build(BuildContext context) {
     final tokens = EvaTokens.of(context);
     final i18n = ref.watch(i18nProvider);
-    final store = ref.watch(canteenStoreProvider);
-    final allOrders = store.adminOrders;
+    final (allOrders, isCanteenOpen) = ref.watch(
+      canteenStoreProvider.select((s) => (s.adminOrders, s.isCanteenOpen)),
+    );
 
     final todayOrders = allOrders
         .where((o) => o.isToday && _matchesQuery(o))
@@ -183,19 +189,19 @@ class _AdminKdsViewState extends ConsumerState<AdminKdsView> {
                         HapticFeedback.mediumImpact();
                         ref
                             .read(canteenStoreProvider.notifier)
-                            .setCanteenOpen(!store.isCanteenOpen);
+                            .setCanteenOpen(!isCanteenOpen);
                       },
                       child: EvaStatusBadge(
-                        label: store.isCanteenOpen
+                        label: isCanteenOpen
                             ? i18n.t('canteen_open_badge')
                             : i18n.t('canteen_closed_badge'),
-                        background: store.isCanteenOpen
+                        background: isCanteenOpen
                             ? tokens.statusDeliveredBg
                             : tokens.statusClosedBg,
-                        foreground: store.isCanteenOpen
+                        foreground: isCanteenOpen
                             ? tokens.statusDeliveredFg
                             : tokens.statusClosedFg,
-                        pulsing: store.isCanteenOpen,
+                        pulsing: isCanteenOpen,
                       ),
                     ),
                   ],
@@ -232,9 +238,9 @@ class _AdminKdsViewState extends ConsumerState<AdminKdsView> {
                           label: Text(
                             _archiveDateFilter == null
                                 ? (i18n.isRtl ? 'كل التواريخ' : 'All Dates')
-                                : DateFormat(
-                                    'yyyy-MM-dd',
-                                  ).format(_archiveDateFilter!),
+                                : _archiveDateBtnFmt.format(
+                                    _archiveDateFilter!,
+                                  ),
                           ),
                         ),
                         if (_archiveDateFilter != null)
@@ -352,7 +358,7 @@ class _AdminKdsViewState extends ConsumerState<AdminKdsView> {
                           headerFg: tokens.statusPendingFg,
                           icon: Icons.schedule_rounded,
                           orders: pendingToday,
-                          now: _now,
+                          nowNotifier: _nowNotifier,
                           emptyLabel: i18n.t('kds_empty_column'),
                         ),
                       ),
@@ -365,7 +371,7 @@ class _AdminKdsViewState extends ConsumerState<AdminKdsView> {
                           headerFg: tokens.statusPreparingFg,
                           icon: Icons.soup_kitchen_rounded,
                           orders: preparingToday,
-                          now: _now,
+                          nowNotifier: _nowNotifier,
                           emptyLabel: i18n.t('kds_empty_column'),
                         ),
                       ),
@@ -378,7 +384,7 @@ class _AdminKdsViewState extends ConsumerState<AdminKdsView> {
                           headerFg: tokens.statusDeliveredFg,
                           icon: Icons.check_circle_rounded,
                           orders: deliveredToday,
-                          now: _now,
+                          nowNotifier: _nowNotifier,
                           emptyLabel: i18n.t('kds_empty_column'),
                         ),
                       ),
@@ -441,8 +447,12 @@ class _AdminKdsViewState extends ConsumerState<AdminKdsView> {
       ),
       itemCount: orders.length,
       separatorBuilder: (_, _) => const SizedBox(height: 12),
-      itemBuilder: (context, idx) =>
-          _KdsTicketCard(order: orders[idx], now: _now, showFullDate: false),
+      itemBuilder: (context, idx) => _KdsTicketCard(
+        key: ValueKey('kds_mobile_${orders[idx].id}'),
+        order: orders[idx],
+        nowNotifier: _nowNotifier,
+        showFullDate: false,
+      ),
     );
   }
 
@@ -481,8 +491,9 @@ class _AdminKdsViewState extends ConsumerState<AdminKdsView> {
         child: ConstrainedBox(
           constraints: const BoxConstraints(maxWidth: 820),
           child: _KdsTicketCard(
+            key: ValueKey('kds_archive_${orders[idx].id}'),
             order: orders[idx],
-            now: _now,
+            nowNotifier: _nowNotifier,
             showFullDate: true,
           ),
         ),
@@ -499,7 +510,7 @@ class _KdsStageColumn extends StatelessWidget {
     required this.headerFg,
     required this.icon,
     required this.orders,
-    required this.now,
+    required this.nowNotifier,
     required this.emptyLabel,
   });
 
@@ -509,7 +520,7 @@ class _KdsStageColumn extends StatelessWidget {
   final Color headerFg;
   final IconData icon;
   final List<CanteenOrder> orders;
-  final DateTime now;
+  final ValueNotifier<DateTime> nowNotifier;
   final String emptyLabel;
 
   @override
@@ -583,8 +594,9 @@ class _KdsStageColumn extends StatelessWidget {
                     itemCount: orders.length,
                     separatorBuilder: (_, _) => const SizedBox(height: 12),
                     itemBuilder: (context, idx) => _KdsTicketCard(
+                      key: ValueKey('kds_col_${orders[idx].id}'),
                       order: orders[idx],
-                      now: now,
+                      nowNotifier: nowNotifier,
                       showFullDate: false,
                     ),
                   ),
@@ -595,18 +607,16 @@ class _KdsStageColumn extends StatelessWidget {
   }
 }
 
-class _KdsTicketCard extends ConsumerWidget {
-  const _KdsTicketCard({
-    required this.order,
-    required this.now,
-    required this.showFullDate,
+class _KdsElapsedTimerPill extends StatelessWidget {
+  const _KdsElapsedTimerPill({
+    required this.orderTimestamp,
+    required this.nowNotifier,
   });
 
-  final CanteenOrder order;
-  final DateTime now;
-  final bool showFullDate;
+  final DateTime orderTimestamp;
+  final ValueNotifier<DateTime> nowNotifier;
 
-  String _formatElapsed(Duration diff) {
+  static String _formatElapsed(Duration diff) {
     final safe = diff.isNegative ? Duration.zero : diff;
     final mins = safe.inMinutes;
     final secs = safe.inSeconds % 60;
@@ -617,6 +627,63 @@ class _KdsTicketCard extends ConsumerWidget {
     }
     return '${mins.toString().padLeft(2, '0')}:${secs.toString().padLeft(2, '0')}';
   }
+
+  @override
+  Widget build(BuildContext context) {
+    final tokens = EvaTokens.of(context);
+    return ValueListenableBuilder<DateTime>(
+      valueListenable: nowNotifier,
+      builder: (context, now, _) {
+        final elapsed = now.difference(orderTimestamp);
+        final isOverdue = elapsed.inMinutes >= 5;
+        return Container(
+          padding: const EdgeInsets.symmetric(
+            horizontal: 8,
+            vertical: 4,
+          ),
+          decoration: BoxDecoration(
+            color: isOverdue ? tokens.statusClosedBg : tokens.surfaceSubtle,
+            borderRadius: BorderRadius.circular(999),
+          ),
+          child: Row(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              Icon(
+                Icons.timer_outlined,
+                size: 13,
+                color: isOverdue ? tokens.statusClosedFg : tokens.textSecondary,
+              ),
+              const SizedBox(width: 4),
+              Text(
+                _formatElapsed(elapsed),
+                style: Theme.of(context).textTheme.labelSmall?.copyWith(
+                  color: isOverdue ? tokens.statusClosedFg : tokens.textPrimary,
+                  fontWeight: FontWeight.w700,
+                  fontFeatures: EvaThemeBuilder.tabularNums,
+                ),
+              ),
+            ],
+          ),
+        );
+      },
+    );
+  }
+}
+
+class _KdsTicketCard extends ConsumerWidget {
+  const _KdsTicketCard({
+    super.key,
+    required this.order,
+    required this.nowNotifier,
+    required this.showFullDate,
+  });
+
+  static final _fullDateFmt = DateFormat('yyyy-MM-dd • HH:mm');
+  static final _shortTimeFmt = DateFormat('HH:mm');
+
+  final CanteenOrder order;
+  final ValueNotifier<DateTime> nowNotifier;
+  final bool showFullDate;
 
   String _paymentLabel(EvaTranslator i18n, String method) {
     return switch (method) {
@@ -640,128 +707,89 @@ class _KdsTicketCard extends ConsumerWidget {
     final i18n = ref.watch(i18nProvider);
     final notifier = ref.read(canteenStoreProvider.notifier);
 
-    final elapsed = now.difference(order.timestamp);
-    final isOverdue =
-        order.status != OrderStatus.delivered && elapsed.inMinutes >= 5;
+    final isLiveActiveTicket = order.status != OrderStatus.delivered;
     final timeFormatted = showFullDate
-        ? DateFormat('yyyy-MM-dd • HH:mm').format(order.timestamp.toLocal())
-        : DateFormat('HH:mm').format(order.timestamp.toLocal());
+        ? _fullDateFmt.format(order.timestamp.toLocal())
+        : _shortTimeFmt.format(order.timestamp.toLocal());
 
-    return EvaSurfaceCard(
-      borderRadius: 14,
-      borderColor: isOverdue ? tokens.accentAppetite : tokens.borderSubtle,
-      borderWidth: isOverdue ? 1.8 : tokens.borderWidth,
-      padding: const EdgeInsets.all(14),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-            // Ticket Header: #PickupNumber + Time + Live Elapsed Clock + Overflow
-            Row(
-              children: [
-                Container(
-                  padding: const EdgeInsets.symmetric(
-                    horizontal: 10,
-                    vertical: 4,
-                  ),
-                  decoration: BoxDecoration(
-                    color: tokens.brandSoftBg,
-                    borderRadius: BorderRadius.circular(8),
-                  ),
-                  child: Text(
-                    order.pickupNumber,
-                    style: Theme.of(context).textTheme.headlineSmall?.copyWith(
-                      color: tokens.brandPrimary,
-                      fontWeight: FontWeight.w700,
-                      fontFeatures: EvaThemeBuilder.tabularNums,
-                    ),
-                  ),
+    final cardContent = Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        // Ticket Header: #PickupNumber + Time + Live Elapsed Clock + Overflow
+        Row(
+          children: [
+            Container(
+              padding: const EdgeInsets.symmetric(
+                horizontal: 10,
+                vertical: 4,
+              ),
+              decoration: BoxDecoration(
+                color: tokens.brandSoftBg,
+                borderRadius: BorderRadius.circular(8),
+              ),
+              child: Text(
+                order.pickupNumber,
+                style: Theme.of(context).textTheme.headlineSmall?.copyWith(
+                  color: tokens.brandPrimary,
+                  fontWeight: FontWeight.w700,
+                  fontFeatures: EvaThemeBuilder.tabularNums,
                 ),
-                const SizedBox(width: 10),
-                Expanded(
-                  child: Text(
-                    timeFormatted,
-                    style: Theme.of(context).textTheme.bodySmall?.copyWith(
-                      fontFeatures: EvaThemeBuilder.tabularNums,
-                    ),
-                  ),
+              ),
+            ),
+            const SizedBox(width: 10),
+            Expanded(
+              child: Text(
+                timeFormatted,
+                style: Theme.of(context).textTheme.bodySmall?.copyWith(
+                  fontFeatures: EvaThemeBuilder.tabularNums,
                 ),
-                if (!showFullDate && order.status != OrderStatus.delivered)
-                  Container(
-                    padding: const EdgeInsets.symmetric(
-                      horizontal: 8,
-                      vertical: 4,
-                    ),
-                    decoration: BoxDecoration(
-                      color: isOverdue
-                          ? tokens.statusClosedBg
-                          : tokens.surfaceSubtle,
-                      borderRadius: BorderRadius.circular(999),
-                    ),
-                    child: Row(
-                      mainAxisSize: MainAxisSize.min,
-                      children: [
-                        Icon(
-                          Icons.timer_outlined,
-                          size: 13,
-                          color: isOverdue
-                              ? tokens.statusClosedFg
-                              : tokens.textSecondary,
-                        ),
-                        const SizedBox(width: 4),
-                        Text(
-                          _formatElapsed(elapsed),
-                          style: Theme.of(context).textTheme.labelSmall
-                              ?.copyWith(
-                                color: isOverdue
-                                    ? tokens.statusClosedFg
-                                    : tokens.textPrimary,
-                                fontWeight: FontWeight.w700,
-                                fontFeatures: EvaThemeBuilder.tabularNums,
-                              ),
-                        ),
-                      ],
-                    ),
-                  )
-                else if (showFullDate)
-                  EvaStatusBadge.forOrderStatus(
-                    context: context,
-                    status: order.status,
-                    label: switch (order.status) {
-                      OrderStatus.pending => i18n.t('status_pending'),
-                      OrderStatus.preparing => i18n.t('status_preparing'),
-                      OrderStatus.delivered => i18n.t('status_delivered'),
-                    },
-                  ),
-                PopupMenuButton<OrderStatus>(
-                  tooltip: 'Change stage',
-                  icon: Icon(
-                    Icons.more_vert_rounded,
-                    size: 18,
-                    color: tokens.textSecondary,
-                  ),
-                  onSelected: (next) {
-                    HapticFeedback.selectionClick();
-                    notifier.updateOrderStatus(order.id, next);
-                  },
-                  itemBuilder: (context) => [
-                    PopupMenuItem(
-                      value: OrderStatus.pending,
-                      child: Text(i18n.t('status_pending')),
-                    ),
-                    PopupMenuItem(
-                      value: OrderStatus.preparing,
-                      child: Text(i18n.t('status_preparing')),
-                    ),
-                    PopupMenuItem(
-                      value: OrderStatus.delivered,
-                      child: Text(i18n.t('status_delivered')),
-                    ),
-                  ],
+              ),
+            ),
+            if (!showFullDate && isLiveActiveTicket)
+              _KdsElapsedTimerPill(
+                orderTimestamp: order.timestamp,
+                nowNotifier: nowNotifier,
+              )
+            else if (showFullDate)
+              EvaStatusBadge.forOrderStatus(
+                context: context,
+                status: order.status,
+                label: switch (order.status) {
+                  OrderStatus.pending => i18n.t('status_pending'),
+                  OrderStatus.preparing => i18n.t('status_preparing'),
+                  OrderStatus.delivered => i18n.t('status_delivered'),
+                },
+              ),
+            PopupMenuButton<OrderStatus>(
+              tooltip: 'Change stage',
+              icon: Icon(
+                Icons.more_vert_rounded,
+                size: 18,
+                color: tokens.textSecondary,
+              ),
+              onSelected: (next) {
+                HapticFeedback.selectionClick();
+                notifier.updateOrderStatus(order.id, next);
+              },
+              itemBuilder: (context) => [
+                PopupMenuItem(
+                  value: OrderStatus.pending,
+                  child: Text(i18n.t('status_pending')),
+                ),
+                PopupMenuItem(
+                  value: OrderStatus.preparing,
+                  child: Text(i18n.t('status_preparing')),
+                ),
+                PopupMenuItem(
+                  value: OrderStatus.delivered,
+                  child: Text(i18n.t('status_delivered')),
                 ),
               ],
             ),
+          ],
+        ),
 
-            const SizedBox(height: 10),
+        const SizedBox(height: 10),
 
             // Customer Identity & Payment Method
             Row(
@@ -976,7 +1004,35 @@ class _KdsTicketCard extends ConsumerWidget {
               ],
             ),
           ],
+        );
+
+    if (!isLiveActiveTicket) {
+      return RepaintBoundary(
+        child: EvaSurfaceCard(
+          borderRadius: 14,
+          borderColor: tokens.borderSubtle,
+          borderWidth: tokens.borderWidth,
+          padding: const EdgeInsets.all(14),
+          child: cardContent,
         ),
+      );
+    }
+
+    return RepaintBoundary(
+      child: ValueListenableBuilder<DateTime>(
+        valueListenable: nowNotifier,
+        child: cardContent,
+        builder: (context, now, child) {
+          final isOverdue = now.difference(order.timestamp).inMinutes >= 5;
+          return EvaSurfaceCard(
+            borderRadius: 14,
+            borderColor: isOverdue ? tokens.accentAppetite : tokens.borderSubtle,
+            borderWidth: isOverdue ? 1.8 : tokens.borderWidth,
+            padding: const EdgeInsets.all(14),
+            child: child!,
+          );
+        },
+      ),
     );
   }
 }

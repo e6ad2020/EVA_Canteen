@@ -345,12 +345,17 @@ class _AdminOpsWalletViewState extends ConsumerState<AdminOpsWalletView> {
     );
   }
 
+  static final _txDateFmt = DateFormat('MM/dd HH:mm');
+
   @override
   Widget build(BuildContext context) {
     final tokens = EvaTokens.of(context);
     final i18n = ref.watch(i18nProvider);
-    final store = ref.watch(canteenStoreProvider);
-    final wallets = store.walletsSnapshot;
+    final (isCanteenOpen, paymentMethods, wallets) = ref.watch(
+      canteenStoreProvider.select(
+        (s) => (s.isCanteenOpen, s.paymentMethods, s.walletsSnapshot),
+      ),
+    );
     final totalMatched = wallets.totalUsers;
     final totalAccounts = wallets.totalAccounts > 0
         ? wallets.totalAccounts
@@ -415,13 +420,13 @@ class _AdminOpsWalletViewState extends ConsumerState<AdminOpsWalletView> {
                             final wide = constraints.maxWidth >= 740;
                             final statusCard = _buildStorefrontCard(
                               context,
-                              store,
+                              isCanteenOpen,
                               i18n,
                               tokens,
                             );
                             final payCard = _buildPaymentMethodsCard(
                               context,
-                              store.paymentMethods,
+                              paymentMethods,
                               i18n,
                               tokens,
                             );
@@ -668,9 +673,9 @@ class _AdminOpsWalletViewState extends ConsumerState<AdminOpsWalletView> {
                                         ),
                                         const SizedBox(width: 8),
                                         Text(
-                                          DateFormat(
-                                            'MM/dd HH:mm',
-                                          ).format(tx.timestamp.toLocal()),
+                                          _txDateFmt.format(
+                                            tx.timestamp.toLocal(),
+                                          ),
                                           style: Theme.of(
                                             context,
                                           ).textTheme.labelSmall,
@@ -830,7 +835,7 @@ class _AdminOpsWalletViewState extends ConsumerState<AdminOpsWalletView> {
 
   Widget _buildStorefrontCard(
     BuildContext context,
-    CanteenStoreState store,
+    bool isCanteenOpen,
     EvaTranslator i18n,
     EvaTokens tokens,
   ) {
@@ -848,7 +853,7 @@ class _AdminOpsWalletViewState extends ConsumerState<AdminOpsWalletView> {
                 ),
               ),
               Switch(
-                value: store.isCanteenOpen,
+                value: isCanteenOpen,
                 onChanged: (val) {
                   HapticFeedback.mediumImpact();
                   ref.read(canteenStoreProvider.notifier).setCanteenOpen(val);
@@ -858,16 +863,16 @@ class _AdminOpsWalletViewState extends ConsumerState<AdminOpsWalletView> {
           ),
           const SizedBox(height: 8),
           EvaStatusBadge(
-            label: store.isCanteenOpen
+            label: isCanteenOpen
                 ? i18n.t('canteen_open_badge')
                 : i18n.t('canteen_closed_badge'),
-            background: store.isCanteenOpen
+            background: isCanteenOpen
                 ? tokens.statusDeliveredBg
                 : tokens.statusClosedBg,
-            foreground: store.isCanteenOpen
+            foreground: isCanteenOpen
                 ? tokens.statusDeliveredFg
                 : tokens.statusClosedFg,
-            pulsing: store.isCanteenOpen,
+            pulsing: isCanteenOpen,
           ),
           const SizedBox(height: 10),
           Text(

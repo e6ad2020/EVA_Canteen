@@ -84,12 +84,29 @@ class _StudentMenuViewState extends ConsumerState<StudentMenuView> {
   Widget build(BuildContext context) {
     final tokens = EvaTokens.of(context);
     final i18n = ref.watch(i18nProvider);
-    final store = ref.watch(canteenStoreProvider);
+    final (
+      user,
+      visibleCategories,
+      rawProducts,
+      bundles,
+      activeOrder,
+      walletEnabled,
+      isCanteenOpen,
+    ) = ref.watch(
+      canteenStoreProvider.select(
+        (s) => (
+          s.currentUser,
+          s.studentCategories,
+          s.orderedProductsForCategory(_selectedCategoryKey),
+          s.bundles,
+          s.activeStudentOrder,
+          s.paymentMethods.wallet,
+          s.isCanteenOpen,
+        ),
+      ),
+    );
     final cartSummary = ref.watch(cartPricingProvider);
-    final user = store.currentUser;
 
-    final visibleCategories = store.studentCategories;
-    final rawProducts = store.orderedProductsForCategory(_selectedCategoryKey);
     final filteredProducts = _searchQuery.trim().isEmpty
         ? rawProducts
         : rawProducts
@@ -100,19 +117,18 @@ class _StudentMenuViewState extends ConsumerState<StudentMenuView> {
               )
               .toList(growable: false);
 
-    final activeBundles = store.bundles
+    final activeBundles = bundles
         .where((b) => b.active)
         .toList(growable: false);
     final showCombos =
         _searchQuery.trim().isEmpty &&
         _selectedCategoryKey == null &&
         activeBundles.isNotEmpty;
-    final activeOrder = store.activeStudentOrder;
     final isGuest = user == null || user.role == UserRole.guest;
     final showWalletInHeader =
         !isGuest &&
         user.role == UserRole.student &&
-        store.paymentMethods.wallet;
+        walletEnabled;
     final bottomSafe = MediaQuery.paddingOf(context).bottom;
 
     return EvaFloatingHeaderScaffold(
@@ -198,16 +214,16 @@ class _StudentMenuViewState extends ConsumerState<StudentMenuView> {
                 ),
                 const SizedBox(width: 8),
                 EvaStatusBadge(
-                  label: store.isCanteenOpen
+                  label: isCanteenOpen
                       ? i18n.t('canteen_open_badge')
                       : i18n.t('canteen_closed_badge'),
-                  background: store.isCanteenOpen
+                  background: isCanteenOpen
                       ? tokens.statusDeliveredBg
                       : tokens.statusClosedBg,
-                  foreground: store.isCanteenOpen
+                  foreground: isCanteenOpen
                       ? tokens.statusDeliveredFg
                       : tokens.statusClosedFg,
-                  pulsing: store.isCanteenOpen,
+                  pulsing: isCanteenOpen,
                 ),
               ],
             ),
@@ -277,7 +293,7 @@ class _StudentMenuViewState extends ConsumerState<StudentMenuView> {
                             const SizedBox(height: 10),
                           ],
 
-                          if (!store.isCanteenOpen) ...[
+                          if (!isCanteenOpen) ...[
                             Container(
                               padding: const EdgeInsets.all(12),
                               decoration: BoxDecoration(
@@ -751,141 +767,143 @@ class _SmartBundleCard extends ConsumerWidget {
     final screenW = MediaQuery.sizeOf(context).width;
     final cardW = math.max(250.0, math.min(304.0, screenW - 44));
 
-    return SizedBox(
-      width: cardW,
-      child: EvaSurfaceCard(
-        padding: const EdgeInsets.all(14),
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            Row(
-              children: [
-                Flexible(
-                  child: EvaStatusBadge(
-                    label: bundle.isSuggestion
-                        ? i18n.t('meal_ideas_badge')
-                        : i18n.t('discount_badge', {
-                            'percent': bundle.discountPercent
-                                .toInt()
-                                .toString(),
-                          }),
-                    background: bundle.isSuggestion
-                        ? tokens.brandSoftBg
-                        : tokens.accentAppetite.withValues(alpha: 0.14),
-                    foreground: bundle.isSuggestion
-                        ? tokens.brandPrimary
-                        : tokens.accentAppetite,
+    return RepaintBoundary(
+      child: SizedBox(
+        width: cardW,
+        child: EvaSurfaceCard(
+          padding: const EdgeInsets.all(14),
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Row(
+                children: [
+                  Flexible(
+                    child: EvaStatusBadge(
+                      label: bundle.isSuggestion
+                          ? i18n.t('meal_ideas_badge')
+                          : i18n.t('discount_badge', {
+                              'percent': bundle.discountPercent
+                                  .toInt()
+                                  .toString(),
+                            }),
+                      background: bundle.isSuggestion
+                          ? tokens.brandSoftBg
+                          : tokens.accentAppetite.withValues(alpha: 0.14),
+                      foreground: bundle.isSuggestion
+                          ? tokens.brandPrimary
+                          : tokens.accentAppetite,
+                    ),
                   ),
-                ),
-                const SizedBox(width: 8),
-                SizedBox(
-                  height: 28,
-                  child: Row(
-                    mainAxisSize: MainAxisSize.min,
-                    children: [
-                      for (final item in resolvedItems.take(3))
-                        Padding(
-                          padding: const EdgeInsetsDirectional.only(start: 4),
-                          child: SizedBox(
-                            width: 28,
-                            height: 28,
-                            child: EvaProductImage(
-                              imageUrl: item.image,
-                              borderRadius: 8,
+                  const SizedBox(width: 8),
+                  SizedBox(
+                    height: 28,
+                    child: Row(
+                      mainAxisSize: MainAxisSize.min,
+                      children: [
+                        for (final item in resolvedItems.take(3))
+                          Padding(
+                            padding: const EdgeInsetsDirectional.only(start: 4),
+                            child: SizedBox(
+                              width: 28,
+                              height: 28,
+                              child: EvaProductImage(
+                                imageUrl: item.image,
+                                borderRadius: 8,
+                              ),
                             ),
                           ),
-                        ),
-                    ],
+                      ],
+                    ),
                   ),
-                ),
-              ],
-            ),
-            const SizedBox(height: 10),
-            Text(
-              i18n.t(bundle.nameKey),
-              maxLines: 1,
-              overflow: TextOverflow.ellipsis,
-              style: Theme.of(context).textTheme.titleMedium,
-            ),
-            const SizedBox(height: 2),
-            Text(
-              resolvedItems.map((e) => i18n.t(e.nameKey)).join(' + '),
-              maxLines: 1,
-              overflow: TextOverflow.ellipsis,
-              style: Theme.of(context).textTheme.bodySmall,
-            ),
-            const Spacer(),
-            Row(
-              children: [
-                Expanded(
-                  child: Row(
-                    children: [
-                      if (!bundle.isSuggestion && finalPrice < originalSum) ...[
+                ],
+              ),
+              const SizedBox(height: 10),
+              Text(
+                i18n.t(bundle.nameKey),
+                maxLines: 1,
+                overflow: TextOverflow.ellipsis,
+                style: Theme.of(context).textTheme.titleMedium,
+              ),
+              const SizedBox(height: 2),
+              Text(
+                resolvedItems.map((e) => i18n.t(e.nameKey)).join(' + '),
+                maxLines: 1,
+                overflow: TextOverflow.ellipsis,
+                style: Theme.of(context).textTheme.bodySmall,
+              ),
+              const Spacer(),
+              Row(
+                children: [
+                  Expanded(
+                    child: Row(
+                      children: [
+                        if (!bundle.isSuggestion && finalPrice < originalSum) ...[
+                          Flexible(
+                            child: Text(
+                              i18n.formatPrice(originalSum),
+                              maxLines: 1,
+                              overflow: TextOverflow.ellipsis,
+                              style: Theme.of(context).textTheme.bodySmall
+                                  ?.copyWith(
+                                    decoration: TextDecoration.lineThrough,
+                                    fontFeatures: EvaThemeBuilder.tabularNums,
+                                  ),
+                            ),
+                          ),
+                          const SizedBox(width: 6),
+                        ],
                         Flexible(
                           child: Text(
-                            i18n.formatPrice(originalSum),
+                            i18n.formatPrice(finalPrice),
                             maxLines: 1,
                             overflow: TextOverflow.ellipsis,
-                            style: Theme.of(context).textTheme.bodySmall
+                            style: Theme.of(context).textTheme.titleMedium
                                 ?.copyWith(
-                                  decoration: TextDecoration.lineThrough,
+                                  color: tokens.brandPrimary,
                                   fontFeatures: EvaThemeBuilder.tabularNums,
                                 ),
                           ),
                         ),
-                        const SizedBox(width: 6),
                       ],
-                      Flexible(
-                        child: Text(
-                          i18n.formatPrice(finalPrice),
-                          maxLines: 1,
-                          overflow: TextOverflow.ellipsis,
-                          style: Theme.of(context).textTheme.titleMedium
-                              ?.copyWith(
-                                color: tokens.brandPrimary,
-                                fontFeatures: EvaThemeBuilder.tabularNums,
-                              ),
-                        ),
-                      ),
-                    ],
-                  ),
-                ),
-                const SizedBox(width: 8),
-                FilledButton.tonal(
-                  onPressed: !allAvailable
-                      ? null
-                      : () {
-                          HapticFeedback.lightImpact();
-                          final ok = ref
-                              .read(cartProvider.notifier)
-                              .addBundleOrCombo(bundle, productsById);
-                          if (!ok) {
-                            ScaffoldMessenger.of(context).showSnackBar(
-                              SnackBar(content: Text(i18n.t('out_of_stock'))),
-                            );
-                          }
-                        },
-                  style: FilledButton.styleFrom(
-                    backgroundColor: tokens.brandSoftBg,
-                    foregroundColor: tokens.brandPrimary,
-                    minimumSize: const Size(0, 34),
-                    padding: const EdgeInsets.symmetric(horizontal: 12),
-                    shape: RoundedRectangleBorder(
-                      borderRadius: BorderRadius.circular(999),
-                      side: BorderSide(
-                        color: tokens.brandPrimary.withValues(alpha: 0.24),
-                      ),
                     ),
                   ),
-                  child: Text(
-                    i18n.t('add_combo_button'),
-                    maxLines: 1,
-                    overflow: TextOverflow.ellipsis,
+                  const SizedBox(width: 8),
+                  FilledButton.tonal(
+                    onPressed: !allAvailable
+                        ? null
+                        : () {
+                            HapticFeedback.lightImpact();
+                            final ok = ref
+                                .read(cartProvider.notifier)
+                                .addBundleOrCombo(bundle, productsById);
+                            if (!ok) {
+                              ScaffoldMessenger.of(context).showSnackBar(
+                                SnackBar(content: Text(i18n.t('out_of_stock'))),
+                              );
+                            }
+                          },
+                    style: FilledButton.styleFrom(
+                      backgroundColor: tokens.brandSoftBg,
+                      foregroundColor: tokens.brandPrimary,
+                      minimumSize: const Size(0, 34),
+                      padding: const EdgeInsets.symmetric(horizontal: 12),
+                      shape: RoundedRectangleBorder(
+                        borderRadius: BorderRadius.circular(999),
+                        side: BorderSide(
+                          color: tokens.brandPrimary.withValues(alpha: 0.24),
+                        ),
+                      ),
+                    ),
+                    child: Text(
+                      i18n.t('add_combo_button'),
+                      maxLines: 1,
+                      overflow: TextOverflow.ellipsis,
+                    ),
                   ),
-                ),
-              ],
-            ),
-          ],
+                ],
+              ),
+            ],
+          ),
         ),
       ),
     );
@@ -1086,142 +1104,148 @@ class _MenuProductCard extends ConsumerWidget {
     final qtyInCart = ref.watch(cartProvider.select((m) => m[product.id] ?? 0));
     final cartNotifier = ref.read(cartProvider.notifier);
 
-    return EvaSurfaceCard(
-      padding: EdgeInsets.all(isCompactGrid ? 9 : 11),
-      borderRadius: 18,
-      borderColor: qtyInCart > 0
-          ? tokens.brandPrimary.withValues(alpha: 0.72)
-          : null,
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.stretch,
-        children: [
-          Expanded(
-            child: Material(
-              type: MaterialType.transparency,
-              child: InkWell(
-                borderRadius: BorderRadius.circular(13),
-                onTap: onOpenDetails,
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    Stack(
-                      children: [
-                        SizedBox(
-                          height: isCompactGrid ? 108 : 122,
-                          width: double.infinity,
-                          child: EvaProductImage(
-                            imageUrl: product.image,
-                            borderRadius: 13,
-                          ),
-                        ),
-                        if (product.isOutOfStock)
-                          Positioned.fill(
-                            child: Container(
-                              decoration: BoxDecoration(
-                                color: Colors.black.withValues(alpha: 0.48),
-                                borderRadius: BorderRadius.circular(13),
-                              ),
-                              alignment: Alignment.center,
-                              child: EvaStatusBadge(
-                                label: i18n.t('out_of_stock'),
-                                background: tokens.statusClosedBg,
-                                foreground: tokens.statusClosedFg,
-                              ),
-                            ),
-                          )
-                        else if (product.isLowStock)
-                          PositionedDirectional(
-                            top: 7,
-                            start: 7,
-                            child: EvaStatusBadge(
-                              label: i18n.t('low_stock_left', {
-                                'count': '${product.quantity}',
-                              }),
-                              background: tokens.statusPendingBg,
-                              foreground: tokens.statusPendingFg,
+    return RepaintBoundary(
+      child: EvaSurfaceCard(
+        padding: EdgeInsets.all(isCompactGrid ? 9 : 11),
+        borderRadius: 18,
+        borderColor: qtyInCart > 0
+            ? tokens.brandPrimary.withValues(alpha: 0.72)
+            : null,
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.stretch,
+          children: [
+            Expanded(
+              child: Material(
+                type: MaterialType.transparency,
+                child: InkWell(
+                  borderRadius: BorderRadius.circular(13),
+                  onTap: onOpenDetails,
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Stack(
+                        children: [
+                          SizedBox(
+                            height: isCompactGrid ? 108 : 122,
+                            width: double.infinity,
+                            child: EvaProductImage(
+                              imageUrl: product.image,
+                              borderRadius: 13,
                             ),
                           ),
-                        if (qtyInCart > 0 && !product.isOutOfStock)
-                          PositionedDirectional(
-                            top: 7,
-                            end: 7,
-                            child: AnimatedSwitcher(
-                              duration: const Duration(milliseconds: 160),
-                              transitionBuilder: (child, anim) =>
-                                  ScaleTransition(scale: anim, child: child),
+                          if (product.isOutOfStock)
+                            Positioned.fill(
                               child: Container(
-                                key: ValueKey<int>(qtyInCart),
-                                padding: const EdgeInsets.symmetric(
-                                  horizontal: 8,
-                                  vertical: 3,
-                                ),
                                 decoration: BoxDecoration(
-                                  color: tokens.brandPrimary,
-                                  borderRadius: BorderRadius.circular(999),
+                                  color: Colors.black.withValues(alpha: 0.48),
+                                  borderRadius: BorderRadius.circular(13),
                                 ),
-                                child: Text(
-                                  '×$qtyInCart',
-                                  style: Theme.of(context).textTheme.labelSmall
-                                      ?.copyWith(
-                                        color: tokens.brandOnPrimary,
-                                        fontWeight: FontWeight.w800,
-                                        fontFeatures:
-                                            EvaThemeBuilder.tabularNums,
-                                      ),
+                                alignment: Alignment.center,
+                                child: EvaStatusBadge(
+                                  label: i18n.t('out_of_stock'),
+                                  background: tokens.statusClosedBg,
+                                  foreground: tokens.statusClosedFg,
+                                ),
+                              ),
+                            )
+                          else if (product.isLowStock)
+                            PositionedDirectional(
+                              top: 7,
+                              start: 7,
+                              child: EvaStatusBadge(
+                                label: i18n.t('low_stock_left', {
+                                  'count': '${product.quantity}',
+                                }),
+                                background: tokens.statusPendingBg,
+                                foreground: tokens.statusPendingFg,
+                              ),
+                            ),
+                          if (qtyInCart > 0 && !product.isOutOfStock)
+                            PositionedDirectional(
+                              top: 7,
+                              end: 7,
+                              child: AnimatedSwitcher(
+                                duration: const Duration(milliseconds: 160),
+                                transitionBuilder: (child, anim) =>
+                                    ScaleTransition(scale: anim, child: child),
+                                child: Container(
+                                  key: ValueKey<int>(qtyInCart),
+                                  padding: const EdgeInsets.symmetric(
+                                    horizontal: 8,
+                                    vertical: 3,
+                                  ),
+                                  decoration: BoxDecoration(
+                                    color: tokens.brandPrimary,
+                                    borderRadius: BorderRadius.circular(999),
+                                  ),
+                                  child: Text(
+                                    '×$qtyInCart',
+                                    style: Theme.of(context)
+                                        .textTheme
+                                        .labelSmall
+                                        ?.copyWith(
+                                          color: tokens.brandOnPrimary,
+                                          fontWeight: FontWeight.w800,
+                                          fontFeatures:
+                                              EvaThemeBuilder.tabularNums,
+                                        ),
+                                  ),
                                 ),
                               ),
                             ),
-                          ),
-                      ],
-                    ),
-                    const SizedBox(height: 8),
-                    Text(
-                      i18n.t(product.nameKey),
-                      maxLines: 1,
-                      overflow: TextOverflow.ellipsis,
-                      style: Theme.of(context).textTheme.titleSmall?.copyWith(
-                        fontWeight: FontWeight.w800,
-                        fontSize: isCompactGrid ? 14 : 15,
+                        ],
                       ),
-                    ),
-                    const SizedBox(height: 2),
-                    Text(
-                      i18n.t(product.descriptionKey),
-                      maxLines: 1,
-                      overflow: TextOverflow.ellipsis,
-                      style: Theme.of(context).textTheme.bodySmall?.copyWith(
-                        fontSize: isCompactGrid ? 11.5 : 12.5,
+                      const SizedBox(height: 8),
+                      Text(
+                        i18n.t(product.nameKey),
+                        maxLines: 1,
+                        overflow: TextOverflow.ellipsis,
+                        style: Theme.of(context).textTheme.titleSmall?.copyWith(
+                          fontWeight: FontWeight.w800,
+                          fontSize: isCompactGrid ? 14 : 15,
+                        ),
                       ),
-                    ),
-                    const Spacer(),
-                    Text(
-                      i18n.formatPrice(product.price),
-                      maxLines: 1,
-                      overflow: TextOverflow.ellipsis,
-                      style: Theme.of(context).textTheme.titleMedium?.copyWith(
-                        color: tokens.brandPrimary,
-                        fontWeight: FontWeight.w800,
-                        fontSize: isCompactGrid ? 14.5 : 15.5,
-                        fontFeatures: EvaThemeBuilder.tabularNums,
+                      const SizedBox(height: 2),
+                      Text(
+                        i18n.t(product.descriptionKey),
+                        maxLines: 1,
+                        overflow: TextOverflow.ellipsis,
+                        style: Theme.of(context).textTheme.bodySmall?.copyWith(
+                          fontSize: isCompactGrid ? 11.5 : 12.5,
+                        ),
                       ),
-                    ),
-                  ],
+                      const Spacer(),
+                      Text(
+                        i18n.formatPrice(product.price),
+                        maxLines: 1,
+                        overflow: TextOverflow.ellipsis,
+                        style: Theme.of(context).textTheme.titleMedium
+                            ?.copyWith(
+                              color: tokens.brandPrimary,
+                              fontWeight: FontWeight.w800,
+                              fontSize: isCompactGrid ? 14.5 : 15.5,
+                              fontFeatures: EvaThemeBuilder.tabularNums,
+                            ),
+                      ),
+                    ],
+                  ),
                 ),
               ),
             ),
-          ),
-          const SizedBox(height: 7),
-          EvaQuantityStepper(
-            quantity: qtyInCart,
-            addLabel: i18n.t('add_button'),
-            compact: true,
-            fullWidth: true,
-            disabled: product.isOutOfStock,
-            maxReached: !product.isUnlimited && qtyInCart >= product.quantity,
-            onIncrement: () => cartNotifier.increment(product),
-            onDecrement: () => cartNotifier.decrement(product.id),
-          ),
-        ],
+            const SizedBox(height: 7),
+            EvaQuantityStepper(
+              quantity: qtyInCart,
+              addLabel: i18n.t('add_button'),
+              compact: true,
+              fullWidth: true,
+              disabled: product.isOutOfStock,
+              maxReached:
+                  !product.isUnlimited && qtyInCart >= product.quantity,
+              onIncrement: () => cartNotifier.increment(product),
+              onDecrement: () => cartNotifier.decrement(product.id),
+            ),
+          ],
+        ),
       ),
     );
   }

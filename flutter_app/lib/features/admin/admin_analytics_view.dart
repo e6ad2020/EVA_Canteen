@@ -49,8 +49,9 @@ class _AdminAnalyticsViewState extends ConsumerState<AdminAnalyticsView> {
   Widget build(BuildContext context) {
     final tokens = EvaTokens.of(context);
     final i18n = ref.watch(i18nProvider);
-    final store = ref.watch(canteenStoreProvider);
-    final snap = store.analytics;
+    final (snap, products) = ref.watch(
+      canteenStoreProvider.select((s) => (s.analytics, s.products)),
+    );
 
     final years = <int>{
       DateTime.now().year,
@@ -58,7 +59,7 @@ class _AdminAnalyticsViewState extends ConsumerState<AdminAnalyticsView> {
       ...?snap?.availableYears,
     }.toList()..sort((a, b) => b.compareTo(a));
 
-    final lowStockLive = store.products
+    final lowStockLive = products
         .where((p) => !p.isArchived && (p.isOutOfStock || p.isLowStock))
         .toList(growable: false);
 
@@ -453,110 +454,112 @@ class _AdminAnalyticsViewState extends ConsumerState<AdminAnalyticsView> {
     }
     final ceiling = maxVal <= 0 ? 5.0 : (maxVal * 1.2).ceilToDouble();
 
-    return BarChart(
-      BarChartData(
-        maxY: ceiling,
-        alignment: BarChartAlignment.spaceAround,
-        gridData: FlGridData(
-          show: true,
-          drawVerticalLine: false,
-          getDrawingHorizontalLine: (_) =>
-              FlLine(color: tokens.borderSubtle, strokeWidth: 1),
-        ),
-        borderData: FlBorderData(show: false),
-        barTouchData: BarTouchData(
-          enabled: true,
-          touchTooltipData: BarTouchTooltipData(
-            tooltipBorderRadius: BorderRadius.circular(10),
-            getTooltipColor: (_) => tokens.isNight
-                ? const Color(0xFF283242)
-                : const Color(0xFF121826),
-            getTooltipItem: (group, groupIdx, rod, rodIdx) {
-              final day = group.x;
-              final formatted = _showRevenueChart
-                  ? i18n.formatPrice(rod.toY)
-                  : '${rod.toY.toInt()} orders';
-              return BarTooltipItem(
-                'Day $day\n$formatted',
-                const TextStyle(
-                  color: Colors.white,
-                  fontWeight: FontWeight.w700,
-                  fontSize: 12,
-                ),
-              );
-            },
+    return RepaintBoundary(
+      child: BarChart(
+        BarChartData(
+          maxY: ceiling,
+          alignment: BarChartAlignment.spaceAround,
+          gridData: FlGridData(
+            show: true,
+            drawVerticalLine: false,
+            getDrawingHorizontalLine: (_) =>
+                FlLine(color: tokens.borderSubtle, strokeWidth: 1),
           ),
-        ),
-        titlesData: FlTitlesData(
-          topTitles: const AxisTitles(
-            sideTitles: SideTitles(showTitles: false),
-          ),
-          rightTitles: const AxisTitles(
-            sideTitles: SideTitles(showTitles: false),
-          ),
-          leftTitles: AxisTitles(
-            sideTitles: SideTitles(
-              showTitles: true,
-              reservedSize: 40,
-              getTitlesWidget: (value, meta) {
-                if (value == meta.max) return const SizedBox.shrink();
-                return SideTitleWidget(
-                  meta: meta,
-                  child: Text(
-                    value.toInt().toString(),
-                    style: Theme.of(context).textTheme.labelSmall?.copyWith(
-                      fontFeatures: EvaThemeBuilder.tabularNums,
-                    ),
+          borderData: FlBorderData(show: false),
+          barTouchData: BarTouchData(
+            enabled: true,
+            touchTooltipData: BarTouchTooltipData(
+              tooltipBorderRadius: BorderRadius.circular(10),
+              getTooltipColor: (_) => tokens.isNight
+                  ? const Color(0xFF283242)
+                  : const Color(0xFF121826),
+              getTooltipItem: (group, groupIdx, rod, rodIdx) {
+                final day = group.x;
+                final formatted = _showRevenueChart
+                    ? i18n.formatPrice(rod.toY)
+                    : '${rod.toY.toInt()} orders';
+                return BarTooltipItem(
+                  'Day $day\n$formatted',
+                  const TextStyle(
+                    color: Colors.white,
+                    fontWeight: FontWeight.w700,
+                    fontSize: 12,
                   ),
                 );
               },
             ),
           ),
-          bottomTitles: AxisTitles(
-            sideTitles: SideTitles(
-              showTitles: true,
-              reservedSize: 28,
-              getTitlesWidget: (value, meta) {
-                final day = value.toInt();
-                if (day != 1 && day % 5 != 0 && day != days) {
-                  return const SizedBox.shrink();
-                }
-                return SideTitleWidget(
-                  meta: meta,
-                  child: Text(
-                    '$day',
-                    style: Theme.of(context).textTheme.labelSmall?.copyWith(
-                      fontFeatures: EvaThemeBuilder.tabularNums,
+          titlesData: FlTitlesData(
+            topTitles: const AxisTitles(
+              sideTitles: SideTitles(showTitles: false),
+            ),
+            rightTitles: const AxisTitles(
+              sideTitles: SideTitles(showTitles: false),
+            ),
+            leftTitles: AxisTitles(
+              sideTitles: SideTitles(
+                showTitles: true,
+                reservedSize: 40,
+                getTitlesWidget: (value, meta) {
+                  if (value == meta.max) return const SizedBox.shrink();
+                  return SideTitleWidget(
+                    meta: meta,
+                    child: Text(
+                      value.toInt().toString(),
+                      style: Theme.of(context).textTheme.labelSmall?.copyWith(
+                        fontFeatures: EvaThemeBuilder.tabularNums,
+                      ),
                     ),
-                  ),
-                );
-              },
+                  );
+                },
+              ),
+            ),
+            bottomTitles: AxisTitles(
+              sideTitles: SideTitles(
+                showTitles: true,
+                reservedSize: 28,
+                getTitlesWidget: (value, meta) {
+                  final day = value.toInt();
+                  if (day != 1 && day % 5 != 0 && day != days) {
+                    return const SizedBox.shrink();
+                  }
+                  return SideTitleWidget(
+                    meta: meta,
+                    child: Text(
+                      '$day',
+                      style: Theme.of(context).textTheme.labelSmall?.copyWith(
+                        fontFeatures: EvaThemeBuilder.tabularNums,
+                      ),
+                    ),
+                  );
+                },
+              ),
             ),
           ),
-        ),
-        barGroups: [
-          for (int d = 1; d <= days; d++)
-            BarChartGroupData(
-              x: d,
-              barRods: [
-                BarChartRodData(
-                  toY: _showRevenueChart
-                      ? (snap.dailyRevenue[d] ?? 0)
-                      : (snap.dailyOrders[d] ?? 0).toDouble(),
-                  width: days > 28 ? 6.0 : 7.5,
-                  color: _showRevenueChart
-                      ? tokens.statusDeliveredFg
-                      : tokens.brandPrimary,
-                  borderRadius: const BorderRadius.vertical(
-                    top: Radius.circular(4),
+          barGroups: [
+            for (int d = 1; d <= days; d++)
+              BarChartGroupData(
+                x: d,
+                barRods: [
+                  BarChartRodData(
+                    toY: _showRevenueChart
+                        ? (snap.dailyRevenue[d] ?? 0)
+                        : (snap.dailyOrders[d] ?? 0).toDouble(),
+                    width: days > 28 ? 6.0 : 7.5,
+                    color: _showRevenueChart
+                        ? tokens.statusDeliveredFg
+                        : tokens.brandPrimary,
+                    borderRadius: const BorderRadius.vertical(
+                      top: Radius.circular(4),
+                    ),
                   ),
-                ),
-              ],
-            ),
-        ],
+                ],
+              ),
+          ],
+        ),
+        duration: const Duration(milliseconds: 280),
+        curve: Curves.easeOutCubic,
       ),
-      duration: const Duration(milliseconds: 280),
-      curve: Curves.easeOutCubic,
     );
   }
 
@@ -571,31 +574,33 @@ class _AdminAnalyticsViewState extends ConsumerState<AdminAnalyticsView> {
         ? 1
         : math.max(1, items.map((e) => e.count).reduce(math.max));
 
-    return EvaSurfaceCard(
-      padding: const EdgeInsets.all(18),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          Text(
-            i18n.t('top_products_title'),
-            style: Theme.of(context).textTheme.titleLarge,
-          ),
-          const SizedBox(height: 14),
-          if (items.isEmpty)
+    return RepaintBoundary(
+      child: EvaSurfaceCard(
+        padding: const EdgeInsets.all(18),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
             Text(
-              i18n.t('no_orders_yet'),
-              style: Theme.of(context).textTheme.bodySmall,
-            )
-          else
-            for (int i = 0; i < items.length; i++) ...[
-              if (i > 0) const SizedBox(height: 12),
-              _RankingRow(
-                rank: i + 1,
-                item: items[i],
-                ratio: items[i].count / topCount,
-              ),
-            ],
-        ],
+              i18n.t('top_products_title'),
+              style: Theme.of(context).textTheme.titleLarge,
+            ),
+            const SizedBox(height: 14),
+            if (items.isEmpty)
+              Text(
+                i18n.t('no_orders_yet'),
+                style: Theme.of(context).textTheme.bodySmall,
+              )
+            else
+              for (int i = 0; i < items.length; i++) ...[
+                if (i > 0) const SizedBox(height: 12),
+                _RankingRow(
+                  rank: i + 1,
+                  item: items[i],
+                  ratio: items[i].count / topCount,
+                ),
+              ],
+          ],
+        ),
       ),
     );
   }

@@ -152,7 +152,16 @@ class _CartCheckoutSheetState extends ConsumerState<CartCheckoutSheet>
   Widget build(BuildContext context) {
     final tokens = EvaTokens.of(context);
     final i18n = ref.watch(i18nProvider);
-    final store = ref.watch(canteenStoreProvider);
+    final (paymentMethods, user, isCanteenOpen, checkoutBusy) = ref.watch(
+      canteenStoreProvider.select(
+        (s) => (
+          s.paymentMethods,
+          s.currentUser,
+          s.isCanteenOpen,
+          s.checkoutBusy,
+        ),
+      ),
+    );
     final summary = ref.watch(cartPricingProvider);
     final cartNotifier = ref.read(cartProvider.notifier);
 
@@ -160,12 +169,11 @@ class _CartCheckoutSheetState extends ConsumerState<CartCheckoutSheet>
       _syncCartEntries(next, ref.read(canteenStoreProvider).productsById);
     });
 
-    final enabledMethods = store.paymentMethods.enabledKeys;
+    final enabledMethods = paymentMethods.enabledKeys;
     final activeMethod = enabledMethods.contains(_selectedMethod)
         ? _selectedMethod
         : (enabledMethods.firstOrNull ?? 'cash');
 
-    final user = store.currentUser;
     final isGuest = user == null || user.role == UserRole.guest;
     final walletInsufficient =
         !isGuest &&
@@ -445,7 +453,7 @@ class _CartCheckoutSheetState extends ConsumerState<CartCheckoutSheet>
                                         ),
                                       ),
                                       if (!isGuest &&
-                                          store.paymentMethods.wallet)
+                                          paymentMethods.wallet)
                                         Container(
                                           padding: const EdgeInsets.symmetric(
                                             horizontal: 8,
@@ -499,7 +507,7 @@ class _CartCheckoutSheetState extends ConsumerState<CartCheckoutSheet>
                                   if (enabledMethods.isNotEmpty)
                                     Row(
                                       children: [
-                                        if (store.paymentMethods.cash)
+                                        if (paymentMethods.cash)
                                           Expanded(
                                             child: _PaymentOptionChip(
                                               key: const ValueKey(
@@ -517,11 +525,11 @@ class _CartCheckoutSheetState extends ConsumerState<CartCheckoutSheet>
                                               },
                                             ),
                                           ),
-                                        if (store.paymentMethods.cash &&
-                                            (store.paymentMethods.card ||
-                                                store.paymentMethods.wallet))
+                                        if (paymentMethods.cash &&
+                                            (paymentMethods.card ||
+                                                paymentMethods.wallet))
                                           const SizedBox(width: 8),
-                                        if (store.paymentMethods.card)
+                                        if (paymentMethods.card)
                                           Expanded(
                                             child: _PaymentOptionChip(
                                               key: const ValueKey(
@@ -539,10 +547,10 @@ class _CartCheckoutSheetState extends ConsumerState<CartCheckoutSheet>
                                               },
                                             ),
                                           ),
-                                        if (store.paymentMethods.card &&
-                                            store.paymentMethods.wallet)
+                                        if (paymentMethods.card &&
+                                            paymentMethods.wallet)
                                           const SizedBox(width: 8),
-                                        if (store.paymentMethods.wallet)
+                                        if (paymentMethods.wallet)
                                           Expanded(
                                             child: _PaymentOptionChip(
                                               key: const ValueKey(
@@ -735,8 +743,8 @@ class _CartCheckoutSheetState extends ConsumerState<CartCheckoutSheet>
                                             ),
                                             onPressed:
                                                 (summary.isEmpty ||
-                                                    !store.isCanteenOpen ||
-                                                    store.checkoutBusy ||
+                                                    !isCanteenOpen ||
+                                                    checkoutBusy ||
                                                     walletInsufficient)
                                                 ? null
                                                 : () async {
@@ -758,7 +766,7 @@ class _CartCheckoutSheetState extends ConsumerState<CartCheckoutSheet>
                                                       context.go('/orders');
                                                     }
                                                   },
-                                            child: store.checkoutBusy
+                                            child: checkoutBusy
                                                 ? const SizedBox(
                                                     width: 22,
                                                     height: 22,
@@ -768,7 +776,7 @@ class _CartCheckoutSheetState extends ConsumerState<CartCheckoutSheet>
                                                           color: Colors.white,
                                                         ),
                                                   )
-                                                : !store.isCanteenOpen
+                                                : !isCanteenOpen
                                                 ? Text(
                                                     i18n.t(
                                                       'canteen_closed_badge',

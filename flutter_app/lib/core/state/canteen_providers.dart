@@ -3,6 +3,7 @@ import 'dart:convert';
 import 'dart:typed_data';
 
 import 'package:equatable/equatable.dart';
+import 'package:flutter/foundation.dart' show compute, kIsWeb;
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:material_ui/material_ui.dart';
 import 'package:shared_preferences/shared_preferences.dart';
@@ -185,8 +186,18 @@ class UiBannerNotice extends Equatable {
   List<Object?> get props => [id, message, isError, isCelebration];
 }
 
+String _encodeJsonForCache(Object? encodable) => jsonEncode(encodable);
+
+class _CanteenStoreCache {
+  _CanteenStoreCache({this.productsById, this.studentCategories});
+
+  Map<String, ProductItem>? productsById;
+  List<CategoryItem>? studentCategories;
+  final Map<String, List<ProductItem>> orderedProducts = {};
+}
+
 class CanteenStoreState extends Equatable {
-  const CanteenStoreState({
+  CanteenStoreState({
     this.connectionPhase = SocketConnectionPhase.connecting,
     this.isCanteenOpen = true,
     this.products = const [],
@@ -205,7 +216,8 @@ class CanteenStoreState extends Equatable {
     this.adminNewOrderTick = 0,
     this.lastConfirmedOrder,
     this.notice,
-  });
+    _CanteenStoreCache? cache,
+  }) : _cache = cache ?? _CanteenStoreCache();
 
   final SocketConnectionPhase connectionPhase;
   final bool isCanteenOpen;
@@ -225,40 +237,51 @@ class CanteenStoreState extends Equatable {
   final int adminNewOrderTick;
   final CanteenOrder? lastConfirmedOrder;
   final UiBannerNotice? notice;
+  final _CanteenStoreCache _cache;
 
   bool get isConnected => connectionPhase == SocketConnectionPhase.connected;
 
-  Map<String, ProductItem> get productsById => {
-    for (final p in products) p.id: p,
-  };
+  Map<String, ProductItem> get productsById =>
+      _cache.productsById ??= Map<String, ProductItem>.unmodifiable({
+        for (final p in products) p.id: p,
+      });
 
-  List<CategoryItem> get studentCategories =>
-      categories.where((c) => !c.isArchive).toList(growable: false);
+  List<CategoryItem> get studentCategories => _cache.studentCategories ??=
+      List<CategoryItem>.unmodifiable(categories.where((c) => !c.isArchive));
 
   List<ProductItem> orderedProductsForCategory(
     String? categoryKey, {
     bool includeArchived = false,
   }) {
+    final normalizedKey = (categoryKey != null && categoryKey.isNotEmpty)
+        ? categoryKey
+        : '';
+    final cacheKey = '$normalizedKey#$includeArchived';
+    final cached = _cache.orderedProducts[cacheKey];
+    if (cached != null) return cached;
+
     final map = productsById;
-    if (categoryKey != null && categoryKey.isNotEmpty) {
-      final cat = categories.where((c) => c.key == categoryKey).firstOrNull;
+    if (normalizedKey.isNotEmpty) {
+      final cat = categories.where((c) => c.key == normalizedKey).firstOrNull;
       final ordered = <ProductItem>[];
       final seen = <String>{};
       if (cat != null) {
         for (final id in cat.productIds) {
           final prod = map[id];
-          if (prod != null && prod.categoryKey == categoryKey) {
+          if (prod != null && prod.categoryKey == normalizedKey) {
             ordered.add(prod);
             seen.add(id);
           }
         }
       }
       for (final prod in products) {
-        if (prod.categoryKey == categoryKey && !seen.contains(prod.id)) {
+        if (prod.categoryKey == normalizedKey && !seen.contains(prod.id)) {
           ordered.add(prod);
         }
       }
-      return ordered;
+      final unmodifiable = List<ProductItem>.unmodifiable(ordered);
+      _cache.orderedProducts[cacheKey] = unmodifiable;
+      return unmodifiable;
     }
 
     final result = <ProductItem>[];
@@ -280,7 +303,9 @@ class CanteenStoreState extends Equatable {
         result.add(prod);
       }
     }
-    return result;
+    final unmodifiable = List<ProductItem>.unmodifiable(result);
+    _cache.orderedProducts[cacheKey] = unmodifiable;
+    return unmodifiable;
   }
 
   CanteenOrder? get activeStudentOrder {
@@ -319,6 +344,17 @@ class CanteenStoreState extends Equatable {
     UiBannerNotice? notice,
     bool clearNotice = false,
   }) {
+    final sameProducts = products == null || identical(products, this.products);
+    final sameCategories =
+        categories == null || identical(categories, this.categories);
+    final nextCache = (sameProducts && sameCategories)
+        ? _cache
+        : _CanteenStoreCache(
+            productsById: sameProducts ? _cache.productsById : null,
+            studentCategories:
+                sameCategories ? _cache.studentCategories : null,
+          );
+
     return CanteenStoreState(
       connectionPhase: connectionPhase ?? this.connectionPhase,
       isCanteenOpen: isCanteenOpen ?? this.isCanteenOpen,
@@ -338,6 +374,7 @@ class CanteenStoreState extends Equatable {
       adminNewOrderTick: adminNewOrderTick ?? this.adminNewOrderTick,
       lastConfirmedOrder: lastConfirmedOrder ?? this.lastConfirmedOrder,
       notice: clearNotice ? null : (notice ?? this.notice),
+      cache: nextCache,
     );
   }
 
@@ -374,6 +411,25 @@ class CanteenStoreNotifier extends Notifier<CanteenStoreState> {
   int _noticeSeq = 0;
   Completer<CanteenOrder?>? _pendingCheckoutCompleter;
   Completer<String?>? _pendingAuthCompleter;
+  final Map<String, Timer> _cacheWriteTimers = {};
+
+  void _scheduleCacheWrite(
+    SharedPreferences prefs,
+    String key,
+    Object Function() buildEncodable,
+  ) {
+    _cacheWriteTimers[key]?.cancel();
+    _cacheWriteTimers[key] = Timer(const Duration(milliseconds: 120), () async {
+      _cacheWriteTimers.remove(key);
+      try {
+        final encodable = buildEncodable();
+        final encoded = kIsWeb
+            ? _encodeJsonForCache(encodable)
+            : await compute(_encodeJsonForCache, encodable);
+        await prefs.setString(key, encoded);
+      } catch (_) {}
+    });
+  }
 
   @override
   CanteenStoreState build() {
@@ -397,6 +453,10 @@ class CanteenStoreNotifier extends Notifier<CanteenStoreState> {
     ref.onDispose(() {
       phaseSub.cancel();
       eventSub.cancel();
+      for (final timer in _cacheWriteTimers.values) {
+        timer.cancel();
+      }
+      _cacheWriteTimers.clear();
     });
 
     return initial;
@@ -517,11 +577,12 @@ class CanteenStoreNotifier extends Notifier<CanteenStoreState> {
               .whereType<Map>()
               .map((e) => ProductItem.fromJson(Map<String, dynamic>.from(e)))
               .toList(growable: false);
-          prefs.setString(
-            _kCachedProducts,
-            jsonEncode(parsed.map((e) => e.toJson()).toList()),
-          );
           state = state.copyWith(products: parsed);
+          _scheduleCacheWrite(
+            prefs,
+            _kCachedProducts,
+            () => parsed.map((e) => e.toJson()).toList(growable: false),
+          );
         }
         break;
 
@@ -532,11 +593,12 @@ class CanteenStoreNotifier extends Notifier<CanteenStoreState> {
               .whereType<Map>()
               .map((e) => CategoryItem.fromJson(Map<String, dynamic>.from(e)))
               .toList(growable: false);
-          prefs.setString(
-            _kCachedCategories,
-            jsonEncode(parsed.map((e) => e.toJson()).toList()),
-          );
           state = state.copyWith(categories: parsed);
+          _scheduleCacheWrite(
+            prefs,
+            _kCachedCategories,
+            () => parsed.map((e) => e.toJson()).toList(growable: false),
+          );
         }
         break;
 
@@ -547,11 +609,12 @@ class CanteenStoreNotifier extends Notifier<CanteenStoreState> {
               .whereType<Map>()
               .map((e) => BundleOffer.fromJson(Map<String, dynamic>.from(e)))
               .toList(growable: false);
-          prefs.setString(
-            _kCachedBundles,
-            jsonEncode(parsed.map((e) => e.toJson()).toList()),
-          );
           state = state.copyWith(bundles: parsed);
+          _scheduleCacheWrite(
+            prefs,
+            _kCachedBundles,
+            () => parsed.map((e) => e.toJson()).toList(growable: false),
+          );
         }
         break;
 
@@ -571,8 +634,8 @@ class CanteenStoreNotifier extends Notifier<CanteenStoreState> {
           ...state.translations,
           ..._parseTranslationsPayload(payload),
         };
-        prefs.setString(_kCachedTranslations, jsonEncode(merged));
         state = state.copyWith(translations: merged);
+        _scheduleCacheWrite(prefs, _kCachedTranslations, () => merged);
         break;
 
       case 'initial_canteen_status':
@@ -1345,8 +1408,9 @@ final cartProvider = NotifierProvider<CartNotifier, Map<String, int>>(
 
 final cartPricingProvider = Provider<CartPricingSummary>((ref) {
   final rawQuantities = ref.watch(cartProvider);
-  final store = ref.watch(canteenStoreProvider);
-  final productsById = store.productsById;
+  final (productsById, bundles) = ref.watch(
+    canteenStoreProvider.select((s) => (s.productsById, s.bundles)),
+  );
 
   final validQuantities = <String, int>{};
   double subtotal = 0;
@@ -1366,7 +1430,7 @@ final cartPricingProvider = Provider<CartPricingSummary>((ref) {
   final appliedDiscounts = <AppliedBundleDiscount>[];
   double totalDiscount = 0;
 
-  for (final bundle in store.bundles) {
+  for (final bundle in bundles) {
     if (!bundle.active ||
         bundle.isSuggestion ||
         bundle.discountPercent <= 0 ||

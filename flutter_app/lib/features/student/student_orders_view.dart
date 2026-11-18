@@ -16,8 +16,11 @@ class StudentOrdersView extends ConsumerWidget {
   Widget build(BuildContext context, WidgetRef ref) {
     final tokens = EvaTokens.of(context);
     final i18n = ref.watch(i18nProvider);
-    final store = ref.watch(canteenStoreProvider);
-    final user = store.currentUser;
+    final (user, activeOrder, myOrders) = ref.watch(
+      canteenStoreProvider.select(
+        (s) => (s.currentUser, s.activeStudentOrder, s.myOrders),
+      ),
+    );
 
     final navClearance = EvaFloatingNavBar.bottomClearance(context);
 
@@ -65,8 +68,7 @@ class StudentOrdersView extends ConsumerWidget {
       );
     }
 
-    final activeOrder = store.activeStudentOrder;
-    final pastOrders = store.myOrders
+    final pastOrders = myOrders
         .where((o) => activeOrder == null || o.id != activeOrder.id)
         .toList(growable: false);
 
@@ -124,45 +126,60 @@ class StudentOrdersView extends ConsumerWidget {
           ],
         ),
       ),
-      bodyBuilder: (context, topClearance, _) => ListView(
-        padding: EdgeInsets.fromLTRB(
-          16,
-          topClearance + 8,
-          16,
-          28 + navClearance,
-        ),
-        children: [
-          Center(
-            child: ConstrainedBox(
-              constraints: const BoxConstraints(maxWidth: 720),
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.stretch,
-                children: [
-                  if (activeOrder != null) ...[
-                    EvaReveal(
-                      index: 0,
-                      child: _LivePickupPassCard(order: activeOrder),
-                    ),
-                    const SizedBox(height: 24),
-                  ],
-                  if (pastOrders.isNotEmpty) ...[
-                    Text(
-                      i18n.t('past_orders_title'),
-                      style: Theme.of(context).textTheme.titleLarge,
-                    ),
-                    const SizedBox(height: 12),
-                    for (int idx = 0; idx < pastOrders.length; idx++) ...[
-                      EvaReveal(
-                        index: idx + 1,
-                        child: _PastOrderHistoryCard(order: pastOrders[idx]),
-                      ),
-                      const SizedBox(height: 12),
+      bodyBuilder: (context, topClearance, _) => CustomScrollView(
+        slivers: [
+          SliverPadding(
+            padding: EdgeInsets.fromLTRB(16, topClearance + 8, 16, 0),
+            sliver: SliverToBoxAdapter(
+              child: Center(
+                child: ConstrainedBox(
+                  constraints: const BoxConstraints(maxWidth: 720),
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.stretch,
+                    children: [
+                      if (activeOrder != null) ...[
+                        EvaReveal(
+                          index: 0,
+                          child: _LivePickupPassCard(order: activeOrder),
+                        ),
+                        const SizedBox(height: 24),
+                      ],
+                      if (pastOrders.isNotEmpty) ...[
+                        Text(
+                          i18n.t('past_orders_title'),
+                          style: Theme.of(context).textTheme.titleLarge,
+                        ),
+                        const SizedBox(height: 12),
+                      ],
                     ],
-                  ],
-                ],
+                  ),
+                ),
               ),
             ),
           ),
+          if (pastOrders.isNotEmpty)
+            SliverPadding(
+              padding: EdgeInsets.fromLTRB(16, 0, 16, 28 + navClearance),
+              sliver: SliverList.builder(
+                itemCount: pastOrders.length,
+                itemBuilder: (context, idx) => Padding(
+                  padding: const EdgeInsets.only(bottom: 12),
+                  child: Center(
+                    child: ConstrainedBox(
+                      constraints: const BoxConstraints(maxWidth: 720),
+                      child: EvaReveal(
+                        index: (idx + 1).clamp(1, 8),
+                        child: _PastOrderHistoryCard(order: pastOrders[idx]),
+                      ),
+                    ),
+                  ),
+                ),
+              ),
+            )
+          else
+            SliverToBoxAdapter(
+              child: SizedBox(height: 28 + navClearance),
+            ),
         ],
       ),
     );
@@ -184,8 +201,9 @@ class _LivePickupPassCard extends ConsumerWidget {
       OrderStatus.delivered => 2,
     };
 
-    return EvaSurfaceCard(
-      child: Column(
+    return RepaintBoundary(
+      child: EvaSurfaceCard(
+        child: Column(
         crossAxisAlignment: CrossAxisAlignment.stretch,
         children: [
           Container(
@@ -343,6 +361,7 @@ class _LivePickupPassCard extends ConsumerWidget {
           ),
         ],
       ),
+      ),
     );
   }
 }
@@ -441,91 +460,93 @@ class _ThreeStageProgress extends StatelessWidget {
 class _PastOrderHistoryCard extends ConsumerWidget {
   const _PastOrderHistoryCard({required this.order});
 
+  static final _dateFmt = DateFormat('dd MMM yyyy • HH:mm');
+
   final CanteenOrder order;
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
     final i18n = ref.watch(i18nProvider);
-    final productsById = ref.watch(
-      canteenStoreProvider.select((s) => s.productsById),
-    );
-    final formattedDate = DateFormat(
-      'dd MMM yyyy • HH:mm',
-    ).format(order.timestamp.toLocal());
+    final formattedDate = _dateFmt.format(order.timestamp.toLocal());
 
-    return EvaSurfaceCard(
-      padding: const EdgeInsets.all(16),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          Row(
-            children: [
-              Text(
-                order.pickupNumber,
-                style: Theme.of(context).textTheme.titleLarge?.copyWith(
-                  fontFeatures: EvaThemeBuilder.tabularNums,
-                ),
-              ),
-              const SizedBox(width: 10),
-              Expanded(
-                child: Text(
-                  formattedDate,
-                  maxLines: 1,
-                  overflow: TextOverflow.ellipsis,
-                  style: Theme.of(context).textTheme.bodySmall,
-                ),
-              ),
-              const SizedBox(width: 8),
-              EvaStatusBadge.forOrderStatus(
-                context: context,
-                status: order.status,
-                label: i18n.t('status_${order.status.name}'),
-              ),
-            ],
-          ),
-          const SizedBox(height: 10),
-          Text(
-            order.regularItems
-                .map((i) => '${i.quantity}× ${i18n.t(i.nameKey)}')
-                .join(' • '),
-            style: Theme.of(context).textTheme.bodyMedium,
-          ),
-          const SizedBox(height: 12),
-          Row(
-            children: [
-              Expanded(
-                child: Text(
-                  i18n.formatPrice(order.totalAmount),
-                  style: Theme.of(context).textTheme.titleMedium?.copyWith(
+    return RepaintBoundary(
+      child: EvaSurfaceCard(
+        padding: const EdgeInsets.all(16),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Row(
+              children: [
+                Text(
+                  order.pickupNumber,
+                  style: Theme.of(context).textTheme.titleLarge?.copyWith(
                     fontFeatures: EvaThemeBuilder.tabularNums,
                   ),
                 ),
-              ),
-              OutlinedButton.icon(
-                onPressed: () {
-                  HapticFeedback.lightImpact();
-                  final added = ref
-                      .read(cartProvider.notifier)
-                      .reorderAvailableItems(order, productsById);
-                  ScaffoldMessenger.of(context).showSnackBar(
-                    SnackBar(
-                      content: Text(
-                        added > 0
-                            ? i18n.t('reordered_toast')
-                            : i18n.t('out_of_stock'),
-                      ),
+                const SizedBox(width: 10),
+                Expanded(
+                  child: Text(
+                    formattedDate,
+                    maxLines: 1,
+                    overflow: TextOverflow.ellipsis,
+                    style: Theme.of(context).textTheme.bodySmall,
+                  ),
+                ),
+                const SizedBox(width: 8),
+                EvaStatusBadge.forOrderStatus(
+                  context: context,
+                  status: order.status,
+                  label: i18n.t('status_${order.status.name}'),
+                ),
+              ],
+            ),
+            const SizedBox(height: 10),
+            Text(
+              order.regularItems
+                  .map((i) => '${i.quantity}× ${i18n.t(i.nameKey)}')
+                  .join(' • '),
+              style: Theme.of(context).textTheme.bodyMedium,
+            ),
+            const SizedBox(height: 12),
+            Row(
+              children: [
+                Expanded(
+                  child: Text(
+                    i18n.formatPrice(order.totalAmount),
+                    style: Theme.of(context).textTheme.titleMedium?.copyWith(
+                      fontFeatures: EvaThemeBuilder.tabularNums,
                     ),
-                  );
-                  if (added > 0) {
-                    context.go('/menu');
-                  }
-                },
-                icon: const Icon(Icons.replay_rounded, size: 17),
-                label: Text(i18n.t('reorder_button')),
-              ),
-            ],
-          ),
-        ],
+                  ),
+                ),
+                OutlinedButton.icon(
+                  onPressed: () {
+                    HapticFeedback.lightImpact();
+                    final productsById = ref
+                        .read(canteenStoreProvider)
+                        .productsById;
+                    final added = ref
+                        .read(cartProvider.notifier)
+                        .reorderAvailableItems(order, productsById);
+                    ScaffoldMessenger.of(context).showSnackBar(
+                      SnackBar(
+                        content: Text(
+                          added > 0
+                              ? i18n.t('reordered_toast')
+                              : i18n.t('out_of_stock'),
+                        ),
+                      ),
+                    );
+                    if (added > 0) {
+                      context.go('/menu');
+                    }
+                  },
+                  icon: const Icon(Icons.replay_rounded, size: 17),
+                  label: Text(i18n.t('reorder_button')),
+                ),
+              ],
+            ),
+          ],
+        ),
       ),
     );
   }

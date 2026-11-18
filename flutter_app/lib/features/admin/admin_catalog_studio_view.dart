@@ -106,7 +106,12 @@ class _AdminCatalogStudioViewState
   Widget build(BuildContext context) {
     final tokens = EvaTokens.of(context);
     final i18n = ref.watch(i18nProvider);
-    final store = ref.watch(canteenStoreProvider);
+    ref.watch(
+      canteenStoreProvider.select(
+        (s) => (s.products, s.categories, s.bundles, s.adminBundles),
+      ),
+    );
+    final store = ref.read(canteenStoreProvider);
     final showSegmentIcons = MediaQuery.sizeOf(context).width >= 400;
 
     return EvaFloatingHeaderScaffold(
@@ -1149,16 +1154,17 @@ class _AdminProductStudioCard extends ConsumerWidget {
 
     final isFiniteStock = !product.isOutOfStock && !product.isUnlimited;
 
-    return EvaSurfaceCard(
-      padding: EdgeInsets.all(isCompactGrid ? 9 : 11),
-      borderRadius: 18,
-      borderWidth: isDropHighlighted ? 2.0 : null,
-      borderColor: isDropHighlighted
-          ? tokens.brandPrimary
-          : (product.isOutOfStock
-                ? tokens.statusClosedFg.withValues(alpha: 0.35)
-                : null),
-      child: Column(
+    return RepaintBoundary(
+      child: EvaSurfaceCard(
+        padding: EdgeInsets.all(isCompactGrid ? 9 : 11),
+        borderRadius: 18,
+        borderWidth: isDropHighlighted ? 2.0 : null,
+        borderColor: isDropHighlighted
+            ? tokens.brandPrimary
+            : (product.isOutOfStock
+                  ? tokens.statusClosedFg.withValues(alpha: 0.35)
+                  : null),
+        child: Column(
         crossAxisAlignment: CrossAxisAlignment.stretch,
         children: [
           Expanded(
@@ -1484,6 +1490,7 @@ class _AdminProductStudioCard extends ConsumerWidget {
             ),
           ),
         ],
+      ),
       ),
     );
   }

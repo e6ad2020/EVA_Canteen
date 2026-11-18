@@ -1081,9 +1081,9 @@ class _EvaFloatingNavBarState extends State<EvaFloatingNavBar>
     final clampedScaler = MediaQuery.textScalerOf(
       context,
     ).clamp(minScaleFactor: 0.85, maxScaleFactor: 1.12);
+    final bottomSafe = MediaQuery.paddingOf(context).bottom;
 
-    return MediaQuery(
-      data: MediaQuery.of(context).copyWith(textScaler: clampedScaler),
+    return RepaintBoundary(
       child: TweenAnimationBuilder<double>(
         tween: Tween<double>(end: widget.showLabels ? 1.0 : 0.0),
         duration: disableMotion
@@ -1101,8 +1101,6 @@ class _EvaFloatingNavBarState extends State<EvaFloatingNavBar>
           final double maxCapsuleWidth = isDense ? 492.0 : 400.0;
           final double trackHeight =
               48.0 + (isDense ? 12.0 : 14.0) * labelFraction;
-
-          final bottomSafe = MediaQuery.paddingOf(context).bottom;
 
           return Padding(
             padding: EdgeInsets.fromLTRB(
@@ -1294,6 +1292,7 @@ class _EvaFloatingNavBarState extends State<EvaFloatingNavBar>
                                             frame: frame,
                                             labelFraction: labelFraction,
                                             isDense: isDense,
+                                            textScaler: clampedScaler,
                                           ),
                                         ),
                                     ],
@@ -1324,6 +1323,7 @@ class _EvaFloatingNavBarState extends State<EvaFloatingNavBar>
     required _JellyFrame frame,
     required double labelFraction,
     required bool isDense,
+    required TextScaler textScaler,
   }) {
     final coverage = (1.0 - (frame.position - visualIndex).abs()).clamp(
       0.0,
@@ -1351,6 +1351,7 @@ class _EvaFloatingNavBarState extends State<EvaFloatingNavBar>
       iconWidget = Badge(
         label: Text(
           '${item.badgeCount}',
+          textScaler: textScaler,
           style: const TextStyle(fontSize: 9.5, fontWeight: FontWeight.w800),
         ),
         child: iconWidget,
@@ -1360,6 +1361,33 @@ class _EvaFloatingNavBarState extends State<EvaFloatingNavBar>
         smallSize: 7.5,
         backgroundColor: tokens.accentAppetite,
         child: iconWidget,
+      );
+    }
+
+    final clampedLabelFraction = labelFraction.clamp(0.0, 1.0);
+    Widget? labelSection;
+    if (clampedLabelFraction > 0.001) {
+      final labelText = Text(
+        item.label,
+        textScaler: textScaler,
+        maxLines: 1,
+        softWrap: false,
+        overflow: TextOverflow.ellipsis,
+        textAlign: TextAlign.center,
+        style: Theme.of(context).textTheme.labelSmall?.copyWith(
+          fontSize: isDense ? 10.5 : 11.5,
+          height: 1.15,
+          letterSpacing: isDense ? -0.15 : 0.0,
+          color: fgColor,
+          fontWeight: isSelected ? FontWeight.w800 : FontWeight.w600,
+        ),
+      );
+      labelSection = Align(
+        alignment: Alignment.topCenter,
+        heightFactor: clampedLabelFraction,
+        child: clampedLabelFraction >= 0.999
+            ? labelText
+            : Opacity(opacity: clampedLabelFraction, child: labelText),
       );
     }
 
@@ -1378,29 +1406,10 @@ class _EvaFloatingNavBarState extends State<EvaFloatingNavBar>
                 offset: Offset(0, -1.0 * coverage * labelFraction),
                 child: iconWidget,
               ),
-              SizedBox(height: (isDense ? 2.5 : 3.0) * labelFraction),
-              Align(
-                alignment: Alignment.topCenter,
-                heightFactor: labelFraction.clamp(0.0, 1.0),
-                child: Opacity(
-                  opacity: labelFraction.clamp(0.0, 1.0),
-                  child: Text(
-                    item.label,
-                    maxLines: 1,
-                    softWrap: false,
-                    overflow: TextOverflow.ellipsis,
-                    textAlign: TextAlign.center,
-                    style: Theme.of(context).textTheme.labelSmall?.copyWith(
-                      fontSize: isDense ? 10.5 : 11.5,
-                      height: 1.15,
-                      letterSpacing: isDense ? -0.15 : 0.0,
-                      color: fgColor,
-                      fontWeight:
-                          isSelected ? FontWeight.w800 : FontWeight.w600,
-                    ),
-                  ),
-                ),
-              ),
+              if (labelSection != null) ...[
+                SizedBox(height: (isDense ? 2.5 : 3.0) * labelFraction),
+                labelSection,
+              ],
             ],
           ),
         ),
@@ -1854,6 +1863,8 @@ class EvaAvatar extends StatelessWidget {
           child: Image.asset(
             asset,
             fit: BoxFit.cover,
+            gaplessPlayback: true,
+            filterQuality: FilterQuality.medium,
             errorBuilder: (_, _, _) => Icon(
               Icons.person_rounded,
               color: tokens.brandPrimary,
@@ -1881,8 +1892,17 @@ class EvaProductImage extends ConsumerWidget {
   @override
   Widget build(BuildContext context, WidgetRef ref) {
     final tokens = EvaTokens.of(context);
-    final socket = ref.watch(socketClientProvider);
-    final resolved = socket.resolveMediaUrl(imageUrl);
+    final trimmed = imageUrl.trim();
+    final String resolved;
+    if (trimmed.isEmpty) {
+      resolved = '';
+    } else if (trimmed.startsWith('http://') ||
+        trimmed.startsWith('https://') ||
+        trimmed.startsWith('data:')) {
+      resolved = trimmed;
+    } else {
+      resolved = ref.watch(socketClientProvider).resolveMediaUrl(trimmed);
+    }
 
     Widget content;
     if (resolved.isEmpty) {
@@ -1891,6 +1911,8 @@ class EvaProductImage extends ConsumerWidget {
       content = Image.network(
         resolved,
         fit: BoxFit.cover,
+        gaplessPlayback: true,
+        filterQuality: FilterQuality.medium,
         errorBuilder: (_, _, _) => _fallbackPlaceholder(tokens),
         loadingBuilder: (context, child, progress) {
           if (progress == null) return child;
@@ -2550,14 +2572,15 @@ class EvaPickupBarcodeBar extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final tokens = EvaTokens.of(context);
-    final codeUnits = orderId.codeUnits;
-    return SizedBox(
-      height: 40,
-      width: 220,
-      child: CustomPaint(
-        painter: _BarcodePainter(
-          seed: codeUnits,
-          color: tokens.textPrimary.withValues(alpha: 0.82),
+    return RepaintBoundary(
+      child: SizedBox(
+        height: 40,
+        width: 220,
+        child: CustomPaint(
+          painter: _BarcodePainter(
+            orderId: orderId,
+            color: tokens.textPrimary.withValues(alpha: 0.82),
+          ),
         ),
       ),
     );
@@ -2565,13 +2588,14 @@ class EvaPickupBarcodeBar extends StatelessWidget {
 }
 
 class _BarcodePainter extends CustomPainter {
-  const _BarcodePainter({required this.seed, required this.color});
+  const _BarcodePainter({required this.orderId, required this.color});
 
-  final List<int> seed;
+  final String orderId;
   final Color color;
 
   @override
   void paint(Canvas canvas, Size size) {
+    final seed = orderId.codeUnits;
     final paint = Paint()..color = color;
     double x = 0;
     int idx = 0;
@@ -2595,5 +2619,5 @@ class _BarcodePainter extends CustomPainter {
 
   @override
   bool shouldRepaint(covariant _BarcodePainter oldDelegate) =>
-      oldDelegate.color != color || oldDelegate.seed != seed;
+      oldDelegate.color != color || oldDelegate.orderId != orderId;
 }
