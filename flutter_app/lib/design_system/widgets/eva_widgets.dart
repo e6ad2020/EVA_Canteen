@@ -1,5 +1,4 @@
 import 'dart:math' as math;
-import 'dart:ui' show ImageFilter;
 
 import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
@@ -26,8 +25,7 @@ class EvaScaffoldBackground extends StatelessWidget {
         fit: StackFit.expand,
         children: [
           Positioned.fill(
-            child: AnimatedSwitcher(
-              duration: const Duration(milliseconds: 280),
+            child: RepaintBoundary(
               child: wallpaperFolder != null
                   ? LayoutBuilder(
                       key: ValueKey('wallpaper_$wallpaperFolder'),
@@ -42,11 +40,13 @@ class EvaScaffoldBackground extends StatelessWidget {
                               assetPath,
                               fit: BoxFit.cover,
                               alignment: Alignment.center,
+                              gaplessPlayback: true,
+                              filterQuality: FilterQuality.medium,
                               errorBuilder: (_, _, _) =>
                                   ColoredBox(color: tokens.canvasBackground),
                             ),
                             // Subtle veil keeps illustrated line art crisp without competing with UI text
-                            const ColoredBox(color: Color(0x1FFFFFFF)),
+                            const ColoredBox(color: Color(0x26FFFFFF)),
                           ],
                         );
                       },
@@ -60,9 +60,7 @@ class EvaScaffoldBackground extends StatelessWidget {
                         ),
                       ),
                     )
-                  : SizedBox.expand(
-                      key: ValueKey('plain_${tokens.canvasBackground.toARGB32()}'),
-                    ),
+                  : const SizedBox.expand(),
             ),
           ),
           child,
@@ -96,8 +94,8 @@ class _SubtleArchitecturalPatternPainter extends CustomPainter {
       oldDelegate.dotColor != dotColor;
 }
 
-/// Frosted Liquid-Glass surface in 'Light Blue' / 'Light Red' themes,
-/// and crisp architectural card in standard Light / Dark themes.
+/// High-performance architectural surface card (zero BackdropFilter GPU blur,
+/// zero offscreen saveLayer passes during scrolling).
 class EvaSurfaceCard extends StatelessWidget {
   const EvaSurfaceCard({
     super.key,
@@ -108,7 +106,7 @@ class EvaSurfaceCard extends StatelessWidget {
     this.borderColor,
     this.borderWidth,
     this.onTap,
-    this.clipBehavior = Clip.antiAlias,
+    this.clipBehavior = Clip.none,
   });
 
   final Widget child;
@@ -140,38 +138,34 @@ class EvaSurfaceCard extends StatelessWidget {
       );
     }
 
-    inner = Material(type: MaterialType.transparency, child: inner);
+    inner = Material(
+      type: MaterialType.transparency,
+      borderRadius: BorderRadius.circular(radius),
+      clipBehavior: onTap != null ? Clip.hardEdge : Clip.none,
+      child: inner,
+    );
 
-    Widget surface = AnimatedContainer(
-      duration: const Duration(milliseconds: 200),
-      curve: Curves.easeOutCubic,
+    Widget surface = Container(
       decoration: BoxDecoration(
         color: resolvedBg,
         borderRadius: BorderRadius.circular(radius),
         border: Border.all(color: resolvedBorder, width: resolvedBorderWidth),
-        boxShadow: tokens.isNight || tokens.isLiquidGlass
+        boxShadow: tokens.isNight
             ? null
-            : const [
+            : [
                 BoxShadow(
-                  color: Color(0x080F172A),
+                  color: tokens.isLiquidGlass
+                      ? tokens.brandPrimary.withValues(alpha: 0.06)
+                      : const Color(0x080F172A),
                   blurRadius: 12,
-                  offset: Offset(0, 3),
+                  offset: const Offset(0, 3),
                 ),
               ],
       ),
       child: inner,
     );
 
-    if (tokens.isLiquidGlass) {
-      surface = ClipRRect(
-        borderRadius: BorderRadius.circular(radius),
-        clipBehavior: clipBehavior,
-        child: BackdropFilter(
-          filter: ImageFilter.blur(sigmaX: 10, sigmaY: 10),
-          child: surface,
-        ),
-      );
-    } else if (clipBehavior != Clip.none) {
+    if (clipBehavior != Clip.none) {
       surface = ClipRRect(
         borderRadius: BorderRadius.circular(radius),
         clipBehavior: clipBehavior,
@@ -186,7 +180,7 @@ class EvaSurfaceCard extends StatelessWidget {
   }
 }
 
-/// Frosted header/bar container that adapts to Liquid Glass themes.
+/// Clean elevated header/bar container without GPU blur lag or scroll flicker.
 class EvaGlassBar extends StatelessWidget {
   const EvaGlassBar({
     super.key,
@@ -204,12 +198,10 @@ class EvaGlassBar extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final tokens = EvaTokens.of(context);
-    final box = Container(
+    return Container(
       padding: padding,
       decoration: BoxDecoration(
-        color: tokens.isLiquidGlass
-            ? const Color(0xCCFFFFFF)
-            : tokens.surfaceElevated,
+        color: tokens.surfaceElevated,
         border: Border(
           bottom: bottomBorder
               ? BorderSide(color: tokens.borderSubtle, width: tokens.borderWidth)
@@ -220,15 +212,6 @@ class EvaGlassBar extends StatelessWidget {
         ),
       ),
       child: Material(type: MaterialType.transparency, child: child),
-    );
-
-    if (!tokens.isLiquidGlass) return box;
-
-    return ClipRect(
-      child: BackdropFilter(
-        filter: ImageFilter.blur(sigmaX: 12, sigmaY: 12),
-        child: box,
-      ),
     );
   }
 }
@@ -270,8 +253,9 @@ class _EvaPressableState extends State<EvaPressable> {
   }
 }
 
-/// Staggered fade + upward entrance animation with zero pending timers.
-class EvaReveal extends StatelessWidget {
+/// Staggered fade + upward entrance animation that detaches its Opacity &
+/// Transform layers once complete so scrolling stays 100% flicker-free.
+class EvaReveal extends StatefulWidget {
   const EvaReveal({
     super.key,
     required this.child,
@@ -284,23 +268,53 @@ class EvaReveal extends StatelessWidget {
   final double offsetY;
 
   @override
+  State<EvaReveal> createState() => _EvaRevealState();
+}
+
+class _EvaRevealState extends State<EvaReveal>
+    with SingleTickerProviderStateMixin {
+  late final AnimationController _ctrl;
+  late final Animation<double> _curved;
+  bool _done = false;
+
+  @override
+  void initState() {
+    super.initState();
+    final clamped = math.min(widget.index, 7);
+    _ctrl = AnimationController(
+      vsync: this,
+      duration: Duration(milliseconds: 190 + clamped * 28),
+    );
+    _curved = CurvedAnimation(parent: _ctrl, curve: Curves.easeOutCubic);
+    _ctrl.addStatusListener((status) {
+      if (status == AnimationStatus.completed && mounted && !_done) {
+        setState(() => _done = true);
+      }
+    });
+    _ctrl.forward();
+  }
+
+  @override
+  void dispose() {
+    _ctrl.dispose();
+    super.dispose();
+  }
+
+  @override
   Widget build(BuildContext context) {
     final disableMotion = MediaQuery.maybeDisableAnimationsOf(context) ?? false;
-    if (disableMotion) return child;
+    if (_done || disableMotion) return widget.child;
 
-    final clamped = math.min(index, 7);
-    final duration = Duration(milliseconds: 200 + clamped * 32);
-
-    return TweenAnimationBuilder<double>(
-      tween: Tween(begin: 0.0, end: 1.0),
-      duration: duration,
-      curve: Curves.easeOutCubic,
-      child: child,
-      builder: (context, t, inner) {
+    return AnimatedBuilder(
+      animation: _curved,
+      child: widget.child,
+      builder: (context, inner) {
+        final t = _curved.value;
+        if (t >= 0.999) return inner!;
         return Opacity(
           opacity: t.clamp(0.0, 1.0),
           child: Transform.translate(
-            offset: Offset(0, (1 - t) * offsetY),
+            offset: Offset(0, (1 - t) * widget.offsetY),
             child: inner,
           ),
         );
@@ -310,7 +324,7 @@ class EvaReveal extends StatelessWidget {
 }
 
 /// Smooth tab-switch transition wrapper for StatefulNavigationShell that
-/// preserves child state and scroll controllers.
+/// preserves child state and detaches Opacity/Transform at rest.
 class EvaShellTransition extends StatefulWidget {
   const EvaShellTransition({
     super.key,
@@ -329,7 +343,7 @@ class _EvaShellTransitionState extends State<EvaShellTransition>
     with SingleTickerProviderStateMixin {
   late final AnimationController _ctrl = AnimationController(
     vsync: this,
-    duration: const Duration(milliseconds: 190),
+    duration: const Duration(milliseconds: 180),
     value: 1.0,
   );
   late final Animation<double> _curved = CurvedAnimation(
@@ -364,8 +378,9 @@ class _EvaShellTransitionState extends State<EvaShellTransition>
       child: widget.child,
       builder: (context, child) {
         final t = _curved.value;
+        if (t >= 0.999) return child!;
         return Opacity(
-          opacity: (0.35 + 0.65 * t).clamp(0.0, 1.0),
+          opacity: (0.4 + 0.6 * t).clamp(0.0, 1.0),
           child: Transform.translate(
             offset: Offset((1 - t) * 8 * _slideDir, 0),
             child: child,

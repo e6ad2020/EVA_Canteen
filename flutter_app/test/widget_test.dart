@@ -368,6 +368,8 @@ void main() {
         'assets/images/wallpapers/light_blue',
       );
 
+      expect(find.byType(BackdropFilter), findsNothing);
+
       // Select 'Light Red' theme
       await tester.tap(find.text('Light Red'));
       await tester.pumpAndSettle();
@@ -383,6 +385,46 @@ void main() {
         tokens.wallpaperFolder,
         'assets/images/wallpapers/light_red',
       );
+      expect(find.byType(BackdropFilter), findsNothing);
+    },
+  );
+
+  testWidgets(
+    'Redesigned WelcomeAuthScreen has no top bar and scrolls cleanly on 360x800 phone',
+    (tester) async {
+      await tester.binding.setSurfaceSize(const Size(360, 800));
+      addTearDown(() => tester.binding.setSurfaceSize(null));
+
+      SharedPreferences.setMockInitialValues({});
+      final prefs = await SharedPreferences.getInstance();
+      final mockSocket = EvaSocketClient(enableNetwork: false);
+
+      await tester.pumpWidget(
+        ProviderScope(
+          overrides: [
+            sharedPrefsProvider.overrideWithValue(prefs),
+            socketClientProvider.overrideWithValue(mockSocket),
+          ],
+          child: const EvaCanteenApp(),
+        ),
+      );
+      await tester.pumpAndSettle();
+      expect(tester.takeException(), isNull);
+
+      // Verify top bar is completely gone on the landing/login screen
+      expect(find.byType(AppBar), findsNothing);
+      expect(find.byType(BackdropFilter), findsNothing);
+      expect(find.text('Welcome back'), findsOneWidget);
+
+      // Switch to Create account mode (reveals avatar picker) and scroll
+      await tester.tap(find.text('Create account'));
+      await tester.pumpAndSettle();
+      expect(tester.takeException(), isNull);
+      expect(find.text('Create your account'), findsOneWidget);
+
+      await tester.drag(find.byType(SingleChildScrollView), const Offset(0, -180));
+      await tester.pumpAndSettle();
+      expect(tester.takeException(), isNull);
     },
   );
 }

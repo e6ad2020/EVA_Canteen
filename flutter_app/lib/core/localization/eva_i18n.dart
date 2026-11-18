@@ -67,6 +67,22 @@ class EvaTranslator {
       'ar':
           'تصفح القائمة المباشرة، ادفع نقداً أو بالبطاقة أو المحفظة، واستلم طلبك فور جهوزيته.',
     },
+    'welcome_feat_fast': {'en': 'Live pickup pass', 'ar': 'بطاقة استلام فوري'},
+    'welcome_feat_pay': {
+      'en': 'Cash • Card • Wallet',
+      'ar': 'نقداً • بطاقة • محفظة',
+    },
+    'welcome_feat_deals': {'en': 'Combo deals', 'ar': 'عروض التوفير'},
+    'auth_welcome_back': {'en': 'Welcome back', 'ar': 'أهلاً بك مجدداً'},
+    'auth_signin_sub': {
+      'en': 'Sign in to order, pay from your wallet, and track pickup live.',
+      'ar': 'سجّل الدخول للطلب والدفع من محفظتك ومتابعة الاستلام مباشرة.',
+    },
+    'auth_create_title': {'en': 'Create your account', 'ar': 'إنشاء حساب جديد'},
+    'auth_register_sub': {
+      'en': 'Pick an avatar and set up your account in seconds.',
+      'ar': 'اختر صورتك الرمزية وأنشئ حسابك في ثوانٍ.',
+    },
     'currency_symbol': {'en': 'L.E', 'ar': 'ج.م'},
     'sign_in_tab': {'en': 'Sign in', 'ar': 'تسجيل الدخول'},
     'register_tab': {'en': 'Create account', 'ar': 'إنشاء حساب'},

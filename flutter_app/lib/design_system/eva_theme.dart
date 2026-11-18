@@ -189,16 +189,16 @@ class EvaTokens extends ThemeExtension<EvaTokens> {
 
     // Authentic 'Light Blue' theme from the EVA Canteen web project:
     // White & Sapphire palette (#0D47A1), #E3F2FD accents, #90A4AE borders,
-    // illustrated food wallpaper + frosted liquid-glass surfaces.
+    // illustrated food wallpaper + crisp zero-blur porcelain surfaces.
     if (accent == EvaAccentPreset.lightBlue) {
       return EvaTokens(
         isNight: false,
         isLiquidGlass: true,
         wallpaperFolder: accent.wallpaperFolder,
-        canvasBackground: const Color(0xFFFFFFFF),
-        surfaceCard: const Color(0xBAFFFFFF),
-        surfaceElevated: const Color(0xEBFFFFFF),
-        surfaceSubtle: const Color(0xD6E3F2FD),
+        canvasBackground: const Color(0xFFF8FBFF),
+        surfaceCard: const Color(0xF2FFFFFF),
+        surfaceElevated: const Color(0xFAFFFFFF),
+        surfaceSubtle: const Color(0xFFE6F2FE),
         borderSubtle: const Color(0xFF90A4AE),
         borderWidth: 1.5,
         textPrimary: const Color(0xFF0D47A1),
@@ -221,16 +221,16 @@ class EvaTokens extends ThemeExtension<EvaTokens> {
 
     // Authentic 'Light Red' theme from the EVA Canteen web project:
     // White & Crimson palette (#B71C1C), #FFEBEE accents, #EF9A9A borders,
-    // illustrated food wallpaper + frosted liquid-glass surfaces.
+    // illustrated food wallpaper + crisp zero-blur porcelain surfaces.
     if (accent == EvaAccentPreset.lightRed) {
       return EvaTokens(
         isNight: false,
         isLiquidGlass: true,
         wallpaperFolder: accent.wallpaperFolder,
-        canvasBackground: const Color(0xFFFFFFFF),
-        surfaceCard: const Color(0xBAFFFFFF),
-        surfaceElevated: const Color(0xEBFFFFFF),
-        surfaceSubtle: const Color(0xD6FFEBEE),
+        canvasBackground: const Color(0xFFFFF9FA),
+        surfaceCard: const Color(0xF2FFFFFF),
+        surfaceElevated: const Color(0xFAFFFFFF),
+        surfaceSubtle: const Color(0xFFFFECEF),
         borderSubtle: const Color(0xFFEF9A9A),
         borderWidth: 1.5,
         textPrimary: const Color(0xFFB71C1C),

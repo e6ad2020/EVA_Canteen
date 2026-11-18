@@ -1,5 +1,3 @@
-import 'dart:ui' show ImageFilter;
-
 import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
@@ -97,8 +95,9 @@ class AdminShellScreen extends ConsumerWidget {
 
         Widget? bottomBar;
         if (!isWide) {
-          final nav = Container(
+          bottomBar = Container(
             decoration: BoxDecoration(
+              color: tokens.surfaceElevated,
               border: Border(
                 top: BorderSide(
                   color: tokens.borderSubtle,
@@ -107,9 +106,7 @@ class AdminShellScreen extends ConsumerWidget {
               ),
             ),
             child: NavigationBar(
-              backgroundColor: tokens.isLiquidGlass
-                  ? const Color(0xD9FFFFFF)
-                  : tokens.surfaceElevated,
+              backgroundColor: tokens.surfaceElevated,
               selectedIndex: navigationShell.currentIndex,
               onDestinationSelected: (idx) {
                 HapticFeedback.selectionClick();
@@ -154,22 +151,11 @@ class AdminShellScreen extends ConsumerWidget {
               ],
             ),
           );
-
-          bottomBar = tokens.isLiquidGlass
-              ? ClipRect(
-                  child: BackdropFilter(
-                    filter: ImageFilter.blur(sigmaX: 12, sigmaY: 12),
-                    child: nav,
-                  ),
-                )
-              : nav;
         }
 
         return Scaffold(
-          extendBody: tokens.isLiquidGlass,
           body: EvaScaffoldBackground(
             child: SafeArea(
-              bottom: !tokens.isLiquidGlass || isWide,
               child: Column(
                 children: [
                   const ConnectionStatusBanner(),
@@ -292,12 +278,7 @@ class AdminShellScreen extends ConsumerWidget {
                               Expanded(child: animatedBody),
                             ],
                           )
-                        : Padding(
-                            padding: EdgeInsets.only(
-                              bottom: tokens.isLiquidGlass ? 66 : 0,
-                            ),
-                            child: animatedBody,
-                          ),
+                        : animatedBody,
                   ),
                 ],
               ),
