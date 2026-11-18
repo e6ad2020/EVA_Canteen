@@ -1,4 +1,3 @@
-const Database = require('better-sqlite3');
 const path = require('path');
 
 // Path to your database
@@ -6,10 +5,16 @@ const DB_PATH = path.join(__dirname, 'data', 'canteen.db');
 
 let db;
 try {
+    const Database = require('better-sqlite3');
     db = new Database(DB_PATH);
-} catch (err) {
-    console.error('Error opening database:', err.message);
-    process.exit(1);
+} catch (betterErr) {
+    try {
+        const { DatabaseSync } = require('node:sqlite');
+        db = new DatabaseSync(DB_PATH);
+    } catch (nodeSqliteErr) {
+        console.error('Error opening database:', betterErr.message, '/', nodeSqliteErr.message);
+        process.exit(1);
+    }
 }
 
 // Get the SQL query from command line arguments

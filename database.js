@@ -1,6 +1,5 @@
 const fs = require('fs');
 const path = require('path');
-const Database = require('better-sqlite3');
 
 const DB_PATH = process.env.DB_PATH || path.join(__dirname, 'data', 'canteen.db');
 
@@ -8,12 +7,46 @@ if (!fs.existsSync(path.dirname(DB_PATH))) {
     fs.mkdirSync(path.dirname(DB_PATH), { recursive: true });
 }
 
-const db = new Database(DB_PATH);
-console.log('Connected to the SQLite database.');
-db.pragma('foreign_keys = ON');
-db.pragma('busy_timeout = 5000');
-db.pragma('journal_mode = WAL');
-db.pragma('synchronous = NORMAL');
+let db;
+let sqliteEngine = 'better-sqlite3';
+
+if (process.env.EVA_SQLITE_ENGINE === 'node:sqlite') {
+    const { DatabaseSync } = require('node:sqlite');
+    db = new DatabaseSync(DB_PATH);
+    sqliteEngine = 'node:sqlite';
+} else {
+    try {
+        const Database = require('better-sqlite3');
+        db = new Database(DB_PATH);
+    } catch (betterSqliteErr) {
+        try {
+            const { DatabaseSync } = require('node:sqlite');
+            db = new DatabaseSync(DB_PATH);
+            sqliteEngine = 'node:sqlite';
+            console.warn(
+                `better-sqlite3 native bindings unavailable (${betterSqliteErr.message}); using built-in node:sqlite fallback.`
+            );
+        } catch (nodeSqliteErr) {
+            throw new Error(
+                `Failed to open SQLite database with better-sqlite3 (${betterSqliteErr.message}) ` +
+                `and node:sqlite (${nodeSqliteErr.message}).`
+            );
+        }
+    }
+}
+
+console.log(`Connected to the SQLite database (${sqliteEngine}).`);
+if (sqliteEngine === 'better-sqlite3') {
+    db.pragma('foreign_keys = ON');
+    db.pragma('busy_timeout = 5000');
+    db.pragma('journal_mode = WAL');
+    db.pragma('synchronous = NORMAL');
+} else {
+    db.exec('PRAGMA foreign_keys = ON;');
+    db.exec('PRAGMA busy_timeout = 5000;');
+    db.exec('PRAGMA journal_mode = WAL;');
+    db.exec('PRAGMA synchronous = NORMAL;');
+}
 
 function normalizeParams(params) {
     if (params === undefined || params === null) {
@@ -22,9 +55,18 @@ function normalizeParams(params) {
     return params;
 }
 
+function normalizeSpreadParams(params) {
+    const normalized = normalizeParams(params);
+    const list = Array.isArray(normalized) ? normalized : [normalized];
+    return list.map((value) => (value === undefined ? null : value));
+}
+
 function query(sql, params = []) {
     return Promise.resolve().then(() => {
         const stmt = db.prepare(sql);
+        if (sqliteEngine === 'node:sqlite') {
+            return stmt.all(...normalizeSpreadParams(params)).map((row) => ({ ...row }));
+        }
         return stmt.all(normalizeParams(params));
     });
 }
@@ -32,7 +74,9 @@ function query(sql, params = []) {
 function run(sql, params = []) {
     return Promise.resolve().then(() => {
         const stmt = db.prepare(sql);
-        const result = stmt.run(normalizeParams(params));
+        const result = sqliteEngine === 'node:sqlite'
+            ? stmt.run(...normalizeSpreadParams(params))
+            : stmt.run(normalizeParams(params));
         return {
             changes: result.changes,
             lastID: Number(result.lastInsertRowid),
@@ -44,6 +88,10 @@ function run(sql, params = []) {
 function get(sql, params = []) {
     return Promise.resolve().then(() => {
         const stmt = db.prepare(sql);
+        if (sqliteEngine === 'node:sqlite') {
+            const row = stmt.get(...normalizeSpreadParams(params));
+            return row ? { ...row } : undefined;
+        }
         return stmt.get(normalizeParams(params));
     });
 }
