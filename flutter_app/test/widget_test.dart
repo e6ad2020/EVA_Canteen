@@ -111,7 +111,9 @@ void main() {
         TextDirection.ltr,
       );
 
-      // Tap Arabic quick toggle ('عربي')
+      // Tap subtle Arabic footer link ('عربي')
+      await tester.ensureVisible(find.text('عربي'));
+      await tester.pumpAndSettle();
       await tester.tap(find.text('عربي'));
       await tester.pumpAndSettle();
 
@@ -303,15 +305,24 @@ void main() {
       await tester.pumpAndSettle();
       expect(tester.takeException(), isNull);
 
-      // Switch to Arabic RTL on 360dp phone and verify zero overflow across tabs
-      await tester.tap(find.text('عربي'));
+      // Verify top bar has no language trigger, then switch to Arabic via Settings tab
+      expect(find.text('عربي'), findsNothing);
+      await tester.tap(find.text('Settings'));
+      await tester.pumpAndSettle();
+      await tester.ensureVisible(find.text('العربية'));
+      await tester.pumpAndSettle();
+      await tester.tap(find.text('العربية'));
+      await tester.pumpAndSettle();
+      expect(tester.takeException(), isNull);
+
+      await tester.tap(find.text('العمليات'));
       await tester.pumpAndSettle();
       expect(tester.takeException(), isNull);
     },
   );
 
   testWidgets(
-    'Light Blue and Light Red themes activate Liquid Glass tokens and illustrated wallpapers',
+    'Light Blue is the default theme and Light Red activates wallpaper tokens cleanly',
     (tester) async {
       await tester.binding.setSurfaceSize(const Size(412, 915));
       addTearDown(() => tester.binding.setSurfaceSize(null));
@@ -328,7 +339,17 @@ void main() {
       );
       addTearDown(container.dispose);
 
-      // Start in Dark mode first to verify Light Blue/Red automatically switches to Daylight Liquid Glass
+      // Verify Light Blue is the out-of-the-box default theme
+      expect(
+        container.read(appPreferencesProvider).accentPreset,
+        EvaAccentPreset.lightBlue,
+      );
+      expect(
+        container.read(appPreferencesProvider).surfaceMode,
+        EvaSurfaceMode.daylight,
+      );
+
+      // Switch to Dark mode first to verify selecting Light Blue/Red restores Daylight wallpaper mode
       container
           .read(appPreferencesProvider.notifier)
           .setSurfaceMode(EvaSurfaceMode.nightShift);

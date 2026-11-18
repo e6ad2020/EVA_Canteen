@@ -945,53 +945,6 @@ class _StepperIconBtn extends StatelessWidget {
   }
 }
 
-class LanguageQuickToggle extends ConsumerWidget {
-  const LanguageQuickToggle({super.key});
-
-  @override
-  Widget build(BuildContext context, WidgetRef ref) {
-    final tokens = EvaTokens.of(context);
-    final isAr = ref.watch(
-      appPreferencesProvider.select((s) => s.locale.languageCode == 'ar'),
-    );
-    final nextLabel = isAr ? 'EN' : 'عربي';
-
-    return EvaPressable(
-      child: OutlinedButton.icon(
-        onPressed: () {
-          HapticFeedback.lightImpact();
-          ref.read(appPreferencesProvider.notifier).toggleLanguage();
-        },
-        style: OutlinedButton.styleFrom(
-          minimumSize: const Size(0, 34),
-          tapTargetSize: MaterialTapTargetSize.shrinkWrap,
-          padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
-          backgroundColor: tokens.surfaceSubtle.withValues(alpha: 0.65),
-          shape: RoundedRectangleBorder(
-            borderRadius: BorderRadius.circular(999),
-          ),
-        ),
-        icon: Icon(
-          Icons.translate_rounded,
-          size: 15,
-          color: tokens.brandPrimary,
-        ),
-        label: AnimatedSwitcher(
-          duration: const Duration(milliseconds: 160),
-          child: Text(
-            nextLabel,
-            key: ValueKey<String>(nextLabel),
-            style: Theme.of(context).textTheme.labelMedium?.copyWith(
-              fontWeight: FontWeight.w700,
-              color: tokens.textPrimary,
-            ),
-          ),
-        ),
-      ),
-    );
-  }
-}
-
 class ConnectionStatusBanner extends ConsumerWidget {
   const ConnectionStatusBanner({super.key});
 

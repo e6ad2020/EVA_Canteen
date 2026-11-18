@@ -76,7 +76,7 @@ enum EvaAccentPreset {
   bool get isWallpaperLightTheme => wallpaperFolder != null;
 
   static EvaAccentPreset fromStorageName(String? raw) {
-    if (raw == null || raw.isEmpty) return EvaAccentPreset.cobalt;
+    if (raw == null || raw.isEmpty) return EvaAccentPreset.lightBlue;
     if (raw == 'light-blue') return EvaAccentPreset.lightBlue;
     if (raw == 'light-red' || raw == 'terracotta') {
       return EvaAccentPreset.lightRed;
@@ -85,7 +85,7 @@ enum EvaAccentPreset {
     for (final preset in EvaAccentPreset.values) {
       if (preset.name == raw) return preset;
     }
-    return EvaAccentPreset.cobalt;
+    return EvaAccentPreset.lightBlue;
   }
 }
 
@@ -285,7 +285,7 @@ class EvaTokens extends ThemeExtension<EvaTokens> {
     return Theme.of(context).extension<EvaTokens>() ??
         EvaTokens.resolve(
           mode: EvaSurfaceMode.daylight,
-          accent: EvaAccentPreset.cobalt,
+          accent: EvaAccentPreset.lightBlue,
           showDoodlePattern: true,
         );
   }

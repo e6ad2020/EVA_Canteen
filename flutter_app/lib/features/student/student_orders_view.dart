@@ -121,7 +121,6 @@ class StudentOrdersView extends ConsumerWidget {
                       style: Theme.of(context).textTheme.headlineSmall,
                     ),
                   ),
-                  const LanguageQuickToggle(),
                 ],
               ),
             ),

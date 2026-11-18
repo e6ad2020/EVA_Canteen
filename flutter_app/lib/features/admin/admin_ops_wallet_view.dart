@@ -353,10 +353,6 @@ class _AdminOpsWalletViewState extends ConsumerState<AdminOpsWalletView> {
                   style: Theme.of(context).textTheme.headlineSmall,
                 ),
               ),
-              if (MediaQuery.sizeOf(context).width < 840) ...[
-                const LanguageQuickToggle(),
-                const SizedBox(width: 8),
-              ],
               IconButton.filledTonal(
                 tooltip: 'Refresh',
                 onPressed: () =>

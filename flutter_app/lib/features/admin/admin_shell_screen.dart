@@ -214,15 +214,6 @@ class AdminShellScreen extends ConsumerWidget {
                                     ],
                                   ),
                                 ),
-                                trailing: const Expanded(
-                                  child: Align(
-                                    alignment: Alignment.bottomCenter,
-                                    child: Padding(
-                                      padding: EdgeInsets.only(bottom: 16),
-                                      child: LanguageQuickToggle(),
-                                    ),
-                                  ),
-                                ),
                                 destinations: [
                                   NavigationRailDestination(
                                     icon: Badge(

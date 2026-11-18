@@ -175,8 +175,6 @@ class _StudentMenuViewState extends ConsumerState<StudentMenuView> {
                         : tokens.statusClosedFg,
                     pulsing: store.isCanteenOpen,
                   ),
-                  const SizedBox(width: 6),
-                  const LanguageQuickToggle(),
                 ],
               ),
             ),

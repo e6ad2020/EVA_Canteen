@@ -139,32 +139,26 @@ class _WelcomeAuthScreenState extends ConsumerState<WelcomeAuthScreen> {
                               mainAxisAlignment: MainAxisAlignment.center,
                               crossAxisAlignment: CrossAxisAlignment.stretch,
                               children: [
-                                // Floating minimal utility pills (NO top bar, NO border, NO blur)
+                                // Centered live service status pill (no top bar, no language pill)
                                 EvaReveal(
                                   index: 0,
                                   offsetY: 6,
-                                  child: Row(
-                                    children: [
-                                      Flexible(
-                                        child: EvaStatusBadge(
-                                          label: isOpen
-                                              ? i18n.t('canteen_open_badge')
-                                              : i18n.t('canteen_closed_badge'),
-                                          background: isOpen
-                                              ? tokens.statusDeliveredBg
-                                              : tokens.statusClosedBg,
-                                          foreground: isOpen
-                                              ? tokens.statusDeliveredFg
-                                              : tokens.statusClosedFg,
-                                          pulsing: isOpen,
-                                        ),
-                                      ),
-                                      const Spacer(),
-                                      const LanguageQuickToggle(),
-                                    ],
+                                  child: Center(
+                                    child: EvaStatusBadge(
+                                      label: isOpen
+                                          ? i18n.t('canteen_open_badge')
+                                          : i18n.t('canteen_closed_badge'),
+                                      background: isOpen
+                                          ? tokens.statusDeliveredBg
+                                          : tokens.statusClosedBg,
+                                      foreground: isOpen
+                                          ? tokens.statusDeliveredFg
+                                          : tokens.statusClosedFg,
+                                      pulsing: isOpen,
+                                    ),
                                   ),
                                 ),
-                                SizedBox(height: isWide ? 24 : 18),
+                                SizedBox(height: isWide ? 18 : 14),
 
                                 // Simple centered Brand Logo + Name underneath
                                 EvaReveal(
@@ -533,33 +527,61 @@ class _WelcomeAuthScreenState extends ConsumerState<WelcomeAuthScreen> {
           ),
         ),
         const SizedBox(height: 10),
-        Center(
-          child: TextButton.icon(
-            onPressed: () {
-              HapticFeedback.selectionClick();
-              setState(() {
-                _isAdminMode = !_isAdminMode;
-                _errorText = null;
-              });
-            },
-            style: TextButton.styleFrom(
-              foregroundColor: tokens.textSecondary,
-              padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 8),
+        Wrap(
+          alignment: WrapAlignment.center,
+          crossAxisAlignment: WrapCrossAlignment.center,
+          spacing: 6,
+          runSpacing: 4,
+          children: [
+            TextButton.icon(
+              onPressed: () {
+                HapticFeedback.selectionClick();
+                setState(() {
+                  _isAdminMode = !_isAdminMode;
+                  _errorText = null;
+                });
+              },
+              style: TextButton.styleFrom(
+                foregroundColor: tokens.textSecondary,
+                padding: const EdgeInsets.symmetric(
+                  horizontal: 12,
+                  vertical: 8,
+                ),
+              ),
+              icon: Icon(
+                _isAdminMode
+                    ? Icons.person_outline_rounded
+                    : Icons.storefront_outlined,
+                size: 17,
+              ),
+              label: Text(
+                _isAdminMode
+                    ? t('customer_portal_button')
+                    : t('staff_portal_button'),
+                maxLines: 1,
+                overflow: TextOverflow.ellipsis,
+              ),
             ),
-            icon: Icon(
-              _isAdminMode
-                  ? Icons.person_outline_rounded
-                  : Icons.storefront_outlined,
-              size: 17,
+            TextButton.icon(
+              onPressed: () {
+                HapticFeedback.lightImpact();
+                ref.read(appPreferencesProvider.notifier).toggleLanguage();
+              },
+              style: TextButton.styleFrom(
+                foregroundColor: tokens.textSecondary,
+                padding: const EdgeInsets.symmetric(
+                  horizontal: 10,
+                  vertical: 8,
+                ),
+              ),
+              icon: const Icon(Icons.translate_rounded, size: 15),
+              label: Text(
+                ref.watch(appPreferencesProvider).locale.languageCode == 'ar'
+                    ? 'English'
+                    : 'عربي',
+              ),
             ),
-            label: Text(
-              _isAdminMode
-                  ? t('customer_portal_button')
-                  : t('staff_portal_button'),
-              maxLines: 1,
-              overflow: TextOverflow.ellipsis,
-            ),
-          ),
+          ],
         ),
       ],
     );

@@ -37,8 +37,6 @@ class _AdminCatalogStudioViewState
     final tokens = EvaTokens.of(context);
     final i18n = ref.watch(i18nProvider);
     final store = ref.watch(canteenStoreProvider);
-    final isCompactShell = MediaQuery.sizeOf(context).width < 840;
-
     return Column(
       children: [
         // Studio Header
@@ -57,10 +55,6 @@ class _AdminCatalogStudioViewState
                       style: Theme.of(context).textTheme.headlineSmall,
                     ),
                   ),
-                  if (isCompactShell) ...[
-                    const SizedBox(width: 8),
-                    const LanguageQuickToggle(),
-                  ],
                   const SizedBox(width: 8),
                   if (_section == _StudioSection.products)
                     FilledButton.icon(

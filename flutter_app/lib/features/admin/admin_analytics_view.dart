@@ -51,7 +51,6 @@ class _AdminAnalyticsViewState extends ConsumerState<AdminAnalyticsView> {
     final i18n = ref.watch(i18nProvider);
     final store = ref.watch(canteenStoreProvider);
     final snap = store.analytics;
-    final isCompactShell = MediaQuery.sizeOf(context).width < 840;
 
     final years = <int>{
       DateTime.now().year,
@@ -140,10 +139,6 @@ class _AdminAnalyticsViewState extends ConsumerState<AdminAnalyticsView> {
                             style: Theme.of(context).textTheme.headlineSmall,
                           ),
                         ),
-                        if (isCompactShell) ...[
-                          const LanguageQuickToggle(),
-                          const SizedBox(width: 8),
-                        ],
                         refreshBtn,
                       ],
                     ),
@@ -173,10 +168,6 @@ class _AdminAnalyticsViewState extends ConsumerState<AdminAnalyticsView> {
                   const SizedBox(width: 10),
                   SizedBox(width: 108, child: yearDropdown),
                   const SizedBox(width: 10),
-                  if (isCompactShell) ...[
-                    const LanguageQuickToggle(),
-                    const SizedBox(width: 8),
-                  ],
                   refreshBtn,
                 ],
               );

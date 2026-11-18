@@ -197,10 +197,6 @@ class _AdminKdsViewState extends ConsumerState<AdminKdsView> {
                           pulsing: store.isCanteenOpen,
                         ),
                       ),
-                      if (constraints.maxWidth < 840) ...[
-                        const SizedBox(width: 8),
-                        const LanguageQuickToggle(),
-                      ],
                     ],
                   ),
                   const SizedBox(height: 10),

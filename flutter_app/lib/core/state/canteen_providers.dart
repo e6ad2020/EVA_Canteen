@@ -20,7 +20,7 @@ class AppPreferencesState extends Equatable {
   const AppPreferencesState({
     this.locale = const Locale('en'),
     this.surfaceMode = EvaSurfaceMode.daylight,
-    this.accentPreset = EvaAccentPreset.cobalt,
+    this.accentPreset = EvaAccentPreset.lightBlue,
     this.showDoodlePattern = true,
     this.customServerOrigin,
   });
@@ -72,7 +72,8 @@ class AppPreferencesNotifier extends Notifier<AppPreferencesState> {
     final prefs = ref.watch(sharedPrefsProvider);
     final lang = prefs.getString(_kLang) ?? 'en';
     final modeName = prefs.getString(_kMode) ?? EvaSurfaceMode.daylight.name;
-    final accentName = prefs.getString(_kAccent) ?? EvaAccentPreset.cobalt.name;
+    final accentName =
+        prefs.getString(_kAccent) ?? EvaAccentPreset.lightBlue.name;
     final doodle = prefs.getBool(_kDoodle) ?? true;
     final server = prefs.getString(_kServer);
 
