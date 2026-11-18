@@ -119,74 +119,86 @@ class _WelcomeAuthScreenState extends ConsumerState<WelcomeAuthScreen> {
                     final isWide = viewport.maxWidth >= 768;
                     final horizontalPad = viewport.maxWidth < 380 ? 14.0 : 20.0;
 
-                    return SingleChildScrollView(
-                      physics: const ClampingScrollPhysics(),
-                      padding: EdgeInsets.symmetric(
-                        horizontal: horizontalPad,
-                        vertical: isWide ? 28 : 16,
-                      ),
-                      child: ConstrainedBox(
-                        constraints: BoxConstraints(
-                          minHeight: math.max(
-                            0,
-                            viewport.maxHeight - (isWide ? 56 : 32),
+                    return Stack(
+                      fit: StackFit.expand,
+                      children: [
+                        SingleChildScrollView(
+                          physics: const ClampingScrollPhysics(),
+                          padding: EdgeInsets.fromLTRB(
+                            horizontalPad,
+                            isWide ? 44 : 42,
+                            horizontalPad,
+                            isWide ? 28 : 18,
                           ),
-                        ),
-                        child: Center(
                           child: ConstrainedBox(
-                            constraints: const BoxConstraints(maxWidth: 460),
-                            child: Column(
-                              mainAxisAlignment: MainAxisAlignment.center,
-                              crossAxisAlignment: CrossAxisAlignment.stretch,
-                              children: [
-                                // Centered live service status pill (no top bar, no language pill)
-                                EvaReveal(
-                                  index: 0,
-                                  offsetY: 6,
-                                  child: Center(
-                                    child: EvaStatusBadge(
-                                      label: isOpen
-                                          ? i18n.t('canteen_open_badge')
-                                          : i18n.t('canteen_closed_badge'),
-                                      background: isOpen
-                                          ? tokens.statusDeliveredBg
-                                          : tokens.statusClosedBg,
-                                      foreground: isOpen
-                                          ? tokens.statusDeliveredFg
-                                          : tokens.statusClosedFg,
-                                      pulsing: isOpen,
+                            constraints: BoxConstraints(
+                              minHeight: math.max(
+                                0,
+                                viewport.maxHeight - (isWide ? 72 : 60),
+                              ),
+                            ),
+                            child: Center(
+                              child: ConstrainedBox(
+                                constraints: const BoxConstraints(
+                                  maxWidth: 460,
+                                ),
+                                child: Column(
+                                  mainAxisAlignment: MainAxisAlignment.center,
+                                  crossAxisAlignment:
+                                      CrossAxisAlignment.stretch,
+                                  children: [
+                                    // Hero Brand Logo + Name underneath
+                                    EvaReveal(
+                                      index: 1,
+                                      child: _SimpleBrandHeader(
+                                        canteenName: i18n.t('canteen_name'),
+                                        tokens: tokens,
+                                        isWide: isWide,
+                                      ),
                                     ),
-                                  ),
-                                ),
-                                SizedBox(height: isWide ? 18 : 14),
+                                    SizedBox(height: isWide ? 22 : 18),
 
-                                // Simple centered Brand Logo + Name underneath
-                                EvaReveal(
-                                  index: 1,
-                                  child: _SimpleBrandHeader(
-                                    canteenName: i18n.t('canteen_name'),
-                                    tokens: tokens,
-                                    isWide: isWide,
-                                  ),
+                                    // Centered Auth Card
+                                    EvaReveal(
+                                      index: 2,
+                                      child: _buildAuthColumn(
+                                        context,
+                                        tokens,
+                                        i18n.t,
+                                        busy,
+                                        isWide: isWide,
+                                      ),
+                                    ),
+                                  ],
                                 ),
-                                SizedBox(height: isWide ? 24 : 20),
-
-                                // Centered Auth Card
-                                EvaReveal(
-                                  index: 2,
-                                  child: _buildAuthColumn(
-                                    context,
-                                    tokens,
-                                    i18n.t,
-                                    busy,
-                                    isWide: isWide,
-                                  ),
-                                ),
-                              ],
+                              ),
                             ),
                           ),
                         ),
-                      ),
+
+                        // Top-left live Open/Closed status badge
+                        Positioned(
+                          key: const ValueKey('welcome_status_top_left'),
+                          top: 8,
+                          left: 16,
+                          child: EvaReveal(
+                            index: 0,
+                            offsetY: 6,
+                            child: EvaStatusBadge(
+                              label: isOpen
+                                  ? i18n.t('canteen_open_badge')
+                                  : i18n.t('canteen_closed_badge'),
+                              background: isOpen
+                                  ? tokens.statusDeliveredBg
+                                  : tokens.statusClosedBg,
+                              foreground: isOpen
+                                  ? tokens.statusDeliveredFg
+                                  : tokens.statusClosedFg,
+                              pulsing: isOpen,
+                            ),
+                          ),
+                        ),
+                      ],
                     );
                   },
                 ),
@@ -606,7 +618,7 @@ class _SimpleBrandHeader extends StatelessWidget {
     return Column(
       mainAxisSize: MainAxisSize.min,
       children: [
-        EvaBrandLogo(size: isWide ? 84 : 74),
+        EvaBrandLogo(size: isWide ? 148 : 132, hero: true),
         const SizedBox(height: 12),
         Text(
           canteenName,
@@ -615,9 +627,9 @@ class _SimpleBrandHeader extends StatelessWidget {
           overflow: TextOverflow.ellipsis,
           style: Theme.of(context).textTheme.headlineSmall?.copyWith(
             color: tokens.textPrimary,
-            fontSize: isWide ? 28 : 24,
+            fontSize: isWide ? 30 : 26,
             fontWeight: FontWeight.w800,
-            letterSpacing: -0.3,
+            letterSpacing: -0.35,
             shadows: (!tokens.isNight && tokens.isLiquidGlass)
                 ? const [
                     Shadow(color: Color(0xE6FFFFFF), blurRadius: 10),

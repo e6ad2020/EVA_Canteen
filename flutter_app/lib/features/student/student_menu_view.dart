@@ -134,7 +134,7 @@ class _StudentMenuViewState extends ConsumerState<StudentMenuView> {
                   scale: isScrolled ? 0.92 : 1.0,
                   duration: const Duration(milliseconds: 200),
                   curve: Curves.easeOutCubic,
-                  child: const EvaBrandLogo(size: 38),
+                  child: const EvaBrandLogo(size: 44),
                 ),
                 const SizedBox(width: 10),
                 Expanded(

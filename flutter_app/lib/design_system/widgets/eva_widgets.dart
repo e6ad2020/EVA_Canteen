@@ -1751,30 +1751,66 @@ class EvaThemeSwatch extends StatelessWidget {
 }
 
 class EvaBrandLogo extends StatelessWidget {
-  const EvaBrandLogo({super.key, this.size = 40});
+  const EvaBrandLogo({super.key, this.size = 40, this.hero = false});
 
   final double size;
+  final bool hero;
 
   @override
   Widget build(BuildContext context) {
     final tokens = EvaTokens.of(context);
+    if (hero) {
+      return Container(
+        width: size,
+        height: size,
+        decoration: BoxDecoration(
+          borderRadius: BorderRadius.circular(size * 0.24),
+          boxShadow: [
+            BoxShadow(
+              color: Colors.black.withValues(
+                alpha: tokens.isNight ? 0.34 : 0.14,
+              ),
+              blurRadius: 22,
+              offset: const Offset(0, 8),
+            ),
+          ],
+        ),
+        child: Image.asset(
+          'assets/images/logo.png',
+          width: size,
+          height: size,
+          fit: BoxFit.contain,
+          filterQuality: FilterQuality.medium,
+          errorBuilder: (_, _, _) => Icon(
+            Icons.restaurant_menu_rounded,
+            color: tokens.brandPrimary,
+            size: size * 0.64,
+          ),
+        ),
+      );
+    }
+
     return Container(
       width: size,
       height: size,
       decoration: BoxDecoration(
         color: tokens.surfaceElevated,
-        borderRadius: BorderRadius.circular(size * 0.28),
-        border: Border.all(color: tokens.borderSubtle, width: tokens.borderWidth),
+        borderRadius: BorderRadius.circular(size * 0.25),
+        border: Border.all(
+          color: tokens.borderSubtle,
+          width: tokens.borderWidth,
+        ),
       ),
       clipBehavior: Clip.antiAlias,
-      padding: EdgeInsets.all(size * 0.08),
+      padding: EdgeInsets.all(size * 0.025),
       child: Image.asset(
         'assets/images/logo.png',
         fit: BoxFit.contain,
+        filterQuality: FilterQuality.medium,
         errorBuilder: (_, _, _) => Icon(
           Icons.restaurant_menu_rounded,
           color: tokens.brandPrimary,
-          size: size * 0.56,
+          size: size * 0.58,
         ),
       ),
     );

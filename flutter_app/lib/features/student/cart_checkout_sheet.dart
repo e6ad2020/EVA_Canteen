@@ -175,10 +175,16 @@ class _CartCheckoutSheetState extends ConsumerState<CartCheckoutSheet>
     final showEmptyState = summary.isEmpty && _entries.isEmpty;
     final isRtl = Directionality.of(context) == TextDirection.rtl;
 
+    final methodLabel = switch (activeMethod) {
+      'card' => i18n.t('payment_card'),
+      'wallet' => i18n.t('payment_wallet'),
+      _ => i18n.t('payment_cash'),
+    };
+
     return DraggableScrollableSheet(
       expand: false,
-      initialChildSize: 0.84,
-      minChildSize: 0.5,
+      initialChildSize: 0.88,
+      minChildSize: 0.55,
       maxChildSize: 0.95,
       builder: (context, scrollController) {
         return Column(
@@ -193,7 +199,7 @@ class _CartCheckoutSheetState extends ConsumerState<CartCheckoutSheet>
               ),
             ),
             Padding(
-              padding: const EdgeInsets.fromLTRB(20, 14, 16, 10),
+              padding: const EdgeInsets.fromLTRB(20, 12, 14, 10),
               child: Row(
                 children: [
                   Expanded(
@@ -308,14 +314,15 @@ class _CartCheckoutSheetState extends ConsumerState<CartCheckoutSheet>
                     : Column(
                         key: const ValueKey('cart_populated_view'),
                         children: [
+                          // 1. Dedicated Scrollable Item List (+ Active Bundle Discounts Banner)
                           Expanded(
                             child: ListView(
                               controller: scrollController,
                               padding: const EdgeInsets.fromLTRB(
-                                20,
                                 16,
-                                20,
-                                20,
+                                14,
+                                16,
+                                14,
                               ),
                               children: [
                                 for (final entry in _entries)
@@ -337,235 +344,464 @@ class _CartCheckoutSheetState extends ConsumerState<CartCheckoutSheet>
                                       },
                                     ),
                                   ),
-                                const SizedBox(height: 14),
-                                AnimatedOpacity(
-                                  duration: const Duration(milliseconds: 200),
-                                  opacity: summary.isEmpty ? 0.0 : 1.0,
-                                  child: Container(
-                                    padding: const EdgeInsets.all(16),
-                                    decoration: BoxDecoration(
-                                      color: tokens.surfaceSubtle,
-                                      borderRadius: BorderRadius.circular(14),
-                                      border: Border.all(
-                                        color: tokens.borderSubtle,
-                                      ),
-                                    ),
-                                    child: Column(
-                                      children: [
-                                        _ReceiptLine(
-                                          label: i18n.t('subtotal_label'),
-                                          value: i18n.formatPrice(
-                                            summary.subtotal,
+                                AnimatedSize(
+                                  duration: const Duration(milliseconds: 220),
+                                  curve: Curves.easeOutCubic,
+                                  alignment: Alignment.topCenter,
+                                  child: summary.appliedDiscounts.isEmpty
+                                      ? const SizedBox.shrink()
+                                      : Container(
+                                          margin: const EdgeInsets.only(top: 2),
+                                          padding: const EdgeInsets.symmetric(
+                                            horizontal: 14,
+                                            vertical: 10,
                                           ),
-                                          numericValue: summary.subtotal,
-                                        ),
-                                        AnimatedSize(
-                                          duration: const Duration(
-                                            milliseconds: 220,
+                                          decoration: BoxDecoration(
+                                            color: tokens.statusDeliveredBg,
+                                            borderRadius: BorderRadius.circular(
+                                              12,
+                                            ),
+                                            border: Border.all(
+                                              color: tokens.statusDeliveredFg
+                                                  .withValues(alpha: 0.28),
+                                            ),
                                           ),
-                                          curve: Curves.easeOutCubic,
-                                          alignment: Alignment.topCenter,
                                           child: Column(
                                             children: [
                                               for (final discount
-                                                  in summary
-                                                      .appliedDiscounts) ...[
-                                                const SizedBox(height: 8),
-                                                _ReceiptLine(
-                                                  label:
-                                                      '${i18n.t(discount.bundle.nameKey)} (-${discount.bundle.discountPercent.toInt()}%)',
-                                                  value:
-                                                      '-${i18n.formatPrice(discount.discountAmount)}',
-                                                  numericValue:
-                                                      discount.discountAmount,
-                                                  highlightColor:
-                                                      tokens.statusDeliveredFg,
+                                                  in summary.appliedDiscounts)
+                                                Padding(
+                                                  padding:
+                                                      const EdgeInsets.symmetric(
+                                                        vertical: 2,
+                                                      ),
+                                                  child: _ReceiptLine(
+                                                    label:
+                                                        '${i18n.t(discount.bundle.nameKey)} (-${discount.bundle.discountPercent.toInt()}%)',
+                                                    value:
+                                                        '-${i18n.formatPrice(discount.discountAmount)}',
+                                                    numericValue:
+                                                        discount.discountAmount,
+                                                    highlightColor:
+                                                        tokens.statusDeliveredFg,
+                                                  ),
                                                 ),
-                                              ],
                                             ],
                                           ),
                                         ),
-                                        const Padding(
-                                          padding: EdgeInsets.symmetric(
-                                            vertical: 10,
-                                          ),
-                                          child: Divider(height: 1),
-                                        ),
-                                        _ReceiptLine(
-                                          label: i18n.t('total_label'),
-                                          value: i18n.formatPrice(
-                                            summary.finalTotal,
-                                          ),
-                                          numericValue: summary.finalTotal,
-                                          isBold: true,
-                                        ),
-                                      ],
-                                    ),
-                                  ),
-                                ),
-                                const SizedBox(height: 20),
-                                Text(
-                                  i18n.t('payment_method_label'),
-                                  style: Theme.of(
-                                    context,
-                                  ).textTheme.titleMedium,
-                                ),
-                                const SizedBox(height: 10),
-                                Wrap(
-                                  spacing: 10,
-                                  runSpacing: 10,
-                                  children: [
-                                    if (store.paymentMethods.cash)
-                                      _PaymentOptionChip(
-                                        icon: Icons.payments_outlined,
-                                        label: i18n.t('payment_cash'),
-                                        selected: activeMethod == 'cash',
-                                        onTap: () => setState(
-                                          () => _selectedMethod = 'cash',
-                                        ),
-                                      ),
-                                    if (store.paymentMethods.card)
-                                      _PaymentOptionChip(
-                                        icon: Icons.credit_card_rounded,
-                                        label: i18n.t('payment_card'),
-                                        selected: activeMethod == 'card',
-                                        onTap: () => setState(
-                                          () => _selectedMethod = 'card',
-                                        ),
-                                      ),
-                                    if (store.paymentMethods.wallet)
-                                      _PaymentOptionChip(
-                                        icon: Icons
-                                            .account_balance_wallet_outlined,
-                                        label: isGuest
-                                            ? i18n.t('payment_wallet')
-                                            : '${i18n.t('payment_wallet')} (${i18n.formatPrice(user.balance)})',
-                                        selected: activeMethod == 'wallet',
-                                        onTap: () => setState(
-                                          () => _selectedMethod = 'wallet',
-                                        ),
-                                      ),
-                                  ],
-                                ),
-                                AnimatedSize(
-                                  duration: const Duration(milliseconds: 200),
-                                  curve: Curves.easeOutCubic,
-                                  child: walletInsufficient
-                                      ? Padding(
-                                          padding: const EdgeInsets.only(
-                                            top: 12,
-                                          ),
-                                          child: Container(
-                                            padding: const EdgeInsets.all(12),
-                                            decoration: BoxDecoration(
-                                              color: tokens.statusClosedBg,
-                                              borderRadius:
-                                                  BorderRadius.circular(10),
-                                            ),
-                                            child: Text(
-                                              i18n.t(
-                                                'insufficient_wallet_hint',
-                                                {
-                                                  'balance': i18n.formatPrice(
-                                                    user.balance,
-                                                  ),
-                                                },
-                                              ),
-                                              style: Theme.of(context)
-                                                  .textTheme
-                                                  .bodySmall
-                                                  ?.copyWith(
-                                                    color:
-                                                        tokens.statusClosedFg,
-                                                  ),
-                                            ),
-                                          ),
-                                        )
-                                      : const SizedBox.shrink(),
                                 ),
                               ],
                             ),
                           ),
+
+                          // 2. Unified Fixed Checkout Dock: Always-Visible Payment Method + Totals + Confirm Button
                           Container(
-                            padding: const EdgeInsets.fromLTRB(20, 14, 20, 20),
+                            key: const ValueKey('cart_fixed_checkout_dock'),
+                            padding: const EdgeInsets.fromLTRB(16, 12, 16, 16),
                             decoration: BoxDecoration(
-                              color: tokens.surfaceCard,
+                              color: tokens.surfaceElevated,
                               border: Border(
-                                top: BorderSide(color: tokens.borderSubtle),
+                                top: BorderSide(
+                                  color: tokens.borderSubtle,
+                                  width: tokens.borderWidth,
+                                ),
                               ),
+                              boxShadow: [
+                                BoxShadow(
+                                  color: Colors.black.withValues(
+                                    alpha: tokens.isNight ? 0.28 : 0.07,
+                                  ),
+                                  blurRadius: 14,
+                                  offset: const Offset(0, -4),
+                                ),
+                              ],
                             ),
-                            child: SizedBox(
-                              width: double.infinity,
-                              child: isGuest
-                                  ? FilledButton.icon(
-                                      onPressed: summary.isEmpty
-                                          ? null
-                                          : () {
-                                              Navigator.pop(context);
-                                              context.go('/welcome');
-                                            },
-                                      icon: const Icon(Icons.login_rounded),
-                                      label: Text(
-                                        i18n.t('sign_in_to_checkout'),
+                            child: SafeArea(
+                              top: false,
+                              child: Column(
+                                mainAxisSize: MainAxisSize.min,
+                                crossAxisAlignment: CrossAxisAlignment.stretch,
+                                children: [
+                                  // Payment Method Header + Live Wallet Balance Pill
+                                  Row(
+                                    children: [
+                                      Icon(
+                                        Icons.payments_outlined,
+                                        size: 16,
+                                        color: tokens.brandPrimary,
                                       ),
-                                    )
-                                  : FilledButton(
-                                      onPressed:
-                                          (summary.isEmpty ||
-                                              !store.isCanteenOpen ||
-                                              store.checkoutBusy ||
-                                              walletInsufficient)
-                                          ? null
-                                          : () async {
-                                              HapticFeedback.mediumImpact();
-                                              final confirmed = await ref
-                                                  .read(
-                                                    canteenStoreProvider
-                                                        .notifier,
-                                                  )
-                                                  .submitOrder(
-                                                    paymentMethod: activeMethod,
-                                                  );
-                                              if (!context.mounted) return;
-                                              if (confirmed != null) {
-                                                Navigator.pop(context);
-                                                context.go('/orders');
-                                              }
-                                            },
-                                      child: store.checkoutBusy
-                                          ? const SizedBox(
-                                              width: 22,
-                                              height: 22,
-                                              child: CircularProgressIndicator(
-                                                strokeWidth: 2.3,
-                                                color: Colors.white,
+                                      const SizedBox(width: 6),
+                                      Expanded(
+                                        child: Text(
+                                          i18n.t('payment_method_label'),
+                                          maxLines: 1,
+                                          overflow: TextOverflow.ellipsis,
+                                          style: Theme.of(context)
+                                              .textTheme
+                                              .labelLarge
+                                              ?.copyWith(
+                                                fontWeight: FontWeight.w800,
                                               ),
-                                            )
-                                          : !store.isCanteenOpen
-                                          ? Text(i18n.t('canteen_closed_badge'))
-                                          : Row(
-                                              mainAxisSize: MainAxisSize.min,
-                                              mainAxisAlignment:
-                                                  MainAxisAlignment.center,
-                                              children: [
-                                                Flexible(
-                                                  child: Text(
-                                                    '${i18n.t('place_order_cta')} • ',
-                                                    maxLines: 1,
-                                                    overflow:
-                                                        TextOverflow.ellipsis,
-                                                  ),
-                                                ),
-                                                EvaAnimatedCounterText(
-                                                  text: i18n.formatPrice(
-                                                    summary.finalTotal,
-                                                  ),
-                                                  numericValue:
-                                                      summary.finalTotal,
-                                                ),
-                                              ],
+                                        ),
+                                      ),
+                                      if (!isGuest &&
+                                          store.paymentMethods.wallet)
+                                        Container(
+                                          padding: const EdgeInsets.symmetric(
+                                            horizontal: 8,
+                                            vertical: 3,
+                                          ),
+                                          decoration: BoxDecoration(
+                                            color: walletInsufficient
+                                                ? tokens.statusClosedBg
+                                                : tokens.brandSoftBg,
+                                            borderRadius: BorderRadius.circular(
+                                              999,
                                             ),
+                                          ),
+                                          child: Row(
+                                            mainAxisSize: MainAxisSize.min,
+                                            children: [
+                                              Icon(
+                                                Icons
+                                                    .account_balance_wallet_rounded,
+                                                size: 12,
+                                                color: walletInsufficient
+                                                    ? tokens.statusClosedFg
+                                                    : tokens.brandPrimary,
+                                              ),
+                                              const SizedBox(width: 4),
+                                              Text(
+                                                i18n.formatPrice(user.balance),
+                                                style: Theme.of(context)
+                                                    .textTheme
+                                                    .labelSmall
+                                                    ?.copyWith(
+                                                      color: walletInsufficient
+                                                          ? tokens
+                                                                .statusClosedFg
+                                                          : tokens.brandPrimary,
+                                                      fontWeight:
+                                                          FontWeight.w800,
+                                                      fontFeatures:
+                                                          EvaThemeBuilder
+                                                              .tabularNums,
+                                                    ),
+                                              ),
+                                            ],
+                                          ),
+                                        ),
+                                    ],
+                                  ),
+                                  const SizedBox(height: 8),
+
+                                  // Segmented Always-Visible Payment Method Selector Pills
+                                  if (enabledMethods.isNotEmpty)
+                                    Row(
+                                      children: [
+                                        if (store.paymentMethods.cash)
+                                          Expanded(
+                                            child: _PaymentOptionChip(
+                                              key: const ValueKey(
+                                                'pay_method_cash',
+                                              ),
+                                              icon: Icons.payments_outlined,
+                                              label: i18n.t('payment_cash'),
+                                              selected: activeMethod == 'cash',
+                                              onTap: () {
+                                                HapticFeedback.selectionClick();
+                                                setState(
+                                                  () =>
+                                                      _selectedMethod = 'cash',
+                                                );
+                                              },
+                                            ),
+                                          ),
+                                        if (store.paymentMethods.cash &&
+                                            (store.paymentMethods.card ||
+                                                store.paymentMethods.wallet))
+                                          const SizedBox(width: 8),
+                                        if (store.paymentMethods.card)
+                                          Expanded(
+                                            child: _PaymentOptionChip(
+                                              key: const ValueKey(
+                                                'pay_method_card',
+                                              ),
+                                              icon: Icons.credit_card_rounded,
+                                              label: i18n.t('payment_card'),
+                                              selected: activeMethod == 'card',
+                                              onTap: () {
+                                                HapticFeedback.selectionClick();
+                                                setState(
+                                                  () =>
+                                                      _selectedMethod = 'card',
+                                                );
+                                              },
+                                            ),
+                                          ),
+                                        if (store.paymentMethods.card &&
+                                            store.paymentMethods.wallet)
+                                          const SizedBox(width: 8),
+                                        if (store.paymentMethods.wallet)
+                                          Expanded(
+                                            child: _PaymentOptionChip(
+                                              key: const ValueKey(
+                                                'pay_method_wallet',
+                                              ),
+                                              icon: Icons
+                                                  .account_balance_wallet_outlined,
+                                              label: i18n.t('payment_wallet'),
+                                              selected:
+                                                  activeMethod == 'wallet',
+                                              onTap: () {
+                                                HapticFeedback.selectionClick();
+                                                setState(
+                                                  () => _selectedMethod =
+                                                      'wallet',
+                                                );
+                                              },
+                                            ),
+                                          ),
+                                      ],
                                     ),
+
+                                  // Insufficient Wallet Balance Alert (if Wallet is selected)
+                                  AnimatedSize(
+                                    duration: const Duration(milliseconds: 200),
+                                    curve: Curves.easeOutCubic,
+                                    child: walletInsufficient
+                                        ? Padding(
+                                            padding: const EdgeInsets.only(
+                                              top: 8,
+                                            ),
+                                            child: Container(
+                                              padding:
+                                                  const EdgeInsets.symmetric(
+                                                    horizontal: 10,
+                                                    vertical: 8,
+                                                  ),
+                                              decoration: BoxDecoration(
+                                                color: tokens.statusClosedBg,
+                                                borderRadius:
+                                                    BorderRadius.circular(10),
+                                              ),
+                                              child: Text(
+                                                i18n.t(
+                                                  'insufficient_wallet_hint',
+                                                  {
+                                                    'balance': i18n.formatPrice(
+                                                      user.balance,
+                                                    ),
+                                                  },
+                                                ),
+                                                style: Theme.of(context)
+                                                    .textTheme
+                                                    .bodySmall
+                                                    ?.copyWith(
+                                                      color:
+                                                          tokens.statusClosedFg,
+                                                      fontWeight:
+                                                          FontWeight.w600,
+                                                    ),
+                                              ),
+                                            ),
+                                          )
+                                        : const SizedBox.shrink(),
+                                  ),
+
+                                  const SizedBox(height: 10),
+
+                                  // Compact Totals Strip (Subtotal/Discount + Bold Final Total)
+                                  Container(
+                                    padding: const EdgeInsets.symmetric(
+                                      horizontal: 12,
+                                      vertical: 9,
+                                    ),
+                                    decoration: BoxDecoration(
+                                      color: tokens.surfaceSubtle,
+                                      borderRadius: BorderRadius.circular(11),
+                                      border: Border.all(
+                                        color: tokens.borderSubtle,
+                                      ),
+                                    ),
+                                    child: Row(
+                                      children: [
+                                        Text(
+                                          i18n.t('total_label'),
+                                          style: Theme.of(context)
+                                              .textTheme
+                                              .titleSmall
+                                              ?.copyWith(
+                                                fontWeight: FontWeight.w800,
+                                              ),
+                                        ),
+                                        if (summary.totalDiscount > 0) ...[
+                                          const SizedBox(width: 8),
+                                          Flexible(
+                                            child: Text(
+                                              i18n.formatPrice(
+                                                summary.subtotal,
+                                              ),
+                                              maxLines: 1,
+                                              overflow: TextOverflow.ellipsis,
+                                              style: Theme.of(context)
+                                                  .textTheme
+                                                  .labelSmall
+                                                  ?.copyWith(
+                                                    color: tokens.textSecondary,
+                                                    decoration: TextDecoration
+                                                        .lineThrough,
+                                                    fontFeatures:
+                                                        EvaThemeBuilder
+                                                            .tabularNums,
+                                                  ),
+                                            ),
+                                          ),
+                                          const SizedBox(width: 6),
+                                          Container(
+                                            padding: const EdgeInsets.symmetric(
+                                              horizontal: 6,
+                                              vertical: 2,
+                                            ),
+                                            decoration: BoxDecoration(
+                                              color: tokens.statusDeliveredBg,
+                                              borderRadius:
+                                                  BorderRadius.circular(6),
+                                            ),
+                                            child: Text(
+                                              '-${i18n.formatPrice(summary.totalDiscount)}',
+                                              style: Theme.of(context)
+                                                  .textTheme
+                                                  .labelSmall
+                                                  ?.copyWith(
+                                                    color: tokens
+                                                        .statusDeliveredFg,
+                                                    fontWeight: FontWeight.w800,
+                                                    fontFeatures:
+                                                        EvaThemeBuilder
+                                                            .tabularNums,
+                                                  ),
+                                            ),
+                                          ),
+                                        ] else
+                                          const Spacer(),
+                                        if (summary.totalDiscount > 0)
+                                          const Spacer(),
+                                        EvaAnimatedCounterText(
+                                          text: i18n.formatPrice(
+                                            summary.finalTotal,
+                                          ),
+                                          numericValue: summary.finalTotal,
+                                          textAlign: TextAlign.end,
+                                          style: Theme.of(context)
+                                              .textTheme
+                                              .titleMedium
+                                              ?.copyWith(
+                                                color: tokens.brandPrimary,
+                                                fontWeight: FontWeight.w800,
+                                              ),
+                                        ),
+                                      ],
+                                    ),
+                                  ),
+
+                                  const SizedBox(height: 10),
+
+                                  // Fixed Primary Confirm Button (explicitly showing chosen payment way)
+                                  SizedBox(
+                                    width: double.infinity,
+                                    height: 50,
+                                    child: isGuest
+                                        ? FilledButton.icon(
+                                            key: const ValueKey(
+                                              'cart_confirm_order_btn',
+                                            ),
+                                            onPressed: summary.isEmpty
+                                                ? null
+                                                : () {
+                                                    Navigator.pop(context);
+                                                    context.go('/welcome');
+                                                  },
+                                            icon: const Icon(
+                                              Icons.login_rounded,
+                                            ),
+                                            label: Text(
+                                              i18n.t('sign_in_to_checkout'),
+                                            ),
+                                          )
+                                        : FilledButton(
+                                            key: const ValueKey(
+                                              'cart_confirm_order_btn',
+                                            ),
+                                            onPressed:
+                                                (summary.isEmpty ||
+                                                    !store.isCanteenOpen ||
+                                                    store.checkoutBusy ||
+                                                    walletInsufficient)
+                                                ? null
+                                                : () async {
+                                                    HapticFeedback.mediumImpact();
+                                                    final confirmed = await ref
+                                                        .read(
+                                                          canteenStoreProvider
+                                                              .notifier,
+                                                        )
+                                                        .submitOrder(
+                                                          paymentMethod:
+                                                              activeMethod,
+                                                        );
+                                                    if (!context.mounted) {
+                                                      return;
+                                                    }
+                                                    if (confirmed != null) {
+                                                      Navigator.pop(context);
+                                                      context.go('/orders');
+                                                    }
+                                                  },
+                                            child: store.checkoutBusy
+                                                ? const SizedBox(
+                                                    width: 22,
+                                                    height: 22,
+                                                    child:
+                                                        CircularProgressIndicator(
+                                                          strokeWidth: 2.3,
+                                                          color: Colors.white,
+                                                        ),
+                                                  )
+                                                : !store.isCanteenOpen
+                                                ? Text(
+                                                    i18n.t(
+                                                      'canteen_closed_badge',
+                                                    ),
+                                                  )
+                                                : Row(
+                                                    mainAxisSize:
+                                                        MainAxisSize.min,
+                                                    mainAxisAlignment:
+                                                        MainAxisAlignment
+                                                            .center,
+                                                    children: [
+                                                      Flexible(
+                                                        child: Text(
+                                                          '${i18n.t('place_order_cta')} ($methodLabel) • ',
+                                                          maxLines: 1,
+                                                          overflow: TextOverflow
+                                                              .ellipsis,
+                                                        ),
+                                                      ),
+                                                      EvaAnimatedCounterText(
+                                                        text: i18n.formatPrice(
+                                                          summary.finalTotal,
+                                                        ),
+                                                        numericValue:
+                                                            summary.finalTotal,
+                                                      ),
+                                                    ],
+                                                  ),
+                                          ),
+                                  ),
+                                ],
+                              ),
                             ),
                           ),
                         ],
@@ -708,7 +944,7 @@ class _CartProductRowState extends ConsumerState<_CartProductRow>
       direction: DismissDirection.endToStart,
       onDismissed: (_) => widget.onSwipeDismissed(),
       background: Container(
-        margin: const EdgeInsets.only(bottom: 12),
+        margin: const EdgeInsets.only(bottom: 10),
         padding: const EdgeInsets.symmetric(horizontal: 20),
         alignment: AlignmentDirectional.centerEnd,
         decoration: BoxDecoration(
@@ -734,8 +970,8 @@ class _CartProductRowState extends ConsumerState<_CartProductRow>
           return Transform.scale(
             scale: 1.0 + 0.015 * p,
             child: Container(
-              margin: const EdgeInsets.only(bottom: 12),
-              padding: const EdgeInsets.all(12),
+              margin: const EdgeInsets.only(bottom: 10),
+              padding: const EdgeInsets.all(11),
               decoration: BoxDecoration(
                 color: bgColor,
                 borderRadius: BorderRadius.circular(14),
@@ -751,11 +987,11 @@ class _CartProductRowState extends ConsumerState<_CartProductRow>
         child: Row(
           children: [
             SizedBox(
-              width: 58,
-              height: 58,
+              width: 54,
+              height: 54,
               child: EvaProductImage(imageUrl: product.image, borderRadius: 10),
             ),
-            const SizedBox(width: 12),
+            const SizedBox(width: 11),
             Expanded(
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
@@ -767,46 +1003,48 @@ class _CartProductRowState extends ConsumerState<_CartProductRow>
                     style: Theme.of(context).textTheme.titleMedium,
                   ),
                   const SizedBox(height: 4),
-                  Row(
-                    children: [
-                      Flexible(
-                        child: Text(
-                          '${i18n.formatPrice(product.price)} × ',
-                          maxLines: 1,
-                          overflow: TextOverflow.ellipsis,
-                          style: Theme.of(context).textTheme.bodySmall
-                              ?.copyWith(
-                                color: tokens.textSecondary,
-                                fontFeatures: EvaThemeBuilder.tabularNums,
-                              ),
-                        ),
+                  Align(
+                    alignment: AlignmentDirectional.centerStart,
+                    child: FittedBox(
+                      fit: BoxFit.scaleDown,
+                      alignment: AlignmentDirectional.centerStart,
+                      child: Row(
+                        mainAxisSize: MainAxisSize.min,
+                        children: [
+                          Text(
+                            '${i18n.formatPrice(product.price)} × ',
+                            style: Theme.of(context).textTheme.bodySmall
+                                ?.copyWith(
+                                  color: tokens.textSecondary,
+                                  fontFeatures: EvaThemeBuilder.tabularNums,
+                                ),
+                          ),
+                          EvaAnimatedCounterText(
+                            text: '$quantity',
+                            numericValue: quantity,
+                            style: Theme.of(context).textTheme.bodySmall
+                                ?.copyWith(
+                                  color: tokens.textSecondary,
+                                  fontWeight: FontWeight.w700,
+                                ),
+                          ),
+                          Text(
+                            ' = ',
+                            style: Theme.of(context).textTheme.bodySmall
+                                ?.copyWith(color: tokens.textSecondary),
+                          ),
+                          EvaAnimatedCounterText(
+                            text: i18n.formatPrice(lineTotal),
+                            numericValue: lineTotal,
+                            style: Theme.of(context).textTheme.bodySmall
+                                ?.copyWith(
+                                  color: tokens.brandPrimary,
+                                  fontWeight: FontWeight.w800,
+                                ),
+                          ),
+                        ],
                       ),
-                      EvaAnimatedCounterText(
-                        text: '$quantity',
-                        numericValue: quantity,
-                        style: Theme.of(context).textTheme.bodySmall?.copyWith(
-                          color: tokens.textSecondary,
-                          fontWeight: FontWeight.w700,
-                        ),
-                      ),
-                      Text(
-                        ' = ',
-                        style: Theme.of(context).textTheme.bodySmall?.copyWith(
-                          color: tokens.textSecondary,
-                        ),
-                      ),
-                      Flexible(
-                        child: EvaAnimatedCounterText(
-                          text: i18n.formatPrice(lineTotal),
-                          numericValue: lineTotal,
-                          style: Theme.of(context).textTheme.bodySmall
-                              ?.copyWith(
-                                color: tokens.brandPrimary,
-                                fontWeight: FontWeight.w800,
-                              ),
-                        ),
-                      ),
-                    ],
+                    ),
                   ),
                 ],
               ),
@@ -833,26 +1071,30 @@ class _ReceiptLine extends StatelessWidget {
     required this.label,
     required this.value,
     required this.numericValue,
-    this.isBold = false,
     this.highlightColor,
   });
 
   final String label;
   final String value;
   final num numericValue;
-  final bool isBold;
   final Color? highlightColor;
 
   @override
   Widget build(BuildContext context) {
-    final style = isBold
-        ? Theme.of(context).textTheme.titleMedium
-        : Theme.of(context).textTheme.bodyMedium;
+    final style = Theme.of(context).textTheme.bodySmall;
     return Row(
       mainAxisAlignment: MainAxisAlignment.spaceBetween,
       children: [
         Flexible(
-          child: Text(label, style: style?.copyWith(color: highlightColor)),
+          child: Text(
+            label,
+            maxLines: 1,
+            overflow: TextOverflow.ellipsis,
+            style: style?.copyWith(
+              color: highlightColor,
+              fontWeight: FontWeight.w700,
+            ),
+          ),
         ),
         const SizedBox(width: 8),
         EvaAnimatedCounterText(
@@ -861,7 +1103,7 @@ class _ReceiptLine extends StatelessWidget {
           textAlign: TextAlign.end,
           style: style?.copyWith(
             color: highlightColor,
-            fontWeight: isBold ? FontWeight.w700 : FontWeight.w600,
+            fontWeight: FontWeight.w800,
           ),
         ),
       ],
@@ -871,6 +1113,7 @@ class _ReceiptLine extends StatelessWidget {
 
 class _PaymentOptionChip extends StatelessWidget {
   const _PaymentOptionChip({
+    super.key,
     required this.icon,
     required this.label,
     required this.selected,
@@ -887,31 +1130,38 @@ class _PaymentOptionChip extends StatelessWidget {
     final tokens = EvaTokens.of(context);
     return InkWell(
       onTap: onTap,
-      borderRadius: BorderRadius.circular(12),
+      borderRadius: BorderRadius.circular(11),
       child: AnimatedContainer(
-        duration: const Duration(milliseconds: 160),
-        padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 12),
+        duration: const Duration(milliseconds: 170),
+        curve: Curves.easeOutCubic,
+        height: 40,
+        padding: const EdgeInsets.symmetric(horizontal: 8),
         decoration: BoxDecoration(
           color: selected ? tokens.brandSoftBg : tokens.surfaceCard,
-          borderRadius: BorderRadius.circular(12),
+          borderRadius: BorderRadius.circular(11),
           border: Border.all(
             color: selected ? tokens.brandPrimary : tokens.borderSubtle,
-            width: selected ? 1.8 : 1,
+            width: selected ? 1.75 : 1.0,
           ),
         ),
         child: Row(
-          mainAxisSize: MainAxisSize.min,
+          mainAxisAlignment: MainAxisAlignment.center,
           children: [
             Icon(
-              icon,
-              size: 18,
+              selected ? Icons.check_circle_rounded : icon,
+              size: 15.5,
               color: selected ? tokens.brandPrimary : tokens.textSecondary,
             ),
-            const SizedBox(width: 8),
-            Text(
-              label,
-              style: Theme.of(context).textTheme.labelLarge?.copyWith(
-                color: selected ? tokens.brandPrimary : tokens.textPrimary,
+            const SizedBox(width: 5),
+            Flexible(
+              child: Text(
+                label,
+                maxLines: 1,
+                overflow: TextOverflow.ellipsis,
+                style: Theme.of(context).textTheme.labelMedium?.copyWith(
+                  color: selected ? tokens.brandPrimary : tokens.textPrimary,
+                  fontWeight: selected ? FontWeight.w800 : FontWeight.w700,
+                ),
               ),
             ),
           ],

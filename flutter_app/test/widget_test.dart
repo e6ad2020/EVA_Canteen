@@ -979,4 +979,135 @@ void main() {
       expect(find.byKey(const ValueKey('cart_empty_view')), findsOneWidget);
     },
   );
+
+  testWidgets(
+    'Welcome screen pins Open status to top-left with 132dp hero logo, and 5-item Cart keeps Payment Method + Confirm button fixed above fold',
+    (tester) async {
+      await tester.binding.setSurfaceSize(const Size(360, 800));
+      addTearDown(() => tester.binding.setSurfaceSize(null));
+
+      SharedPreferences.setMockInitialValues({});
+      final prefs = await SharedPreferences.getInstance();
+      final mockSocket = EvaSocketClient(enableNetwork: false);
+
+      final container = ProviderContainer(
+        overrides: [
+          sharedPrefsProvider.overrideWithValue(prefs),
+          socketClientProvider.overrideWithValue(mockSocket),
+        ],
+      );
+      addTearDown(container.dispose);
+
+      await tester.pumpWidget(
+        UncontrolledProviderScope(
+          container: container,
+          child: const EvaCanteenApp(),
+        ),
+      );
+      await tester.pumpAndSettle();
+
+      // 1. Verify status badge is at top-left and logo is enlarged hero (132x132) on 360x800 phone
+      final statusRect = tester.getRect(
+        find.byKey(const ValueKey('welcome_status_top_left')),
+      );
+      expect(statusRect.left, closeTo(16.0, 1.0));
+      expect(statusRect.top, lessThan(40.0));
+      expect(statusRect.right, lessThan(180.0));
+
+      final logoFinder = find.byType(EvaBrandLogo);
+      expect(logoFinder, findsOneWidget);
+      final logoSize = tester.getSize(logoFinder);
+      expect(logoSize.width, 132.0);
+      expect(logoSize.height, 132.0);
+      expect(tester.widget<EvaBrandLogo>(logoFinder).hero, isTrue);
+
+      // 2. Sign in as a customer (balance 50 L.E) with 5 distinct items in cart
+      SharedPreferences.setMockInitialValues({
+        'eva_saved_session_v2':
+            '{"email":"eyad@canteen.app","role":"student","profilePic":"pic2","balance":50,"token":"jwt-1"}',
+      });
+      final signedInPrefs = await SharedPreferences.getInstance();
+      final signedInContainer = ProviderContainer(
+        overrides: [
+          sharedPrefsProvider.overrideWithValue(signedInPrefs),
+          socketClientProvider.overrideWithValue(mockSocket),
+        ],
+      );
+      addTearDown(signedInContainer.dispose);
+
+      await tester.pumpWidget(
+        UncontrolledProviderScope(
+          container: signedInContainer,
+          child: const EvaCanteenApp(),
+        ),
+      );
+      await tester.pumpAndSettle();
+
+      mockSocket.injectTestEvent('initial_translations', {
+        for (int i = 1; i <= 5; i++) ...{
+          'item_m$i': {'en': 'Dish #$i', 'ar': 'طبق #$i'},
+          'desc_m$i': {'en': 'Fresh kitchen dish', 'ar': 'طبق طازج'},
+        },
+      });
+      mockSocket.injectTestEvent('initial_products', [
+        for (int i = 1; i <= 5; i++)
+          {
+            'id': 'm$i',
+            'name_key': 'item_m$i',
+            'description_key': 'desc_m$i',
+            'price': 55,
+            'quantity': 999,
+            'image': '',
+            'category': 'lunch',
+          },
+      ]);
+      await tester.pumpAndSettle();
+
+      // Add all 5 items (total = 275 L.E, matching Screenshot 2 scenario!)
+      final products = signedInContainer.read(canteenStoreProvider).products;
+      for (final p in products) {
+        signedInContainer.read(cartProvider.notifier).increment(p);
+      }
+      await tester.pumpAndSettle();
+
+      // Open CartCheckoutSheet
+      await tester.tap(find.text('Review order'));
+      await tester.pumpAndSettle();
+      expect(tester.takeException(), isNull);
+
+      // Verify Fixed Checkout Dock + Cash/Card/Wallet pills + Confirm CTA are ALL visible immediately WITHOUT scrolling!
+      final dockRect = tester.getRect(
+        find.byKey(const ValueKey('cart_fixed_checkout_dock')),
+      );
+      expect(dockRect.bottom, lessThanOrEqualTo(800.0));
+      expect(find.byKey(const ValueKey('pay_method_cash')), findsOneWidget);
+      expect(find.byKey(const ValueKey('pay_method_card')), findsOneWidget);
+      expect(find.byKey(const ValueKey('pay_method_wallet')), findsOneWidget);
+      expect(
+        find.textContaining('Place order (Cash)'),
+        findsOneWidget,
+      );
+
+      // Switch to Card in 1 tap right above Confirm button -> Confirm button reflects (Card)
+      await tester.tap(find.byKey(const ValueKey('pay_method_card')));
+      await tester.pumpAndSettle();
+      expect(find.textContaining('Place order (Card)'), findsOneWidget);
+
+      // Switch to Wallet (balance 50 < 275) -> disables Confirm button & reveals warning in fixed dock
+      await tester.tap(find.byKey(const ValueKey('pay_method_wallet')));
+      await tester.pumpAndSettle();
+      final confirmBtn = tester.widget<FilledButton>(
+        find.byKey(const ValueKey('cart_confirm_order_btn')),
+      );
+      expect(confirmBtn.onPressed, isNull);
+
+      // Switch back to Cash -> Confirm button re-enables immediately
+      await tester.tap(find.byKey(const ValueKey('pay_method_cash')));
+      await tester.pumpAndSettle();
+      final enabledConfirmBtn = tester.widget<FilledButton>(
+        find.byKey(const ValueKey('cart_confirm_order_btn')),
+      );
+      expect(enabledConfirmBtn.onPressed, isNotNull);
+    },
+  );
 }
