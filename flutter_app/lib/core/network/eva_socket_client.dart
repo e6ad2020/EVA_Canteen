@@ -37,6 +37,9 @@ class EvaSocketClient {
   SocketConnectionPhase get currentPhase => _phase;
   bool get isConnected => _phase == SocketConnectionPhase.connected;
 
+  static const String defaultOrigin =
+      'https://eva-canteen-backend.onrender.com';
+
   String get httpBaseUrl {
     final override = customHttpOrigin?.trim();
     if (override != null && override.isNotEmpty) {
@@ -47,10 +50,18 @@ class EvaSocketClient {
     if (kIsWeb) {
       final base = Uri.base;
       if (base.scheme == 'http' || base.scheme == 'https') {
-        return '${base.scheme}://${base.authority}';
+        final host = base.host.toLowerCase();
+        final isStaticHost =
+            host.endsWith('github.io') ||
+            host.endsWith('pages.dev') ||
+            host.endsWith('netlify.app') ||
+            host.endsWith('vercel.app');
+        if (!isStaticHost) {
+          return '${base.scheme}://${base.authority}';
+        }
       }
     }
-    return 'http://127.0.0.1:8080';
+    return defaultOrigin;
   }
 
   Uri get wsUri {

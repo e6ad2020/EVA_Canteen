@@ -828,7 +828,7 @@ class SharedSettingsView extends ConsumerWidget {
           controller: ctrl,
           textDirection: TextDirection.ltr,
           decoration: const InputDecoration(
-            hintText: 'https://your-tunnel.trycloudflare.com',
+            hintText: 'https://eva-canteen-backend.onrender.com',
           ),
         ),
         actions: [

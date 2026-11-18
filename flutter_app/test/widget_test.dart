@@ -1215,4 +1215,17 @@ void main() {
       expect(find.text('License & Copyright'), findsNothing);
     },
   );
+
+  test(
+    'EvaSocketClient defaults to Render backend URL over HTTPS/WSS',
+    () {
+      final client = EvaSocketClient(enableNetwork: false);
+      addTearDown(client.dispose);
+      expect(client.httpBaseUrl, 'https://eva-canteen-backend.onrender.com');
+      expect(
+        client.wsUri.toString(),
+        'wss://eva-canteen-backend.onrender.com',
+      );
+    },
+  );
 }
