@@ -104,11 +104,12 @@ void main() {
       );
       await tester.pumpAndSettle();
 
-      // Verify English LTR on Welcome screen with simple Logo + Name header
-      expect(find.text('EVA Canteen'), findsOneWidget);
+      // Verify English LTR on Welcome screen with hero Logo (and no duplicate EVA Canteen text)
+      expect(find.byType(EvaBrandLogo), findsOneWidget);
+      expect(find.text('EVA Canteen'), findsNothing);
       expect(find.text('Order ahead, skip the wait.'), findsNothing);
       expect(
-        Directionality.of(tester.element(find.text('EVA Canteen'))),
+        Directionality.of(tester.element(find.text('Welcome back'))),
         TextDirection.ltr,
       );
 
@@ -118,9 +119,9 @@ void main() {
       await tester.tap(find.text('عربي'));
       await tester.pumpAndSettle();
 
-      expect(find.text('كانتين إيفا'), findsOneWidget);
+      expect(find.text('كانتين إيفا'), findsNothing);
       expect(
-        Directionality.of(tester.element(find.text('كانتين إيفا'))),
+        Directionality.of(tester.element(find.text('مرحباً بعودتك'))),
         TextDirection.rtl,
       );
 
@@ -379,6 +380,8 @@ void main() {
       var tokens = EvaTokens.of(tester.element(find.text('Light Blue')));
       expect(tokens.isLiquidGlass, isTrue);
       expect(tokens.brandPrimary, const Color(0xFF0D47A1));
+      expect(tokens.logoFill, const Color(0xFF5CE1E6));
+      expect(tokens.logoOutline, const Color(0xFF3B01D9));
       expect(
         tokens.wallpaperFolder,
         'assets/images/wallpapers/light_blue',
@@ -397,6 +400,8 @@ void main() {
       tokens = EvaTokens.of(tester.element(find.text('Light Red')));
       expect(tokens.isLiquidGlass, isTrue);
       expect(tokens.brandPrimary, const Color(0xFFB71C1C));
+      expect(tokens.logoFill, const Color(0xFFFF9E9E));
+      expect(tokens.logoOutline, const Color(0xFF8E001C));
       expect(
         tokens.wallpaperFolder,
         'assets/images/wallpapers/light_red',

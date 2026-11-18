@@ -1762,65 +1762,96 @@ class EvaThemeSwatch extends StatelessWidget {
 class EvaBrandLogo extends StatelessWidget {
   const EvaBrandLogo({super.key, this.size = 40, this.hero = false});
 
+  static const ColorFilter _kMonochromeFilter = ColorFilter.matrix(<double>[
+    0.2126, 0.7152, 0.0722, 0, 0,
+    0.2126, 0.7152, 0.0722, 0, 0,
+    0.2126, 0.7152, 0.0722, 0, 0,
+    0,      0,      0,      1, 0,
+  ]);
+
   final double size;
   final bool hero;
+
+  Widget _buildLayeredEmblem(EvaTokens tokens, double fallbackIconSize) {
+    Widget swooshLayer = Image.asset(
+      'assets/images/logo_swoosh.png',
+      fit: BoxFit.contain,
+      gaplessPlayback: true,
+      filterQuality: FilterQuality.medium,
+      color: tokens.logoSwooshTint == const Color(0xFFFFFFFF)
+          ? null
+          : tokens.logoSwooshTint,
+      colorBlendMode: tokens.logoSwooshTint == const Color(0xFFFFFFFF)
+          ? null
+          : BlendMode.modulate,
+      errorBuilder: (_, _, _) => const SizedBox.shrink(),
+    );
+
+    if (tokens.isMonochromeLogo) {
+      swooshLayer = ColorFiltered(
+        colorFilter: _kMonochromeFilter,
+        child: swooshLayer,
+      );
+    }
+
+    return Stack(
+      fit: StackFit.expand,
+      children: [
+        swooshLayer,
+        Image.asset(
+          'assets/images/logo_fill.png',
+          fit: BoxFit.contain,
+          gaplessPlayback: true,
+          filterQuality: FilterQuality.medium,
+          color: tokens.logoFill,
+          colorBlendMode: BlendMode.modulate,
+          errorBuilder: (_, _, _) => const SizedBox.shrink(),
+        ),
+        Image.asset(
+          'assets/images/logo_outline.png',
+          fit: BoxFit.contain,
+          gaplessPlayback: true,
+          filterQuality: FilterQuality.medium,
+          color: tokens.logoOutline,
+          colorBlendMode: BlendMode.modulate,
+          errorBuilder: (_, _, _) => Icon(
+            Icons.restaurant_menu_rounded,
+            color: tokens.brandPrimary,
+            size: fallbackIconSize,
+          ),
+        ),
+      ],
+    );
+  }
 
   @override
   Widget build(BuildContext context) {
     final tokens = EvaTokens.of(context);
     if (hero) {
-      return Container(
-        width: size,
-        height: size,
-        decoration: BoxDecoration(
-          borderRadius: BorderRadius.circular(size * 0.24),
-          boxShadow: [
-            BoxShadow(
-              color: Colors.black.withValues(
-                alpha: tokens.isNight ? 0.34 : 0.14,
-              ),
-              blurRadius: 22,
-              offset: const Offset(0, 8),
-            ),
-          ],
-        ),
-        child: Image.asset(
-          'assets/images/logo.png',
+      return RepaintBoundary(
+        child: SizedBox(
           width: size,
           height: size,
-          fit: BoxFit.contain,
-          filterQuality: FilterQuality.medium,
-          errorBuilder: (_, _, _) => Icon(
-            Icons.restaurant_menu_rounded,
-            color: tokens.brandPrimary,
-            size: size * 0.64,
-          ),
+          child: _buildLayeredEmblem(tokens, size * 0.64),
         ),
       );
     }
 
-    return Container(
-      width: size,
-      height: size,
-      decoration: BoxDecoration(
-        color: tokens.surfaceElevated,
-        borderRadius: BorderRadius.circular(size * 0.25),
-        border: Border.all(
-          color: tokens.borderSubtle,
-          width: tokens.borderWidth,
+    return RepaintBoundary(
+      child: Container(
+        width: size,
+        height: size,
+        decoration: BoxDecoration(
+          color: tokens.surfaceElevated,
+          borderRadius: BorderRadius.circular(size * 0.25),
+          border: Border.all(
+            color: tokens.borderSubtle,
+            width: tokens.borderWidth,
+          ),
         ),
-      ),
-      clipBehavior: Clip.antiAlias,
-      padding: EdgeInsets.all(size * 0.025),
-      child: Image.asset(
-        'assets/images/logo.png',
-        fit: BoxFit.contain,
-        filterQuality: FilterQuality.medium,
-        errorBuilder: (_, _, _) => Icon(
-          Icons.restaurant_menu_rounded,
-          color: tokens.brandPrimary,
-          size: size * 0.58,
-        ),
+        clipBehavior: Clip.antiAlias,
+        padding: EdgeInsets.all(size * 0.025),
+        child: _buildLayeredEmblem(tokens, size * 0.58),
       ),
     );
   }

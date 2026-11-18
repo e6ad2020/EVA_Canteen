@@ -132,6 +132,10 @@ class EvaTokens extends ThemeExtension<EvaTokens> {
     required this.statusClosedBg,
     required this.statusClosedFg,
     required this.showDoodlePattern,
+    this.logoFill = const Color(0xFF5CE1E6),
+    this.logoOutline = const Color(0xFF3B01D9),
+    this.logoSwooshTint = const Color(0xFFFFFFFF),
+    this.isMonochromeLogo = false,
     this.cardRadius = 16,
     this.controlRadius = 12,
   });
@@ -160,8 +164,60 @@ class EvaTokens extends ThemeExtension<EvaTokens> {
   final Color statusClosedBg;
   final Color statusClosedFg;
   final bool showDoodlePattern;
+  final Color logoFill;
+  final Color logoOutline;
+  final Color logoSwooshTint;
+  final bool isMonochromeLogo;
   final double cardRadius;
   final double controlRadius;
+
+  static (Color fill, Color outline, Color swooshTint, bool mono)
+  _resolveLogoPalette(EvaAccentPreset accent, {required bool isNight}) {
+    return switch (accent) {
+      EvaAccentPreset.lightBlue => (
+        const Color(0xFF5CE1E6),
+        const Color(0xFF3B01D9),
+        const Color(0xFFFFFFFF),
+        false,
+      ),
+      EvaAccentPreset.lightRed => (
+        isNight ? const Color(0xFFFF8A80) : const Color(0xFFFF9E9E),
+        isNight ? const Color(0xFF7F0019) : const Color(0xFF8E001C),
+        const Color(0xFFFFD584),
+        false,
+      ),
+      EvaAccentPreset.cobalt => (
+        const Color(0xFF67E8F9),
+        isNight ? const Color(0xFF2563EB) : const Color(0xFF1E3A8A),
+        const Color(0xFFFFFFFF),
+        false,
+      ),
+      EvaAccentPreset.emerald => (
+        const Color(0xFF6EE7B7),
+        isNight ? const Color(0xFF047857) : const Color(0xFF064E3B),
+        const Color(0xFFD9F99D),
+        false,
+      ),
+      EvaAccentPreset.violet => (
+        const Color(0xFFE9D5FF),
+        isNight ? const Color(0xFF6D28D9) : const Color(0xFF4C1D95),
+        const Color(0xFFF5D0FE),
+        false,
+      ),
+      EvaAccentPreset.amber => (
+        const Color(0xFFFDE047),
+        isNight ? const Color(0xFF92400E) : const Color(0xFF78350F),
+        const Color(0xFFFDBA74),
+        false,
+      ),
+      EvaAccentPreset.monochrome => (
+        const Color(0xFFF4F4F5),
+        isNight ? const Color(0xFF27272A) : const Color(0xFF18181B),
+        const Color(0xFFD4D4D8),
+        true,
+      ),
+    };
+  }
 
   factory EvaTokens.resolve({
     required EvaSurfaceMode mode,
@@ -173,6 +229,8 @@ class EvaTokens extends ThemeExtension<EvaTokens> {
     final onPrimary = primary.computeLuminance() > 0.45
         ? const Color(0xFF11141A)
         : const Color(0xFFFFFFFF);
+    final (logoFill, logoOutline, logoSwooshTint, isMonoLogo) =
+        _resolveLogoPalette(accent, isNight: isNight);
 
     if (isNight) {
       return EvaTokens(
@@ -200,6 +258,10 @@ class EvaTokens extends ThemeExtension<EvaTokens> {
         statusClosedBg: const Color(0xFF3A1418),
         statusClosedFg: const Color(0xFFF87171),
         showDoodlePattern: showDoodlePattern,
+        logoFill: logoFill,
+        logoOutline: logoOutline,
+        logoSwooshTint: logoSwooshTint,
+        isMonochromeLogo: isMonoLogo,
       );
     }
 
@@ -232,6 +294,10 @@ class EvaTokens extends ThemeExtension<EvaTokens> {
         statusClosedBg: const Color(0xFFFFEBEE),
         statusClosedFg: const Color(0xFFC62828),
         showDoodlePattern: false,
+        logoFill: logoFill,
+        logoOutline: logoOutline,
+        logoSwooshTint: logoSwooshTint,
+        isMonochromeLogo: isMonoLogo,
       );
     }
 
@@ -264,6 +330,10 @@ class EvaTokens extends ThemeExtension<EvaTokens> {
         statusClosedBg: const Color(0xFFFFEBEE),
         statusClosedFg: const Color(0xFFB71C1C),
         showDoodlePattern: false,
+        logoFill: logoFill,
+        logoOutline: logoOutline,
+        logoSwooshTint: logoSwooshTint,
+        isMonochromeLogo: isMonoLogo,
       );
     }
 
@@ -294,6 +364,10 @@ class EvaTokens extends ThemeExtension<EvaTokens> {
       statusClosedBg: const Color(0xFFFEE2E2),
       statusClosedFg: const Color(0xFFB91C1C),
       showDoodlePattern: showDoodlePattern,
+      logoFill: logoFill,
+      logoOutline: logoOutline,
+      logoSwooshTint: logoSwooshTint,
+      isMonochromeLogo: isMonoLogo,
     );
   }
 
@@ -332,6 +406,10 @@ class EvaTokens extends ThemeExtension<EvaTokens> {
     Color? statusClosedBg,
     Color? statusClosedFg,
     bool? showDoodlePattern,
+    Color? logoFill,
+    Color? logoOutline,
+    Color? logoSwooshTint,
+    bool? isMonochromeLogo,
     double? cardRadius,
     double? controlRadius,
   }) {
@@ -360,6 +438,10 @@ class EvaTokens extends ThemeExtension<EvaTokens> {
       statusClosedBg: statusClosedBg ?? this.statusClosedBg,
       statusClosedFg: statusClosedFg ?? this.statusClosedFg,
       showDoodlePattern: showDoodlePattern ?? this.showDoodlePattern,
+      logoFill: logoFill ?? this.logoFill,
+      logoOutline: logoOutline ?? this.logoOutline,
+      logoSwooshTint: logoSwooshTint ?? this.logoSwooshTint,
+      isMonochromeLogo: isMonochromeLogo ?? this.isMonochromeLogo,
       cardRadius: cardRadius ?? this.cardRadius,
       controlRadius: controlRadius ?? this.controlRadius,
     );
@@ -409,6 +491,10 @@ class EvaTokens extends ThemeExtension<EvaTokens> {
       statusClosedBg: Color.lerp(statusClosedBg, other.statusClosedBg, t)!,
       statusClosedFg: Color.lerp(statusClosedFg, other.statusClosedFg, t)!,
       showDoodlePattern: t < 0.5 ? showDoodlePattern : other.showDoodlePattern,
+      logoFill: Color.lerp(logoFill, other.logoFill, t)!,
+      logoOutline: Color.lerp(logoOutline, other.logoOutline, t)!,
+      logoSwooshTint: Color.lerp(logoSwooshTint, other.logoSwooshTint, t)!,
+      isMonochromeLogo: t < 0.5 ? isMonochromeLogo : other.isMonochromeLogo,
       cardRadius: lerpDouble(cardRadius, other.cardRadius, t) ?? 16,
       controlRadius: lerpDouble(controlRadius, other.controlRadius, t) ?? 12,
     );

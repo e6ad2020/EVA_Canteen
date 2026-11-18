@@ -147,14 +147,10 @@ class _WelcomeAuthScreenState extends ConsumerState<WelcomeAuthScreen> {
                                   crossAxisAlignment:
                                       CrossAxisAlignment.stretch,
                                   children: [
-                                    // Hero Brand Logo + Name underneath
+                                    // Hero Brand Logo (already includes EVA Canteen lettering)
                                     EvaReveal(
                                       index: 1,
-                                      child: _SimpleBrandHeader(
-                                        canteenName: i18n.t('canteen_name'),
-                                        tokens: tokens,
-                                        isWide: isWide,
-                                      ),
+                                      child: _SimpleBrandHeader(isWide: isWide),
                                     ),
                                     SizedBox(height: isWide ? 22 : 18),
 
@@ -600,44 +596,17 @@ class _WelcomeAuthScreenState extends ConsumerState<WelcomeAuthScreen> {
   }
 }
 
-/// Clean, minimal brand lockup: just the centered logo with the canteen name
-/// directly underneath it.
+/// Clean, minimal brand lockup: just the centered hero emblem (which already
+/// includes the "EVA Canteen" lettering).
 class _SimpleBrandHeader extends StatelessWidget {
-  const _SimpleBrandHeader({
-    required this.canteenName,
-    required this.tokens,
-    required this.isWide,
-  });
+  const _SimpleBrandHeader({required this.isWide});
 
-  final String canteenName;
-  final EvaTokens tokens;
   final bool isWide;
 
   @override
   Widget build(BuildContext context) {
-    return Column(
-      mainAxisSize: MainAxisSize.min,
-      children: [
-        EvaBrandLogo(size: isWide ? 148 : 132, hero: true),
-        const SizedBox(height: 12),
-        Text(
-          canteenName,
-          textAlign: TextAlign.center,
-          maxLines: 2,
-          overflow: TextOverflow.ellipsis,
-          style: Theme.of(context).textTheme.headlineSmall?.copyWith(
-            color: tokens.textPrimary,
-            fontSize: isWide ? 30 : 26,
-            fontWeight: FontWeight.w800,
-            letterSpacing: -0.35,
-            shadows: (!tokens.isNight && tokens.isLiquidGlass)
-                ? const [
-                    Shadow(color: Color(0xE6FFFFFF), blurRadius: 10),
-                  ]
-                : null,
-          ),
-        ),
-      ],
+    return Center(
+      child: EvaBrandLogo(size: isWide ? 148 : 132, hero: true),
     );
   }
 }
