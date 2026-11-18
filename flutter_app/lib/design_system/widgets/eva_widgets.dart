@@ -180,38 +180,133 @@ class EvaSurfaceCard extends StatelessWidget {
   }
 }
 
-/// Clean elevated header/bar container without GPU blur lag or scroll flicker.
-class EvaGlassBar extends StatelessWidget {
+/// Rounded, animated floating top/header bar without GPU blur lag or flicker.
+class EvaGlassBar extends StatefulWidget {
   const EvaGlassBar({
     super.key,
     required this.child,
-    this.padding = const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
+    this.padding = const EdgeInsets.symmetric(horizontal: 14, vertical: 11),
+    this.margin = const EdgeInsets.fromLTRB(12, 8, 12, 4),
+    this.borderRadius = 22,
+    this.isScrolled = false,
     this.bottomBorder = true,
     this.topBorder = false,
   });
 
   final Widget child;
   final EdgeInsetsGeometry padding;
+  final EdgeInsetsGeometry margin;
+  final double borderRadius;
+  final bool isScrolled;
   final bool bottomBorder;
   final bool topBorder;
 
   @override
+  State<EvaGlassBar> createState() => _EvaGlassBarState();
+}
+
+class _EvaGlassBarState extends State<EvaGlassBar>
+    with SingleTickerProviderStateMixin {
+  late final AnimationController _ctrl;
+  late final Animation<double> _curved;
+  bool _settled = false;
+
+  @override
+  void initState() {
+    super.initState();
+    _ctrl = AnimationController(
+      vsync: this,
+      duration: const Duration(milliseconds: 240),
+    );
+    _curved = CurvedAnimation(parent: _ctrl, curve: Curves.easeOutCubic);
+    _ctrl.addStatusListener((status) {
+      if (status == AnimationStatus.completed && mounted && !_settled) {
+        setState(() => _settled = true);
+      }
+    });
+    _ctrl.forward();
+  }
+
+  @override
+  void dispose() {
+    _ctrl.dispose();
+    super.dispose();
+  }
+
+  @override
   Widget build(BuildContext context) {
     final tokens = EvaTokens.of(context);
-    return Container(
-      padding: padding,
-      decoration: BoxDecoration(
-        color: tokens.surfaceElevated,
-        border: Border(
-          bottom: bottomBorder
-              ? BorderSide(color: tokens.borderSubtle, width: tokens.borderWidth)
-              : BorderSide.none,
-          top: topBorder
-              ? BorderSide(color: tokens.borderSubtle, width: tokens.borderWidth)
-              : BorderSide.none,
+    final disableMotion = MediaQuery.maybeDisableAnimationsOf(context) ?? false;
+    final radius = BorderRadius.circular(widget.borderRadius);
+
+    final borderColor = widget.isScrolled
+        ? Color.lerp(tokens.borderSubtle, tokens.brandPrimary, 0.42)!
+        : tokens.borderSubtle;
+
+    final bar = Padding(
+      padding: widget.margin,
+      child: AnimatedContainer(
+        duration: const Duration(milliseconds: 220),
+        curve: Curves.easeOutCubic,
+        padding: widget.padding,
+        decoration: BoxDecoration(
+          color: tokens.surfaceElevated,
+          borderRadius: radius,
+          border: Border.all(
+            color: borderColor,
+            width: widget.isScrolled
+                ? math.max(tokens.borderWidth, 1.35)
+                : tokens.borderWidth,
+          ),
+          boxShadow: tokens.isNight
+              ? [
+                  BoxShadow(
+                    color: Colors.black.withValues(
+                      alpha: widget.isScrolled ? 0.34 : 0.20,
+                    ),
+                    blurRadius: widget.isScrolled ? 16 : 10,
+                    offset: Offset(0, widget.isScrolled ? 5 : 2),
+                  ),
+                ]
+              : [
+                  BoxShadow(
+                    color: tokens.brandPrimary.withValues(
+                      alpha: widget.isScrolled
+                          ? 0.11
+                          : (tokens.isLiquidGlass ? 0.07 : 0.05),
+                    ),
+                    blurRadius: widget.isScrolled ? 18 : 12,
+                    offset: Offset(0, widget.isScrolled ? 6 : 3),
+                  ),
+                ],
+        ),
+        child: Material(
+          type: MaterialType.transparency,
+          borderRadius: radius,
+          child: widget.child,
         ),
       ),
-      child: Material(type: MaterialType.transparency, child: child),
+    );
+
+    if (_settled || disableMotion) return bar;
+
+    return AnimatedBuilder(
+      animation: _curved,
+      child: bar,
+      builder: (context, child) {
+        final t = _curved.value;
+        if (t >= 0.999) return child!;
+        return Opacity(
+          opacity: t.clamp(0.0, 1.0),
+          child: Transform.translate(
+            offset: Offset(0, (1 - t) * -10),
+            child: Transform.scale(
+              scale: 0.985 + (0.015 * t),
+              child: child,
+            ),
+          ),
+        );
+      },
     );
   }
 }
@@ -641,6 +736,7 @@ class EvaStatusBadge extends StatelessWidget {
   Widget build(BuildContext context) {
     return AnimatedContainer(
       duration: const Duration(milliseconds: 200),
+      curve: Curves.easeOutCubic,
       padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 5),
       decoration: BoxDecoration(
         color: background,
@@ -667,13 +763,17 @@ class EvaStatusBadge extends StatelessWidget {
             const SizedBox(width: 5),
           ],
           Flexible(
-            child: Text(
-              label,
-              maxLines: 1,
-              overflow: TextOverflow.ellipsis,
-              style: Theme.of(context).textTheme.labelMedium?.copyWith(
-                color: foreground,
-                fontWeight: FontWeight.w700,
+            child: AnimatedSwitcher(
+              duration: const Duration(milliseconds: 160),
+              child: Text(
+                label,
+                key: ValueKey<String>(label),
+                maxLines: 1,
+                overflow: TextOverflow.ellipsis,
+                style: Theme.of(context).textTheme.labelMedium?.copyWith(
+                  color: foreground,
+                  fontWeight: FontWeight.w700,
+                ),
               ),
             ),
           ),
@@ -693,6 +793,7 @@ class EvaQuantityStepper extends StatelessWidget {
     this.disabled = false,
     this.maxReached = false,
     this.compact = false,
+    this.fullWidth = false,
   });
 
   final int quantity;
@@ -702,6 +803,7 @@ class EvaQuantityStepper extends StatelessWidget {
   final bool disabled;
   final bool maxReached;
   final bool compact;
+  final bool fullWidth;
 
   @override
   Widget build(BuildContext context) {
@@ -716,6 +818,7 @@ class EvaQuantityStepper extends StatelessWidget {
       child: quantity <= 0
           ? SizedBox(
               key: const ValueKey('stepper_empty'),
+              width: fullWidth ? double.infinity : null,
               height: height,
               child: FilledButton.tonalIcon(
                 onPressed: disabled
@@ -758,13 +861,17 @@ class EvaQuantityStepper extends StatelessWidget {
             )
           : Container(
               key: const ValueKey('stepper_active'),
+              width: fullWidth ? double.infinity : null,
               height: height,
               decoration: BoxDecoration(
                 color: tokens.brandPrimary,
                 borderRadius: BorderRadius.circular(999),
               ),
               child: Row(
-                mainAxisSize: MainAxisSize.min,
+                mainAxisSize: fullWidth ? MainAxisSize.max : MainAxisSize.min,
+                mainAxisAlignment: fullWidth
+                    ? MainAxisAlignment.spaceBetween
+                    : MainAxisAlignment.center,
                 children: [
                   _StepperIconBtn(
                     icon: quantity == 1
@@ -847,25 +954,38 @@ class LanguageQuickToggle extends ConsumerWidget {
     final isAr = ref.watch(
       appPreferencesProvider.select((s) => s.locale.languageCode == 'ar'),
     );
+    final nextLabel = isAr ? 'EN' : 'عربي';
 
-    return OutlinedButton.icon(
-      onPressed: () {
-        HapticFeedback.lightImpact();
-        ref.read(appPreferencesProvider.notifier).toggleLanguage();
-      },
-      style: OutlinedButton.styleFrom(
-        minimumSize: const Size(0, 34),
-        tapTargetSize: MaterialTapTargetSize.shrinkWrap,
-        padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
-        backgroundColor: tokens.surfaceElevated,
-        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(999)),
-      ),
-      icon: Icon(Icons.translate_rounded, size: 15, color: tokens.brandPrimary),
-      label: Text(
-        isAr ? 'EN' : 'عربي',
-        style: Theme.of(context).textTheme.labelMedium?.copyWith(
-          fontWeight: FontWeight.w700,
-          color: tokens.textPrimary,
+    return EvaPressable(
+      child: OutlinedButton.icon(
+        onPressed: () {
+          HapticFeedback.lightImpact();
+          ref.read(appPreferencesProvider.notifier).toggleLanguage();
+        },
+        style: OutlinedButton.styleFrom(
+          minimumSize: const Size(0, 34),
+          tapTargetSize: MaterialTapTargetSize.shrinkWrap,
+          padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
+          backgroundColor: tokens.surfaceSubtle.withValues(alpha: 0.65),
+          shape: RoundedRectangleBorder(
+            borderRadius: BorderRadius.circular(999),
+          ),
+        ),
+        icon: Icon(
+          Icons.translate_rounded,
+          size: 15,
+          color: tokens.brandPrimary,
+        ),
+        label: AnimatedSwitcher(
+          duration: const Duration(milliseconds: 160),
+          child: Text(
+            nextLabel,
+            key: ValueKey<String>(nextLabel),
+            style: Theme.of(context).textTheme.labelMedium?.copyWith(
+              fontWeight: FontWeight.w700,
+              color: tokens.textPrimary,
+            ),
+          ),
         ),
       ),
     );

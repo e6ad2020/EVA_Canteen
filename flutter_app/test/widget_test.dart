@@ -419,6 +419,55 @@ void main() {
       await tester.drag(find.byType(SingleChildScrollView), const Offset(0, -180));
       await tester.pumpAndSettle();
       expect(tester.takeException(), isNull);
+
+      // Enter Guest Menu on 360x800 phone and verify 2-column grid + rounded top bar
+      await tester.ensureVisible(find.text('Browse menu as guest'));
+      await tester.pumpAndSettle();
+      await tester.tap(find.text('Browse menu as guest'));
+      await tester.pumpAndSettle();
+      expect(tester.takeException(), isNull);
+
+      mockSocket.injectTestEvent('initial_products', [
+        {
+          'id': 'g1',
+          'name_key': 'item_1',
+          'description_key': 'desc_1',
+          'price': 35,
+          'quantity': 10,
+          'image': '',
+          'category': 'sandwiches',
+        },
+        {
+          'id': 'g2',
+          'name_key': 'item_2',
+          'description_key': 'desc_2',
+          'price': 50,
+          'quantity': 4,
+          'image': '',
+          'category': 'sandwiches',
+        },
+        {
+          'id': 'g3',
+          'name_key': 'item_3',
+          'description_key': 'desc_3',
+          'price': 125.50,
+          'quantity': -1,
+          'image': '',
+          'category': 'drinks',
+        },
+      ]);
+      await tester.pumpAndSettle();
+      expect(tester.takeException(), isNull);
+
+      final grid = tester.widget<SliverGrid>(find.byType(SliverGrid));
+      final delegate =
+          grid.gridDelegate as SliverGridDelegateWithFixedCrossAxisCount;
+      expect(delegate.crossAxisCount, 2);
+
+      // Scroll menu to exercise animated rounded top bar scroll state
+      await tester.drag(find.byType(CustomScrollView), const Offset(0, -120));
+      await tester.pumpAndSettle();
+      expect(tester.takeException(), isNull);
     },
   );
 }
