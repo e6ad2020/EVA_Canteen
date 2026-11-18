@@ -1,4 +1,4 @@
-const bcrypt = require('bcrypt');
+const { hashPassword: hashSecret, comparePassword: verifySecret } = require('./password_hash');
 const readline = require('readline');
 
 const rl = readline.createInterface({
@@ -7,29 +7,25 @@ const rl = readline.createInterface({
 });
 
 function hashPassword(password) {
-    bcrypt.hash(password, 10, (err, hash) => {
-        if (err) {
-            console.error('Error hashing password:', err);
-            rl.close();
-            return;
-        }
+    hashSecret(password, 10).then((hash) => {
         console.log('Hashed password:', hash);
+        rl.close();
+    }).catch((err) => {
+        console.error('Error hashing password:', err);
         rl.close();
     });
 }
 
 function comparePassword(password, hash) {
-    bcrypt.compare(password, hash, (err, result) => {
-        if (err) {
-            console.error('Error comparing password:', err);
-            rl.close();
-            return;
-        }
+    verifySecret(password, hash).then((result) => {
         if (result) {
             console.log('Passwords match!');
         } else {
             console.log('Passwords do not match.');
         }
+        rl.close();
+    }).catch((err) => {
+        console.error('Error comparing password:', err);
         rl.close();
     });
 }

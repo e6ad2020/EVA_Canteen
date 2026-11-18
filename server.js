@@ -3,7 +3,6 @@
  * Copyright (C) 2025 EVA International School
  */
 
-const bcrypt = require('bcrypt');
 const crypto = require('crypto');
 const express = require('express');
 const fs = require('fs');
@@ -14,6 +13,7 @@ const path = require('path');
 const WebSocket = require('ws');
 
 const db = require('./database');
+const { hashPassword, comparePassword } = require('./password_hash');
 
 const app = express();
 const server = http.createServer(app);
@@ -163,13 +163,17 @@ class ClientError extends Error {
 }
 
 function getLocalIpAddress() {
-    const interfaces = os.networkInterfaces();
-    for (const name of Object.keys(interfaces)) {
-        for (const iface of interfaces[name]) {
-            if (iface.family === 'IPv4' && !iface.internal) {
-                return iface.address;
+    try {
+        const interfaces = os.networkInterfaces();
+        for (const name of Object.keys(interfaces)) {
+            for (const iface of interfaces[name] || []) {
+                if (iface.family === 'IPv4' && !iface.internal) {
+                    return iface.address;
+                }
             }
         }
+    } catch {
+        // Android / Termux SELinux can restrict rtnetlink interface enumeration.
     }
     return 'localhost';
 }
@@ -1118,7 +1122,7 @@ async function handleRegisterUser(ws, clientInfo, payload) {
     }
 
     const profilePic = normalizeProfilePic(payload?.profilePic);
-    const passwordHash = await bcrypt.hash(password, 10);
+    const passwordHash = await hashPassword(password, 10);
 
     await db.run(
         'INSERT INTO users (email, password_hash, profile_pic, balance) VALUES (?, ?, ?, 0)',
@@ -1153,7 +1157,7 @@ async function handleLoginUser(ws, clientInfo, payload) {
         return;
     }
 
-    const isMatch = await bcrypt.compare(password, user.password_hash);
+    const isMatch = await comparePassword(password, user.password_hash);
     if (!isMatch) {
         sendMessage(ws, 'login_error', { message: 'Invalid credentials.' });
         return;

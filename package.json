@@ -6,7 +6,7 @@
   "scripts": {
     "start": "node server.js",
     "dev": "node server.js",
-    "check": "node --check server.js && node --check script.js && node --check database.js && node --check db_cli.js && node --check hash_tool.js",
+    "check": "node --check server.js && node --check script.js && node --check database.js && node --check password_hash.js && node --check db_cli.js && node --check hash_tool.js",
     "verify": "node verification/verify_backend_v1_1.js",
     "build:flutter": "cd flutter_app && flutter build web --no-web-resources-cdn",
     "build:android": "cd flutter_app && flutter build apk --release --target-platform android-arm64 --split-per-abi",
@@ -15,7 +15,6 @@
     "hash": "node hash_tool.js"
   },
   "dependencies": {
-    "bcrypt": "^6.0.0",
     "express": "^5.1.0",
     "jsonwebtoken": "^9.0.2",
     "open": "^11.0.0",
@@ -24,6 +23,7 @@
     "ws": "^8.18.1"
   },
   "optionalDependencies": {
+    "bcrypt": "^6.0.0",
     "better-sqlite3": "^12.6.2"
   }
 }
