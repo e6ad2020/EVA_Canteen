@@ -40,6 +40,36 @@ if (!fs.existsSync(UPLOADS_DIR)) {
     fs.mkdirSync(UPLOADS_DIR, { recursive: true });
 }
 
+function resolveWebMode() {
+    const cliArgs = new Set(process.argv.slice(2).map((arg) => arg.trim().toLowerCase()));
+    const envMode = (process.env.WEB_MODE || '').trim().toLowerCase();
+
+    if (
+        cliArgs.has('--web-flutter') ||
+        cliArgs.has('web-flutter') ||
+        cliArgs.has('start:web-flutter') ||
+        envMode === 'flutter' ||
+        envMode === 'web-flutter'
+    ) {
+        return 'flutter';
+    }
+
+    if (
+        cliArgs.has('--old-web') ||
+        cliArgs.has('old-web') ||
+        cliArgs.has('start:old-web') ||
+        envMode === 'old-web' ||
+        envMode === 'legacy' ||
+        process.env.SERVE_LEGACY_ROOT === 'true'
+    ) {
+        return 'old-web';
+    }
+
+    return 'none';
+}
+
+const WEB_MODE = resolveWebMode();
+
 const MAX_ADMIN_FAILED_ATTEMPTS = 5;
 const ADMIN_LOCKOUT_DURATION_MS = 5 * 60 * 1000;
 const LANGUAGE_CODE_PATTERN = /^[a-z]{2,3}(?:-[a-z0-9]{2,8})*$/i;
@@ -93,6 +123,10 @@ app.use((req, res, next) => {
     res.setHeader('Access-Control-Allow-Origin', '*');
     res.setHeader('Access-Control-Allow-Headers', 'Content-Type, Authorization');
     res.setHeader('Access-Control-Allow-Methods', 'GET, POST, OPTIONS');
+    if (WEB_MODE === 'flutter') {
+        res.setHeader('Cross-Origin-Opener-Policy', 'same-origin');
+        res.setHeader('Cross-Origin-Embedder-Policy', 'credentialless');
+    }
     if (req.method === 'OPTIONS') {
         res.sendStatus(204);
         return;
@@ -101,7 +135,7 @@ app.use((req, res, next) => {
 });
 
 app.get('/api/health', (_req, res) => {
-    res.json({ ok: true, version: '1.1.0' });
+    res.json({ ok: true, version: '1.1.0', mode: WEB_MODE });
 });
 
 app.post('/api/upload-image', (req, res) => {
@@ -143,16 +177,38 @@ app.use('/releases', express.static(path.join(__dirname, 'releases'), {
     }
 }));
 app.use('/assets', express.static(path.join(__dirname, 'assets')));
-app.use('/fonts', express.static(path.join(__dirname, 'fonts')));
-app.use('/legacy', express.static(path.join(__dirname, '')));
-app.use((req, res, next) => {
-    if (process.env.SERVE_LEGACY_ROOT !== 'true' && fs.existsSync(path.join(FLUTTER_WEB_DIR, 'index.html'))) {
-        express.static(FLUTTER_WEB_DIR)(req, res, next);
-        return;
-    }
-    next();
-});
-app.use(express.static(path.join(__dirname, '')));
+
+if (WEB_MODE === 'flutter') {
+    app.use(express.static(FLUTTER_WEB_DIR));
+    app.get('/{*splat}', (req, res, next) => {
+        if (req.path.startsWith('/api/') || path.extname(req.path)) {
+            next();
+            return;
+        }
+        const flutterIndex = path.join(FLUTTER_WEB_DIR, 'index.html');
+        if (fs.existsSync(flutterIndex)) {
+            res.sendFile(flutterIndex);
+            return;
+        }
+        res.status(503).json({
+            ok: false,
+            mode: 'flutter',
+            error: 'Flutter web build not found at flutter_app/build/web. Run "npm run start:web-flutter" or "npm run build:flutter" first.'
+        });
+    });
+} else if (WEB_MODE === 'old-web') {
+    app.use('/fonts', express.static(path.join(__dirname, 'fonts')));
+    app.use('/legacy', express.static(path.join(__dirname, '')));
+    app.use(express.static(path.join(__dirname, '')));
+} else {
+    app.get('/', (_req, res) => {
+        res.json({
+            ok: true,
+            mode: 'backend-only',
+            message: 'EVA Canteen Backend Server is running. Use "npm run start:web-flutter" for Flutter Web (Wasm) or "npm run start:old-web" for the legacy web UI.'
+        });
+    });
+}
 
 class ClientError extends Error {
     constructor(message, payload = {}) {
@@ -2279,11 +2335,18 @@ async function start() {
         server.listen(PORT, () => {
             const localIp = getLocalIpAddress();
             const separator = '===================================================';
+            const modeLabel =
+                WEB_MODE === 'flutter'
+                    ? 'Flutter Web (Wasm / COOP+COEP enabled)'
+                    : WEB_MODE === 'old-web'
+                      ? 'Legacy HTML/JS Web (old-web)'
+                      : 'Backend Only (WebSocket + REST API)';
 
             console.log(`\n${separator}`);
             console.log('EVA Canteen Server Running (SQLite)');
             console.log(separator);
-            console.log(`\nLocal:            http://localhost:${PORT}`);
+            console.log(`\nMode:             ${modeLabel}`);
+            console.log(`Local:            http://localhost:${PORT}`);
             console.log(`On Your Network:  http://${localIp}:${PORT}`);
             console.log(`\n${separator}\n`);
         });
