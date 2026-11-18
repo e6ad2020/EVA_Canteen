@@ -1,5 +1,9 @@
+import 'dart:async';
+
 import 'package:eva_canteen/core/models/domain_models.dart';
 import 'package:eva_canteen/core/network/eva_socket_client.dart';
+import 'package:eva_canteen/core/notifications/notification_providers.dart';
+import 'package:eva_canteen/core/notifications/notification_service.dart';
 import 'package:eva_canteen/core/state/canteen_providers.dart';
 import 'package:eva_canteen/design_system/eva_theme.dart';
 import 'package:eva_canteen/design_system/widgets/eva_widgets.dart';
@@ -1228,4 +1232,452 @@ void main() {
       );
     },
   );
+
+  test(
+    'NotificationController deduplicates foreground WS + FCM alerts and allows re-alerting after reopen',
+    () async {
+      SharedPreferences.setMockInitialValues({
+        'eva_saved_session_v2':
+            '{"email":"student@eva.edu","role":"student","profilePic":"pic2","balance":50,"token":"jwt-student-1"}',
+      });
+      final prefs = await SharedPreferences.getInstance();
+      final socket = _RecordingSocketClient();
+      final mockNotif = _MockNotificationService(
+        initialPermission: PushPermissionState.authorized,
+        tokenValue: 'fcm-token-dedup-1',
+      );
+
+      final container = ProviderContainer(
+        overrides: [
+          sharedPrefsProvider.overrideWithValue(prefs),
+          socketClientProvider.overrideWithValue(socket),
+          notificationServiceProvider.overrideWithValue(mockNotif),
+        ],
+      );
+      addTearDown(container.dispose);
+
+      container.read(canteenStoreProvider);
+      container.read(notificationControllerProvider);
+      await Future<void>.delayed(const Duration(milliseconds: 20));
+
+      expect(socket.registeredCalls.length, 1);
+      expect(socket.registeredCalls.first['token'], 'fcm-token-dedup-1');
+
+      final nowIso = DateTime.now().toUtc().toIso8601String();
+      socket.injectTestEvent('my_orders', [
+        {
+          'id': 'ORD-42-1700000001',
+          'totalAmount': 40,
+          'status': 'preparing',
+          'paymentMethod': 'wallet',
+          'timestamp': nowIso,
+          'items': const [],
+        },
+      ]);
+      await Future<void>.delayed(Duration.zero);
+
+      // 1. WS delivers 'delivered' status -> triggers notice + local notification
+      socket.injectTestEvent('my_order_updated', {
+        'updatedOrder': {
+          'id': 'ORD-42-1700000001',
+          'totalAmount': 40,
+          'status': 'delivered',
+          'paymentMethod': 'wallet',
+          'timestamp': nowIso,
+          'items': const [],
+        },
+      });
+      await Future<void>.delayed(Duration.zero);
+
+      final firstNotice = container.read(canteenStoreProvider).notice;
+      expect(firstNotice, isNotNull);
+      expect(firstNotice!.isCelebration, isTrue);
+      expect(firstNotice.orderId, 'ORD-42-1700000001');
+      expect(mockNotif.shownLocalOrderIds, ['ORD-42-1700000001']);
+
+      // 2. Duplicate FCM foreground push for the exact same order is suppressed
+      mockNotif.emitForeground(
+        const IncomingOrderNotification(
+          type: 'order_ready',
+          orderId: 'ORD-42-1700000001',
+          pickupNumber: '42',
+        ),
+      );
+      await Future<void>.delayed(Duration.zero);
+      expect(container.read(canteenStoreProvider).notice!.id, firstNotice.id);
+      expect(mockNotif.shownLocalOrderIds.length, 1);
+
+      // 3. Admin re-opens order to 'pending' -> clears dedup entry
+      socket.injectTestEvent('my_order_updated', {
+        'updatedOrder': {
+          'id': 'ORD-42-1700000001',
+          'totalAmount': 40,
+          'status': 'pending',
+          'paymentMethod': 'wallet',
+          'timestamp': nowIso,
+          'items': const [],
+        },
+      });
+      await Future<void>.delayed(Duration.zero);
+
+      // 4. Order transitions to 'delivered' again -> alerts a second time
+      socket.injectTestEvent('my_order_updated', {
+        'updatedOrder': {
+          'id': 'ORD-42-1700000001',
+          'totalAmount': 40,
+          'status': 'delivered',
+          'paymentMethod': 'wallet',
+          'timestamp': nowIso,
+          'items': const [],
+        },
+      });
+      await Future<void>.delayed(Duration.zero);
+      expect(
+        container.read(canteenStoreProvider).notice!.id,
+        greaterThan(firstNotice.id),
+      );
+      expect(mockNotif.shownLocalOrderIds, [
+        'ORD-42-1700000001',
+        'ORD-42-1700000001',
+      ]);
+    },
+  );
+
+  test(
+    'Just-in-time push permission prompt fires once after first order and logout unregisters token with JWT',
+    () async {
+      SharedPreferences.setMockInitialValues({
+        'eva_saved_session_v2':
+            '{"email":"student@eva.edu","role":"student","profilePic":"pic2","balance":100,"token":"jwt-student-99"}',
+      });
+      final prefs = await SharedPreferences.getInstance();
+      final socket = _RecordingSocketClient();
+      final mockNotif = _MockNotificationService(
+        initialPermission: PushPermissionState.denied,
+        permissionAfterRequest: PushPermissionState.authorized,
+        tokenValue: 'fcm-token-jit-99',
+      );
+
+      final container = ProviderContainer(
+        overrides: [
+          sharedPrefsProvider.overrideWithValue(prefs),
+          socketClientProvider.overrideWithValue(socket),
+          notificationServiceProvider.overrideWithValue(mockNotif),
+        ],
+      );
+      addTearDown(container.dispose);
+
+      container.read(canteenStoreProvider);
+      container.read(notificationControllerProvider);
+      await Future<void>.delayed(const Duration(milliseconds: 20));
+
+      expect(mockNotif.requestPermissionCalls, 0);
+      expect(socket.registeredCalls, isEmpty);
+
+      final nowIso = DateTime.now().toUtc().toIso8601String();
+      socket.injectTestEvent('order_confirmed_by_server', {
+        'id': 'ORD-01-1700000001',
+        'totalAmount': 25,
+        'status': 'pending',
+        'paymentMethod': 'wallet',
+        'timestamp': nowIso,
+        'items': const [],
+      });
+      await Future<void>.delayed(const Duration(milliseconds: 30));
+
+      expect(mockNotif.requestPermissionCalls, 1);
+      expect(socket.registeredCalls.length, 1);
+      expect(socket.registeredCalls.first['token'], 'fcm-token-jit-99');
+      expect(socket.registeredCalls.first['authToken'], 'jwt-student-99');
+
+      // Second order should NOT re-prompt
+      socket.injectTestEvent('order_confirmed_by_server', {
+        'id': 'ORD-02-1700000002',
+        'totalAmount': 25,
+        'status': 'pending',
+        'paymentMethod': 'wallet',
+        'timestamp': nowIso,
+        'items': const [],
+      });
+      await Future<void>.delayed(const Duration(milliseconds: 20));
+      expect(mockNotif.requestPermissionCalls, 1);
+
+      // Logout unregisters push token using the student's JWT before clearing session
+      container.read(canteenStoreProvider.notifier).logout();
+      await Future<void>.delayed(const Duration(milliseconds: 20));
+
+      expect(socket.unregisteredCalls.length, 1);
+      expect(socket.unregisteredCalls.first['token'], 'fcm-token-jit-99');
+      expect(socket.unregisteredCalls.first['authToken'], 'jwt-student-99');
+      expect(container.read(canteenStoreProvider).currentUser, isNull);
+    },
+  );
+
+  testWidgets(
+    'Permission denial falls back cleanly in Settings and live WS alerts still work',
+    (tester) async {
+      await tester.binding.setSurfaceSize(const Size(1200, 900));
+      addTearDown(() => tester.binding.setSurfaceSize(null));
+
+      SharedPreferences.setMockInitialValues({
+        'eva_saved_session_v2':
+            '{"email":"student@eva.edu","role":"student","profilePic":"pic2","balance":50,"token":"jwt-denied"}',
+      });
+      final prefs = await SharedPreferences.getInstance();
+      final socket = _RecordingSocketClient();
+      final mockNotif = _MockNotificationService(
+        initialPermission: PushPermissionState.permanentlyDenied,
+        permissionAfterRequest: PushPermissionState.permanentlyDenied,
+      );
+
+      final container = ProviderContainer(
+        overrides: [
+          sharedPrefsProvider.overrideWithValue(prefs),
+          socketClientProvider.overrideWithValue(socket),
+          notificationServiceProvider.overrideWithValue(mockNotif),
+        ],
+      );
+      addTearDown(container.dispose);
+
+      await tester.pumpWidget(
+        UncontrolledProviderScope(
+          container: container,
+          child: const EvaCanteenApp(),
+        ),
+      );
+      await tester.pumpAndSettle();
+
+      // Open Settings tab and verify Order Ready Alerts card shows blocked state + hint
+      await tester.tap(find.text('Settings'));
+      await tester.pumpAndSettle();
+
+      final alertsCard = find.byKey(const ValueKey('order_ready_alerts_card'));
+      await tester.scrollUntilVisible(
+        alertsCard,
+        240,
+        scrollable: find.byType(Scrollable).first,
+      );
+      await tester.pumpAndSettle();
+
+      expect(alertsCard, findsOneWidget);
+      expect(find.text('Order Ready Alerts'), findsOneWidget);
+      expect(find.text('Blocked in settings'), findsOneWidget);
+      expect(
+        find.byKey(const ValueKey('order_ready_alerts_denied_hint')),
+        findsOneWidget,
+      );
+      expect(
+        find.byKey(const ValueKey('enable_order_alerts_button')),
+        findsNothing,
+      );
+
+      // Live WS celebration SnackBar with 'View' action still fires even when push is blocked
+      final nowIso = DateTime.now().toUtc().toIso8601String();
+      socket.injectTestEvent('my_order_updated', {
+        'updatedOrder': {
+          'id': 'ORD-18-1700000001',
+          'totalAmount': 30,
+          'status': 'delivered',
+          'paymentMethod': 'cash',
+          'timestamp': nowIso,
+          'items': const [],
+        },
+      });
+      await tester.pump();
+      await tester.pump(const Duration(milliseconds: 250));
+
+      expect(find.text('View'), findsOneWidget);
+      expect(mockNotif.shownLocalOrderIds, isEmpty);
+    },
+  );
+
+  testWidgets(
+    'Notification tap deep-links to /orders?orderId=... and pins the tapped Ready order',
+    (tester) async {
+      await tester.binding.setSurfaceSize(const Size(1200, 900));
+      addTearDown(() => tester.binding.setSurfaceSize(null));
+
+      SharedPreferences.setMockInitialValues({
+        'eva_saved_session_v2':
+            '{"email":"student@eva.edu","role":"student","profilePic":"pic2","balance":80,"token":"jwt-deeplink"}',
+      });
+      final prefs = await SharedPreferences.getInstance();
+      final socket = _RecordingSocketClient();
+      final mockNotif = _MockNotificationService(
+        initialPermission: PushPermissionState.authorized,
+        tokenValue: 'fcm-token-deeplink',
+      );
+
+      final container = ProviderContainer(
+        overrides: [
+          sharedPrefsProvider.overrideWithValue(prefs),
+          socketClientProvider.overrideWithValue(socket),
+          notificationServiceProvider.overrideWithValue(mockNotif),
+        ],
+      );
+      addTearDown(container.dispose);
+
+      await tester.pumpWidget(
+        UncontrolledProviderScope(
+          container: container,
+          child: const EvaCanteenApp(),
+        ),
+      );
+      await tester.pumpAndSettle();
+
+      final nowIso = DateTime.now().toUtc().toIso8601String();
+      // Inject two today orders: #12 is still preparing (default active order)
+      // and #09 is delivered (Ready).
+      socket.injectTestEvent('my_orders', [
+        {
+          'id': 'ORD-12-1700000002',
+          'totalAmount': 45,
+          'status': 'preparing',
+          'paymentMethod': 'wallet',
+          'timestamp': nowIso,
+          'items': const [],
+        },
+        {
+          'id': 'ORD-09-1700000001',
+          'totalAmount': 30,
+          'status': 'delivered',
+          'paymentMethod': 'wallet',
+          'timestamp': nowIso,
+          'items': const [],
+        },
+      ]);
+      await tester.pumpAndSettle();
+
+      // Simulate tapping a notification for the Ready order #09
+      mockNotif.emitTap(
+        const IncomingOrderNotification(
+          type: 'order_ready',
+          orderId: 'ORD-09-1700000001',
+          pickupNumber: '09',
+          route: '/orders',
+        ),
+      );
+      await tester.pumpAndSettle();
+
+      // Should land on Orders tab with #09 pinned in the live pickup pass card
+      expect(find.text('Live Pickup Pass'), findsOneWidget);
+      expect(find.text('#09'), findsWidgets);
+      expect(find.text('ORD-09-1700000001'), findsWidgets);
+    },
+  );
+}
+
+class _RecordingSocketClient extends EvaSocketClient {
+  _RecordingSocketClient() : super(enableNetwork: false);
+
+  final List<Map<String, String?>> registeredCalls = [];
+  final List<Map<String, String?>> unregisteredCalls = [];
+
+  @override
+  Future<bool> registerPushToken({
+    required String token,
+    required String platform,
+    required String locale,
+    String? authTokenOverride,
+  }) async {
+    registeredCalls.add({
+      'token': token,
+      'platform': platform,
+      'locale': locale,
+      'authToken': authTokenOverride,
+    });
+    return true;
+  }
+
+  @override
+  Future<bool> unregisterPushToken({
+    required String token,
+    String? authTokenOverride,
+  }) async {
+    unregisteredCalls.add({'token': token, 'authToken': authTokenOverride});
+    return true;
+  }
+}
+
+class _MockNotificationService implements NotificationService {
+  _MockNotificationService({
+    this.initialPermission = PushPermissionState.authorized,
+    this.permissionAfterRequest = PushPermissionState.authorized,
+    this.tokenValue = 'mock-fcm-token',
+  }) : _currentPermission = initialPermission;
+
+  final PushPermissionState initialPermission;
+  final PushPermissionState permissionAfterRequest;
+  final String? tokenValue;
+
+  PushPermissionState _currentPermission;
+  int requestPermissionCalls = 0;
+  final List<String> shownLocalOrderIds = [];
+
+  final _foregroundController =
+      StreamController<IncomingOrderNotification>.broadcast();
+  final _tapController =
+      StreamController<IncomingOrderNotification>.broadcast();
+  final _tokenRefreshController = StreamController<String>.broadcast();
+
+  void emitForeground(IncomingOrderNotification msg) {
+    _foregroundController.add(msg);
+  }
+
+  void emitTap(IncomingOrderNotification msg) {
+    _tapController.add(msg);
+  }
+
+  @override
+  String? get platformName => 'android';
+
+  @override
+  bool get isSupported => true;
+
+  @override
+  Stream<IncomingOrderNotification> get foregroundMessages =>
+      _foregroundController.stream;
+
+  @override
+  Stream<IncomingOrderNotification> get notificationTaps =>
+      _tapController.stream;
+
+  @override
+  Stream<String> get tokenRefreshes => _tokenRefreshController.stream;
+
+  @override
+  Future<void> initialize() async {}
+
+  @override
+  Future<PushPermissionState> getPermissionState() async => _currentPermission;
+
+  @override
+  Future<PushPermissionState> requestPermission() async {
+    requestPermissionCalls += 1;
+    _currentPermission = permissionAfterRequest;
+    return _currentPermission;
+  }
+
+  @override
+  Future<String?> getToken() async => tokenValue;
+
+  @override
+  Future<IncomingOrderNotification?> getInitialTap() async => null;
+
+  @override
+  Future<void> showLocalOrderReadyNotification({
+    required String orderId,
+    required String title,
+    required String body,
+    String route = '/orders',
+  }) async {
+    shownLocalOrderIds.add(orderId);
+  }
+
+  @override
+  void dispose() {
+    _foregroundController.close();
+    _tapController.close();
+    _tokenRefreshController.close();
+  }
 }

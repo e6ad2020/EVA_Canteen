@@ -10,7 +10,9 @@ import '../../design_system/eva_theme.dart';
 import '../../design_system/widgets/eva_widgets.dart';
 
 class StudentOrdersView extends ConsumerWidget {
-  const StudentOrdersView({super.key});
+  const StudentOrdersView({super.key, this.highlightedOrderId});
+
+  final String? highlightedOrderId;
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
@@ -68,11 +70,23 @@ class StudentOrdersView extends ConsumerWidget {
       );
     }
 
+    CanteenOrder? pinnedOrder;
+    final targetId = highlightedOrderId?.trim();
+    if (targetId != null && targetId.isNotEmpty) {
+      for (final o in myOrders) {
+        if (o.id == targetId) {
+          pinnedOrder = o;
+          break;
+        }
+      }
+    }
+    final displayActiveOrder = pinnedOrder ?? activeOrder;
+
     final pastOrders = myOrders
-        .where((o) => activeOrder == null || o.id != activeOrder.id)
+        .where((o) => displayActiveOrder == null || o.id != displayActiveOrder.id)
         .toList(growable: false);
 
-    if (activeOrder == null && pastOrders.isEmpty) {
+    if (displayActiveOrder == null && pastOrders.isEmpty) {
       return Center(
         child: Padding(
           padding: EdgeInsets.fromLTRB(24, 24, 24, 24 + navClearance),
@@ -137,10 +151,10 @@ class StudentOrdersView extends ConsumerWidget {
                   child: Column(
                     crossAxisAlignment: CrossAxisAlignment.stretch,
                     children: [
-                      if (activeOrder != null) ...[
+                      if (displayActiveOrder != null) ...[
                         EvaReveal(
                           index: 0,
-                          child: _LivePickupPassCard(order: activeOrder),
+                          child: _LivePickupPassCard(order: displayActiveOrder),
                         ),
                         const SizedBox(height: 24),
                       ],

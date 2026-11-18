@@ -108,20 +108,28 @@ function assertIdentifier(identifier, label) {
     }
 }
 
-async function withTransaction(work) {
-    await run('BEGIN IMMEDIATE TRANSACTION');
-    try {
-        const result = await work();
-        await run('COMMIT');
-        return result;
-    } catch (err) {
+let transactionTail = Promise.resolve();
+
+function withTransaction(work) {
+    const execute = async () => {
+        await run('BEGIN IMMEDIATE TRANSACTION');
         try {
-            await run('ROLLBACK');
-        } catch (rollbackErr) {
-            console.error('Failed to rollback transaction:', rollbackErr);
+            const result = await work();
+            await run('COMMIT');
+            return result;
+        } catch (err) {
+            try {
+                await run('ROLLBACK');
+            } catch (rollbackErr) {
+                console.error('Failed to rollback transaction:', rollbackErr);
+            }
+            throw err;
         }
-        throw err;
-    }
+    };
+
+    const next = transactionTail.then(execute, execute);
+    transactionTail = next.catch(() => {});
+    return next;
 }
 
 async function ensureColumnExists(tableName, columnName, definitionSql) {
@@ -213,7 +221,17 @@ async function initDatabase() {
             is_suggestion INTEGER NOT NULL DEFAULT 0,
             active INTEGER NOT NULL DEFAULT 1,
             display_order INTEGER NOT NULL DEFAULT 0
-        )`
+        )`,
+        `CREATE TABLE IF NOT EXISTS device_push_tokens (
+            token TEXT PRIMARY KEY,
+            user_email TEXT NOT NULL,
+            user_role TEXT NOT NULL DEFAULT 'user',
+            platform TEXT NOT NULL,
+            locale TEXT NOT NULL DEFAULT 'en',
+            updated_at DATETIME DEFAULT CURRENT_TIMESTAMP
+        )`,
+        `CREATE INDEX IF NOT EXISTS idx_device_push_tokens_user_email ON device_push_tokens(user_email)`,
+        `CREATE INDEX IF NOT EXISTS idx_device_push_tokens_role ON device_push_tokens(user_role)`
     ];
 
     for (const statement of schemaStatements) {
@@ -222,6 +240,7 @@ async function initDatabase() {
 
     await ensureColumnExists('translations', 'extra_languages_json', `TEXT DEFAULT '{}'`);
     await ensureColumnExists('users', 'balance', `REAL NOT NULL DEFAULT 0`);
+    await ensureColumnExists('orders', 'ready_notified_at', 'DATETIME');
 
     await run(
         `INSERT OR IGNORE INTO settings (key, value) VALUES ('canteen_open', 'true')`

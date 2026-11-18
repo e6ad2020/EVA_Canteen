@@ -46,3 +46,7 @@ app.*.map.json
 
 # Widget Preview related
 .widget_preview/
+
+# Firebase native config files (provide locally or via CI secrets)
+/android/app/google-services.json
+/ios/Runner/GoogleService-Info.plist

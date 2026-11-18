@@ -193,6 +193,62 @@ class EvaSocketClient {
     return null;
   }
 
+  Future<bool> registerPushToken({
+    required String token,
+    required String platform,
+    required String locale,
+    String? authTokenOverride,
+  }) async {
+    final jwt = authTokenOverride ?? _authToken;
+    if (!enableNetwork || jwt == null || jwt.isEmpty || token.trim().isEmpty) {
+      return false;
+    }
+    try {
+      final response = await http
+          .post(
+            Uri.parse('$httpBaseUrl/api/push-tokens'),
+            headers: {
+              'Content-Type': 'application/json',
+              'Authorization': 'Bearer $jwt',
+            },
+            body: jsonEncode({
+              'token': token.trim(),
+              'platform': platform,
+              'locale': locale,
+            }),
+          )
+          .timeout(const Duration(seconds: 6));
+      return response.statusCode == 200;
+    } catch (_) {
+      return false;
+    }
+  }
+
+  Future<bool> unregisterPushToken({
+    required String token,
+    String? authTokenOverride,
+  }) async {
+    final jwt = authTokenOverride ?? _authToken;
+    if (!enableNetwork || jwt == null || jwt.isEmpty || token.trim().isEmpty) {
+      return false;
+    }
+    try {
+      final response = await http
+          .delete(
+            Uri.parse('$httpBaseUrl/api/push-tokens'),
+            headers: {
+              'Content-Type': 'application/json',
+              'Authorization': 'Bearer $jwt',
+            },
+            body: jsonEncode({'token': token.trim()}),
+          )
+          .timeout(const Duration(seconds: 3));
+      return response.statusCode == 200;
+    } catch (_) {
+      return false;
+    }
+  }
+
   void _handleRawMessage(dynamic raw) {
     try {
       final text = raw is String ? raw : utf8.decode(raw as List<int>);

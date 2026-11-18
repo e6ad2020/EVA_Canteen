@@ -28,6 +28,10 @@ services:
         sync: false
       - key: JWT_SECRET
         generateValue: true
+      - key: FIREBASE_SERVICE_ACCOUNT_B64
+        sync: false
+      - key: PUBLIC_APP_URL
+        sync: false
       # - key: DB_PATH
       #   value: /var/data/canteen.db
       # - key: UPLOADS_DIR

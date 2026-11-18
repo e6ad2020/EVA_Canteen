@@ -419,5 +419,41 @@ class EvaTranslator {
     'stock_qty_short': {'en': 'Qty', 'ar': 'كمية'},
     'rank_earlier_tooltip': {'en': 'Move earlier', 'ar': 'تقديم الترتيب'},
     'rank_later_tooltip': {'en': 'Move later', 'ar': 'تأخير الترتيب'},
+    'order_ready_alerts_title': {
+      'en': 'Order Ready Alerts',
+      'ar': 'تنبيهات جهوزية الطلب',
+    },
+    'order_ready_alerts_sub': {
+      'en':
+          'Get notified the moment your order is ready for pickup, even when the app is closed.',
+      'ar':
+          'تلقَّ إشعاراً فور جهوزية طلبك للاستلام، حتى عند إغلاق التطبيق.',
+    },
+    'notifications_status_enabled': {'en': 'Enabled', 'ar': 'مفعّلة'},
+    'notifications_status_disabled': {'en': 'Not enabled', 'ar': 'غير مفعّلة'},
+    'notifications_status_denied': {
+      'en': 'Blocked in settings',
+      'ar': 'محظورة من الإعدادات',
+    },
+    'notifications_status_unavailable': {
+      'en': 'Live in-app only',
+      'ar': 'داخل التطبيق فقط',
+    },
+    'notifications_enable_cta': {'en': 'Enable alerts', 'ar': 'تفعيل التنبيهات'},
+    'notifications_denied_hint': {
+      'en':
+          'Enable notifications for EVA Canteen in your device or browser settings to receive background alerts. In-app alerts still work while open.',
+      'ar':
+          'فعّل الإشعارات لتطبيق كانتين إيفا من إعدادات الجهاز أو المتصفح لتلقي التنبيهات في الخلفية. التنبيهات داخل التطبيق تعمل دائماً أثناء الفتح.',
+    },
+    'notifications_view_order_cta': {'en': 'View', 'ar': 'عرض'},
+    'order_ready_channel_name': {
+      'en': 'Order Ready Alerts',
+      'ar': 'تنبيهات جهوزية الطلب',
+    },
+    'order_ready_channel_desc': {
+      'en': 'High-priority alerts when your EVA Canteen order is ready for pickup.',
+      'ar': 'تنبيهات عالية الأولوية عند جهوزية طلبك للاستلام من كانتين إيفا.',
+    },
   };
 }

@@ -14,6 +14,9 @@ const WebSocket = require('ws');
 
 const db = require('./database');
 const { hashPassword, comparePassword } = require('./password_hash');
+const { createPushService, normalizePushLocale } = require('./push_service');
+
+const pushService = createPushService({ db });
 
 const app = express();
 app.set('trust proxy', 1);
@@ -83,6 +86,7 @@ const SETTINGS_KEY_PAYMENT_METHODS = 'payment_methods';
 const VALID_ORDER_STATUSES = new Set(['pending', 'preparing', 'delivered']);
 const VALID_PROFILE_PICS = new Set(['pic1', 'pic2', 'pic3']);
 const VALID_PAYMENT_METHODS = new Set(['cash', 'card', 'wallet']);
+const VALID_PUSH_PLATFORMS = new Set(['android', 'ios', 'web']);
 
 const clients = new Map();
 const failedAdminLoginAttempts = new Map();
@@ -120,11 +124,16 @@ function normalizeProfilePic(rawPic) {
     return 'pic2';
 }
 
+function extractBearerToken(req) {
+    const authHeader = req.headers.authorization || '';
+    return authHeader.startsWith('Bearer ') ? authHeader.slice(7).trim() : null;
+}
+
 app.use(express.json({ limit: '6mb' }));
 app.use((req, res, next) => {
     res.setHeader('Access-Control-Allow-Origin', '*');
     res.setHeader('Access-Control-Allow-Headers', 'Content-Type, Authorization');
-    res.setHeader('Access-Control-Allow-Methods', 'GET, POST, OPTIONS');
+    res.setHeader('Access-Control-Allow-Methods', 'GET, POST, DELETE, OPTIONS');
     if (WEB_MODE === 'flutter') {
         res.setHeader('Cross-Origin-Opener-Policy', 'same-origin');
         res.setHeader('Cross-Origin-Embedder-Policy', 'credentialless');
@@ -140,10 +149,89 @@ app.get('/api/health', (_req, res) => {
     res.json({ ok: true, version: '1.1.0', mode: WEB_MODE });
 });
 
+app.post('/api/push-tokens', async (req, res) => {
+    try {
+        const decoded = verifyAuthToken(extractBearerToken(req));
+        const userRole = decoded?.role;
+        const userEmail = sanitizeEmail(decoded?.email);
+        if (!decoded || !userEmail || (userRole !== 'user' && userRole !== 'admin')) {
+            res.status(401).json({ error: 'Unauthorized' });
+            return;
+        }
+
+        if (userRole === 'user') {
+            const existingUser = await db.get('SELECT email FROM users WHERE email = ?', [userEmail]);
+            if (!existingUser) {
+                res.status(401).json({ error: 'Account not found' });
+                return;
+            }
+        }
+
+        const rawToken = typeof req.body?.token === 'string' ? req.body.token.trim() : '';
+        if (rawToken.length < 16 || rawToken.length > 4096) {
+            res.status(400).json({ error: 'Invalid push token.' });
+            return;
+        }
+
+        const rawPlatform = typeof req.body?.platform === 'string'
+            ? req.body.platform.trim().toLowerCase()
+            : '';
+        if (!VALID_PUSH_PLATFORMS.has(rawPlatform)) {
+            res.status(400).json({ error: 'Invalid platform. Expected android, ios, or web.' });
+            return;
+        }
+
+        const locale = normalizePushLocale(req.body?.locale);
+
+        await db.run(
+            `INSERT INTO device_push_tokens (token, user_email, user_role, platform, locale, updated_at)
+             VALUES (?, ?, ?, ?, ?, CURRENT_TIMESTAMP)
+             ON CONFLICT(token) DO UPDATE SET
+                user_email = excluded.user_email,
+                user_role = excluded.user_role,
+                platform = excluded.platform,
+                locale = excluded.locale,
+                updated_at = CURRENT_TIMESTAMP`,
+            [rawToken, userEmail, userRole, rawPlatform, locale]
+        );
+
+        res.json({ ok: true });
+    } catch (err) {
+        console.error('Failed to register push token:', err);
+        res.status(500).json({ error: 'Failed to register push token.' });
+    }
+});
+
+app.delete('/api/push-tokens', async (req, res) => {
+    try {
+        const decoded = verifyAuthToken(extractBearerToken(req));
+        const userRole = decoded?.role;
+        const userEmail = sanitizeEmail(decoded?.email);
+        if (!decoded || !userEmail || (userRole !== 'user' && userRole !== 'admin')) {
+            res.status(401).json({ error: 'Unauthorized' });
+            return;
+        }
+
+        const rawToken = typeof req.body?.token === 'string' ? req.body.token.trim() : '';
+        if (rawToken.length < 16 || rawToken.length > 4096) {
+            res.status(400).json({ error: 'Invalid push token.' });
+            return;
+        }
+
+        const result = await db.run(
+            'DELETE FROM device_push_tokens WHERE token = ? AND LOWER(user_email) = ?',
+            [rawToken, userEmail]
+        );
+
+        res.json({ ok: true, deleted: (result.changes || 0) > 0 });
+    } catch (err) {
+        console.error('Failed to unregister push token:', err);
+        res.status(500).json({ error: 'Failed to unregister push token.' });
+    }
+});
+
 app.post('/api/upload-image', (req, res) => {
-    const authHeader = req.headers.authorization || '';
-    const bearerToken = authHeader.startsWith('Bearer ') ? authHeader.slice(7) : null;
-    const decoded = verifyAuthToken(bearerToken);
+    const decoded = verifyAuthToken(extractBearerToken(req));
     if (!decoded || decoded.role !== 'admin') {
         res.status(401).json({ error: 'Unauthorized' });
         return;
@@ -1145,9 +1233,37 @@ async function handleUpdateOrderStatus(clientInfo, payload) {
         return;
     }
 
-    await db.run('UPDATE orders SET status = ? WHERE id = ?', [newStatus, orderId]);
-    const updatedOrder = await getOrderById(orderId);
+    let shouldNotifyReady = false;
+    let foundOrder = false;
 
+    await db.withTransaction(async () => {
+        const existing = await db.get(
+            'SELECT status, ready_notified_at FROM orders WHERE id = ?',
+            [orderId]
+        );
+        if (!existing) {
+            return;
+        }
+        foundOrder = true;
+
+        await db.run('UPDATE orders SET status = ? WHERE id = ?', [newStatus, orderId]);
+
+        if (existing.status !== 'delivered' && newStatus === 'delivered') {
+            const claim = await db.run(
+                'UPDATE orders SET ready_notified_at = ? WHERE id = ? AND ready_notified_at IS NULL',
+                [new Date().toISOString(), orderId]
+            );
+            shouldNotifyReady = (claim.changes || 0) === 1;
+        } else if (existing.status === 'delivered' && newStatus === 'pending') {
+            await db.run('UPDATE orders SET ready_notified_at = NULL WHERE id = ?', [orderId]);
+        }
+    });
+
+    if (!foundOrder) {
+        return;
+    }
+
+    const updatedOrder = await getOrderById(orderId);
     if (!updatedOrder) {
         return;
     }
@@ -1161,6 +1277,12 @@ async function handleUpdateOrderStatus(clientInfo, payload) {
     broadcastToManagement('order_status_updated_broadcast', updatePayload);
     if (updatedOrder.user?.email && updatedOrder.user.email !== 'Guest') {
         sendToUser(updatedOrder.user.email, 'my_order_updated', updatePayload);
+
+        if (shouldNotifyReady) {
+            pushService.sendOrderReadyNotification(updatedOrder).catch((err) => {
+                console.error(`Failed to send order ready push for ${orderId}:`, err);
+            });
+        }
     }
 }
 
@@ -2415,6 +2537,7 @@ async function start() {
     try {
         await db.initDatabase();
         console.log('Database initialized successfully.');
+        pushService.init();
 
         server.listen(PORT, HOST, () => {
             const localIp = getLocalIpAddress();

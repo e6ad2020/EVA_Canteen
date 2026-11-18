@@ -13,7 +13,7 @@
     "serve:web-flutter": "node server.js --web-flutter",
     "start:old-web": "node server.js --old-web",
     "old-web": "node server.js --old-web",
-    "check": "node --check server.js && node --check script.js && node --check database.js && node --check password_hash.js && node --check db_cli.js && node --check hash_tool.js",
+    "check": "node --check server.js && node --check script.js && node --check database.js && node --check push_service.js && node --check password_hash.js && node --check db_cli.js && node --check hash_tool.js",
     "verify": "node verification/verify_backend_v1_1.js",
     "build:flutter": "cd flutter_app && flutter build web --wasm --no-web-resources-cdn",
     "build:android": "cd flutter_app && flutter build apk --release --target-platform android-arm64 --split-per-abi",
@@ -23,6 +23,7 @@
   },
   "dependencies": {
     "express": "^5.1.0",
+    "firebase-admin": "^14.5.1",
     "jsonwebtoken": "^9.0.2",
     "open": "^11.0.0",
     "selfsigned": "^2.4.1",

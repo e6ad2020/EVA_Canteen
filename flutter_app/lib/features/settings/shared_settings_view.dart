@@ -5,6 +5,8 @@ import 'package:material_ui/material_ui.dart';
 
 import '../../core/localization/eva_i18n.dart';
 import '../../core/models/domain_models.dart';
+import '../../core/notifications/notification_providers.dart';
+import '../../core/notifications/notification_service.dart';
 import '../../core/state/canteen_providers.dart';
 import '../../design_system/eva_theme.dart';
 import '../../design_system/widgets/eva_widgets.dart';
@@ -371,8 +373,16 @@ class SharedSettingsView extends ConsumerWidget {
                       ),
                       const SizedBox(height: 16),
 
+                      if (user == null || user.isStudent) ...[
+                        const EvaReveal(
+                          index: 3,
+                          child: _OrderReadyAlertsCard(),
+                        ),
+                        const SizedBox(height: 16),
+                      ],
+
                       EvaReveal(
-                        index: 3,
+                        index: 4,
                         child: EvaSurfaceCard(
                           padding: const EdgeInsets.all(20),
                           child: Column(
@@ -990,3 +1000,137 @@ class _AccentSwatchChip extends StatelessWidget {
     );
   }
 }
+
+class _OrderReadyAlertsCard extends ConsumerWidget {
+  const _OrderReadyAlertsCard();
+
+  @override
+  Widget build(BuildContext context, WidgetRef ref) {
+    final i18n = ref.watch(i18nProvider);
+    final tokens = EvaTokens.of(context);
+    final notifState = ref.watch(notificationControllerProvider);
+    final perm = notifState.permissionState;
+
+    final (statusLabel, badgeBg, badgeFg, icon) = switch (perm) {
+      PushPermissionState.authorized => (
+        i18n.t('notifications_status_enabled'),
+        tokens.statusDeliveredBg,
+        tokens.statusDeliveredFg,
+        Icons.notifications_active_rounded,
+      ),
+      PushPermissionState.permanentlyDenied => (
+        i18n.t('notifications_status_denied'),
+        tokens.statusClosedBg,
+        tokens.statusClosedFg,
+        Icons.notifications_off_outlined,
+      ),
+      PushPermissionState.unsupported => (
+        i18n.t('notifications_status_unavailable'),
+        tokens.surfaceSubtle,
+        tokens.textSecondary,
+        Icons.bolt_rounded,
+      ),
+      PushPermissionState.denied || PushPermissionState.unknown => (
+        i18n.t('notifications_status_disabled'),
+        tokens.brandSoftBg,
+        tokens.brandPrimary,
+        Icons.notifications_none_rounded,
+      ),
+    };
+
+    final canRequest =
+        perm == PushPermissionState.denied ||
+        perm == PushPermissionState.unknown;
+
+    return EvaSurfaceCard(
+      key: const ValueKey('order_ready_alerts_card'),
+      padding: const EdgeInsets.all(20),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Row(
+            children: [
+              Container(
+                width: 40,
+                height: 40,
+                decoration: BoxDecoration(
+                  color: badgeBg,
+                  borderRadius: BorderRadius.circular(12),
+                ),
+                child: Icon(icon, color: badgeFg, size: 22),
+              ),
+              const SizedBox(width: 12),
+              Expanded(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Text(
+                      i18n.t('order_ready_alerts_title'),
+                      style: Theme.of(context).textTheme.titleMedium,
+                    ),
+                    const SizedBox(height: 2),
+                    Text(
+                      i18n.t('order_ready_alerts_sub'),
+                      style: Theme.of(context).textTheme.bodySmall,
+                    ),
+                  ],
+                ),
+              ),
+            ],
+          ),
+          const SizedBox(height: 14),
+          Wrap(
+            spacing: 10,
+            runSpacing: 10,
+            crossAxisAlignment: WrapCrossAlignment.center,
+            children: [
+              Container(
+                key: const ValueKey('order_ready_alerts_status_badge'),
+                padding: const EdgeInsets.symmetric(
+                  horizontal: 12,
+                  vertical: 6,
+                ),
+                decoration: BoxDecoration(
+                  color: badgeBg,
+                  borderRadius: BorderRadius.circular(999),
+                ),
+                child: Text(
+                  statusLabel,
+                  style: Theme.of(context).textTheme.labelMedium?.copyWith(
+                    color: badgeFg,
+                    fontWeight: FontWeight.w700,
+                  ),
+                ),
+              ),
+              if (canRequest)
+                FilledButton.tonalIcon(
+                  key: const ValueKey('enable_order_alerts_button'),
+                  onPressed: notifState.syncBusy
+                      ? null
+                      : () {
+                          HapticFeedback.selectionClick();
+                          ref
+                              .read(notificationControllerProvider.notifier)
+                              .requestPermissionAndSync();
+                        },
+                  icon: const Icon(Icons.notifications_active_outlined, size: 18),
+                  label: Text(i18n.t('notifications_enable_cta')),
+                ),
+            ],
+          ),
+          if (perm == PushPermissionState.permanentlyDenied) ...[
+            const SizedBox(height: 12),
+            Text(
+              i18n.t('notifications_denied_hint'),
+              key: const ValueKey('order_ready_alerts_denied_hint'),
+              style: Theme.of(
+                context,
+              ).textTheme.bodySmall?.copyWith(color: tokens.textSecondary),
+            ),
+          ],
+        ],
+      ),
+    );
+  }
+}
+

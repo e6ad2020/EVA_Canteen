@@ -5,6 +5,7 @@ import 'package:material_ui/material_ui.dart';
 
 import '../../core/models/domain_models.dart';
 import '../../core/network/eva_socket_client.dart';
+import '../../core/notifications/notification_providers.dart';
 import '../../core/state/canteen_providers.dart';
 import '../../design_system/eva_theme.dart';
 import '../../design_system/widgets/eva_widgets.dart';
@@ -27,18 +28,39 @@ class StudentShellScreen extends ConsumerWidget {
     final hasLiveInFlight =
         activeOrder != null && activeOrder.status != OrderStatus.delivered;
 
+    ref
+        .read(notificationControllerProvider.notifier)
+        .setViewingOrdersTab(navigationShell.currentIndex == 1);
+
     ref.listen(canteenStoreProvider.select((s) => s.notice), (prev, next) {
       if (next != null && next.id != prev?.id) {
         if (next.isCelebration) {
           HapticFeedback.heavyImpact();
           SystemSound.play(SystemSoundType.alert);
         }
+        final targetOrderId = next.orderId;
+        final showViewAction =
+            next.isCelebration &&
+            navigationShell.currentIndex != 1 &&
+            targetOrderId != null &&
+            targetOrderId.isNotEmpty;
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(
             backgroundColor: next.isError
                 ? tokens.statusClosedFg
                 : (next.isCelebration ? tokens.statusDeliveredFg : null),
             content: Text(next.message),
+            action: showViewAction
+                ? SnackBarAction(
+                    label: i18n.t('notifications_view_order_cta'),
+                    textColor: Colors.white,
+                    onPressed: () {
+                      context.go(
+                        '/orders?orderId=${Uri.encodeQueryComponent(targetOrderId)}',
+                      );
+                    },
+                  )
+                : null,
           ),
         );
         ref.read(canteenStoreProvider.notifier).clearNotice();

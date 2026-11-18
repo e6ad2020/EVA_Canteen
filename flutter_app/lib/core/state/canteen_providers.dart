@@ -175,15 +175,32 @@ class UiBannerNotice extends Equatable {
     required this.message,
     this.isError = false,
     this.isCelebration = false,
+    this.orderId,
   });
 
   final int id;
   final String message;
   final bool isError;
   final bool isCelebration;
+  final String? orderId;
 
   @override
-  List<Object?> get props => [id, message, isError, isCelebration];
+  List<Object?> get props => [id, message, isError, isCelebration, orderId];
+}
+
+class OrderStatusTransitionEvent extends Equatable {
+  const OrderStatusTransitionEvent({
+    required this.seq,
+    required this.order,
+    this.previousStatus,
+  });
+
+  final int seq;
+  final CanteenOrder order;
+  final OrderStatus? previousStatus;
+
+  @override
+  List<Object?> get props => [seq, order, previousStatus];
 }
 
 String _encodeJsonForCache(Object? encodable) => jsonEncode(encodable);
@@ -215,6 +232,7 @@ class CanteenStoreState extends Equatable {
     this.checkoutBusy = false,
     this.adminNewOrderTick = 0,
     this.lastConfirmedOrder,
+    this.lastOrderUpdate,
     this.notice,
   }) : _cache = _CanteenStoreCache();
 
@@ -236,6 +254,7 @@ class CanteenStoreState extends Equatable {
     required this.checkoutBusy,
     required this.adminNewOrderTick,
     required this.lastConfirmedOrder,
+    required this.lastOrderUpdate,
     required this.notice,
     required this._cache,
   });
@@ -257,6 +276,7 @@ class CanteenStoreState extends Equatable {
   final bool checkoutBusy;
   final int adminNewOrderTick;
   final CanteenOrder? lastConfirmedOrder;
+  final OrderStatusTransitionEvent? lastOrderUpdate;
   final UiBannerNotice? notice;
   final _CanteenStoreCache _cache;
 
@@ -362,6 +382,7 @@ class CanteenStoreState extends Equatable {
     bool? checkoutBusy,
     int? adminNewOrderTick,
     CanteenOrder? lastConfirmedOrder,
+    OrderStatusTransitionEvent? lastOrderUpdate,
     UiBannerNotice? notice,
     bool clearNotice = false,
   }) {
@@ -394,6 +415,7 @@ class CanteenStoreState extends Equatable {
       checkoutBusy: checkoutBusy ?? this.checkoutBusy,
       adminNewOrderTick: adminNewOrderTick ?? this.adminNewOrderTick,
       lastConfirmedOrder: lastConfirmedOrder ?? this.lastConfirmedOrder,
+      lastOrderUpdate: lastOrderUpdate ?? this.lastOrderUpdate,
       notice: clearNotice ? null : (notice ?? this.notice),
       cache: nextCache,
     );
@@ -418,6 +440,7 @@ class CanteenStoreState extends Equatable {
     checkoutBusy,
     adminNewOrderTick,
     lastConfirmedOrder,
+    lastOrderUpdate,
     notice,
   ];
 }
@@ -430,6 +453,7 @@ class CanteenStoreNotifier extends Notifier<CanteenStoreState> {
   static const _kSavedSession = 'eva_saved_session_v2';
 
   int _noticeSeq = 0;
+  int _orderUpdateSeq = 0;
   Completer<CanteenOrder?>? _pendingCheckoutCompleter;
   Completer<String?>? _pendingAuthCompleter;
   final Map<String, Timer> _cacheWriteTimers = {};
@@ -558,6 +582,7 @@ class CanteenStoreNotifier extends Notifier<CanteenStoreState> {
     String message, {
     bool isError = false,
     bool isCelebration = false,
+    String? orderId,
   }) {
     _noticeSeq += 1;
     state = state.copyWith(
@@ -566,8 +591,16 @@ class CanteenStoreNotifier extends Notifier<CanteenStoreState> {
         message: message,
         isError: isError,
         isCelebration: isCelebration,
+        orderId: orderId,
       ),
     );
+  }
+
+  void emitOrderReadyNotice({
+    required String orderId,
+    required String message,
+  }) {
+    _emitNotice(message, isCelebration: true, orderId: orderId);
   }
 
   void clearNotice() {
@@ -774,6 +807,9 @@ class CanteenStoreNotifier extends Notifier<CanteenStoreState> {
           final updatedOrder = CanteenOrder.fromJson(
             Map<String, dynamic>.from(payload['updatedOrder'] as Map),
           );
+          final prevOrder = state.myOrders
+              .where((o) => o.id == updatedOrder.id)
+              .firstOrNull;
           final nextList = [
             for (final o in state.myOrders)
               if (o.id == updatedOrder.id) updatedOrder else o,
@@ -781,17 +817,15 @@ class CanteenStoreNotifier extends Notifier<CanteenStoreState> {
           if (!nextList.any((o) => o.id == updatedOrder.id)) {
             nextList.insert(0, updatedOrder);
           }
-          state = state.copyWith(myOrders: nextList);
-
-          if (updatedOrder.status == OrderStatus.delivered) {
-            final translator = ref.read(i18nProvider);
-            _emitNotice(
-              translator.t('order_ready_toast', {
-                'num': updatedOrder.pickupNumber,
-              }),
-              isCelebration: true,
-            );
-          }
+          _orderUpdateSeq += 1;
+          state = state.copyWith(
+            myOrders: nextList,
+            lastOrderUpdate: OrderStatusTransitionEvent(
+              seq: _orderUpdateSeq,
+              order: updatedOrder,
+              previousStatus: prevOrder?.status,
+            ),
+          );
         }
         break;
 

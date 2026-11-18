@@ -7,6 +7,7 @@ import 'package:material_ui/material_ui.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 
 import 'app/app_router.dart';
+import 'core/notifications/notification_providers.dart';
 import 'core/state/canteen_providers.dart';
 import 'design_system/eva_theme.dart';
 
@@ -28,6 +29,7 @@ class EvaCanteenApp extends ConsumerWidget {
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
+    ref.watch(notificationControllerProvider);
     final prefs = ref.watch(appPreferencesProvider);
     final router = ref.watch(appRouterProvider);
     final i18n = ref.watch(i18nProvider);

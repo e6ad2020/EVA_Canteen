@@ -3,6 +3,7 @@ import 'package:go_router/go_router.dart';
 import 'package:material_ui/material_ui.dart';
 
 import '../core/models/domain_models.dart';
+import '../core/notifications/notification_providers.dart';
 import '../core/state/canteen_providers.dart';
 import '../features/admin/admin_analytics_view.dart';
 import '../features/admin/admin_catalog_studio_view.dart';
@@ -49,18 +50,24 @@ final appRouterProvider = Provider<GoRouter>((ref) {
     ref.read(canteenStoreProvider).currentUser,
   );
 
-  ref.listen<UserProfile?>(
-    canteenStoreProvider.select((s) => s.currentUser),
-    (_, next) => authRefresh.value = next,
-  );
-  ref.onDispose(authRefresh.dispose);
-
   final initialUser = authRefresh.value;
-  final initialLocation = initialUser == null
-      ? '/welcome'
-      : (initialUser.isAdmin ? '/admin/kds' : '/menu');
+  final initialPending = ref.read(pendingDeepLinkProvider);
+  String initialLocation;
+  if (initialUser == null) {
+    initialLocation = '/welcome';
+  } else if (initialUser.isAdmin) {
+    initialLocation = '/admin/kds';
+    if (initialPending != null) {
+      Future.microtask(() => ref.read(pendingDeepLinkProvider.notifier).clear());
+    }
+  } else if (initialPending != null && initialPending.isNotEmpty) {
+    initialLocation = initialPending;
+    Future.microtask(() => ref.read(pendingDeepLinkProvider.notifier).clear());
+  } else {
+    initialLocation = '/menu';
+  }
 
-  return GoRouter(
+  final router = GoRouter(
     initialLocation: initialLocation,
     refreshListenable: authRefresh,
     redirect: (context, state) {
@@ -111,7 +118,9 @@ final appRouterProvider = Provider<GoRouter>((ref) {
             routes: [
               GoRoute(
                 path: '/orders',
-                builder: (context, state) => const StudentOrdersView(),
+                builder: (context, state) => StudentOrdersView(
+                  highlightedOrderId: state.uri.queryParameters['orderId'],
+                ),
               ),
             ],
           ),
@@ -177,4 +186,35 @@ final appRouterProvider = Provider<GoRouter>((ref) {
       ),
     ],
   );
+
+  void consumePendingIfReady(UserProfile? user, String? pending) {
+    if (pending == null || pending.isEmpty || user == null) return;
+    if (user.isStudent) {
+      Future.microtask(
+        () => ref.read(pendingDeepLinkProvider.notifier).clear(),
+      );
+      router.go(pending);
+    } else if (user.isAdmin) {
+      Future.microtask(
+        () => ref.read(pendingDeepLinkProvider.notifier).clear(),
+      );
+    }
+  }
+
+  ref.listen<UserProfile?>(
+    canteenStoreProvider.select((s) => s.currentUser),
+    (_, next) {
+      authRefresh.value = next;
+      consumePendingIfReady(next, ref.read(pendingDeepLinkProvider));
+    },
+  );
+  ref.listen<String?>(pendingDeepLinkProvider, (_, next) {
+    consumePendingIfReady(authRefresh.value, next);
+  });
+  ref.onDispose(() {
+    authRefresh.dispose();
+    router.dispose();
+  });
+
+  return router;
 });
