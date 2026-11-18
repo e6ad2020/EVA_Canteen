@@ -311,6 +311,535 @@ class _EvaGlassBarState extends State<EvaGlassBar>
   }
 }
 
+class EvaFloatingNavItem {
+  const EvaFloatingNavItem({
+    required this.icon,
+    required this.selectedIcon,
+    required this.label,
+    this.showDotBadge = false,
+    this.badgeCount,
+  });
+
+  final IconData icon;
+  final IconData selectedIcon;
+  final String label;
+  final bool showDotBadge;
+  final int? badgeCount;
+}
+
+/// Floating stadium-pill bottom navigation bar inspired by NuvioMobile's
+/// `FloatingNavigationBar` & `JellyTabs` — featuring a volume-preserving
+/// jelly-stretch sliding indicator, radial accent glow, tap + horizontal
+/// thumb-scrubbing gestures, full RTL mirroring, and zero `BackdropFilter`.
+class EvaFloatingNavBar extends StatefulWidget {
+  const EvaFloatingNavBar({
+    super.key,
+    required this.selectedIndex,
+    required this.onDestinationSelected,
+    required this.items,
+  });
+
+  final int selectedIndex;
+  final ValueChanged<int> onDestinationSelected;
+  final List<EvaFloatingNavItem> items;
+
+  static const double shellWideBreakpoint = 840.0;
+
+  /// Bottom scroll clearance so scrollable content passes behind the floating
+  /// capsule's margins while resting completely above it at the bottom.
+  static double bottomClearance(BuildContext context) {
+    return MediaQuery.sizeOf(context).width < shellWideBreakpoint ? 86.0 : 0.0;
+  }
+
+  @override
+  State<EvaFloatingNavBar> createState() => _EvaFloatingNavBarState();
+}
+
+class _EvaFloatingNavBarState extends State<EvaFloatingNavBar>
+    with SingleTickerProviderStateMixin {
+  static const double _pillInset = 4.5;
+
+  late final AnimationController _ctrl;
+  late double _fromLogicalPos;
+  late double _toLogicalPos;
+  double? _dragLogicalPos;
+  int? _lastDragHapticIndex;
+
+  @override
+  void initState() {
+    super.initState();
+    final initial = widget.selectedIndex
+        .clamp(0, math.max(0, widget.items.length - 1))
+        .toDouble();
+    _fromLogicalPos = initial;
+    _toLogicalPos = initial;
+    _ctrl = AnimationController(
+      vsync: this,
+      duration: const Duration(milliseconds: 280),
+      value: 1.0,
+    );
+  }
+
+  @override
+  void didUpdateWidget(covariant EvaFloatingNavBar oldWidget) {
+    super.didUpdateWidget(oldWidget);
+    final maxIdx = math.max(0, widget.items.length - 1).toDouble();
+    _fromLogicalPos = _fromLogicalPos.clamp(0.0, maxIdx);
+    _toLogicalPos = _toLogicalPos.clamp(0.0, maxIdx);
+
+    if (oldWidget.selectedIndex != widget.selectedIndex &&
+        _dragLogicalPos == null) {
+      final current = _currentLogicalPosition;
+      _fromLogicalPos = current;
+      _toLogicalPos = widget.selectedIndex.toDouble().clamp(0.0, maxIdx);
+      final disableMotion =
+          MediaQuery.maybeDisableAnimationsOf(context) ?? false;
+      if (disableMotion) {
+        _ctrl.value = 1.0;
+      } else {
+        _ctrl.forward(from: 0.0);
+      }
+    }
+  }
+
+  @override
+  void dispose() {
+    _ctrl.dispose();
+    super.dispose();
+  }
+
+  double get _currentLogicalPosition {
+    if (_dragLogicalPos != null) return _dragLogicalPos!;
+    final t = Curves.easeOutCubic.transform(_ctrl.value);
+    return _fromLogicalPos + (_toLogicalPos - _fromLogicalPos) * t;
+  }
+
+  double _dxToLogicalPos({
+    required double dx,
+    required double trackWidth,
+    required int count,
+    required bool isRtl,
+  }) {
+    final usableW = math.max(1.0, trackWidth - _pillInset * 2);
+    final tabW = usableW / count;
+    final visualPos = ((dx - _pillInset) / tabW - 0.5).clamp(
+      0.0,
+      (count - 1).toDouble(),
+    );
+    return isRtl ? (count - 1) - visualPos : visualPos;
+  }
+
+  void _updateDrag({
+    required double dx,
+    required double trackWidth,
+    required int count,
+    required bool isRtl,
+  }) {
+    final nextLogical = _dxToLogicalPos(
+      dx: dx,
+      trackWidth: trackWidth,
+      count: count,
+      isRtl: isRtl,
+    );
+    final nearest = nextLogical.round().clamp(0, count - 1);
+    if (_lastDragHapticIndex != null && _lastDragHapticIndex != nearest) {
+      HapticFeedback.selectionClick();
+    }
+    _lastDragHapticIndex = nearest;
+    setState(() {
+      _dragLogicalPos = nextLogical;
+    });
+  }
+
+  void _finishDrag(int count) {
+    final dragged = _dragLogicalPos;
+    if (dragged == null) return;
+    final targetIdx = dragged.round().clamp(0, count - 1);
+    setState(() {
+      _fromLogicalPos = dragged;
+      _toLogicalPos = targetIdx.toDouble();
+      _dragLogicalPos = null;
+      _lastDragHapticIndex = null;
+    });
+    final disableMotion = MediaQuery.maybeDisableAnimationsOf(context) ?? false;
+    if (disableMotion) {
+      _ctrl.value = 1.0;
+    } else {
+      _ctrl.forward(from: 0.0);
+    }
+    if (targetIdx != widget.selectedIndex) {
+      widget.onDestinationSelected(targetIdx);
+    }
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final count = widget.items.length;
+    if (count == 0) return const SizedBox.shrink();
+
+    final tokens = EvaTokens.of(context);
+    final isRtl = Directionality.of(context) == TextDirection.rtl;
+    final isDense = count >= 5;
+    final screenW = MediaQuery.sizeOf(context).width;
+
+    final double horizontalMargin = isDense
+        ? (screenW < 390 ? 10.0 : 16.0)
+        : (screenW < 390 ? 20.0 : 28.0);
+    final double maxCapsuleWidth = isDense ? 492.0 : 400.0;
+    final double trackHeight = isDense ? 60.0 : 62.0;
+
+    final capsuleBg = tokens.isNight
+        ? Color.alphaBlend(
+            tokens.brandPrimary.withValues(alpha: 0.07),
+            const Color(0xF2151922),
+          )
+        : tokens.surfaceElevated;
+    final capsuleBorder = Color.lerp(
+      tokens.borderSubtle,
+      tokens.brandPrimary,
+      tokens.isNight ? 0.30 : (tokens.isLiquidGlass ? 0.26 : 0.16),
+    )!;
+
+    final clampedScaler = MediaQuery.textScalerOf(
+      context,
+    ).clamp(minScaleFactor: 0.85, maxScaleFactor: 1.12);
+
+    return MediaQuery(
+      data: MediaQuery.of(context).copyWith(textScaler: clampedScaler),
+      child: Padding(
+        padding: EdgeInsets.fromLTRB(horizontalMargin, 6, horizontalMargin, 12),
+        child: Align(
+          alignment: Alignment.bottomCenter,
+          heightFactor: 1.0,
+          child: ConstrainedBox(
+            constraints: BoxConstraints(maxWidth: maxCapsuleWidth),
+            child: LayoutBuilder(
+              builder: (context, constraints) {
+                final trackWidth = constraints.maxWidth;
+
+                return GestureDetector(
+                  behavior: HitTestBehavior.opaque,
+                  onHorizontalDragStart: (details) {
+                    _lastDragHapticIndex = widget.selectedIndex;
+                    _updateDrag(
+                      dx: details.localPosition.dx,
+                      trackWidth: trackWidth,
+                      count: count,
+                      isRtl: isRtl,
+                    );
+                  },
+                  onHorizontalDragUpdate: (details) {
+                    _updateDrag(
+                      dx: details.localPosition.dx,
+                      trackWidth: trackWidth,
+                      count: count,
+                      isRtl: isRtl,
+                    );
+                  },
+                  onHorizontalDragEnd: (_) => _finishDrag(count),
+                  onHorizontalDragCancel: () {
+                    setState(() {
+                      _dragLogicalPos = null;
+                      _lastDragHapticIndex = null;
+                      _fromLogicalPos = widget.selectedIndex.toDouble();
+                      _toLogicalPos = widget.selectedIndex.toDouble();
+                      _ctrl.value = 1.0;
+                    });
+                  },
+                  child: AnimatedBuilder(
+                    animation: _ctrl,
+                    builder: (context, _) {
+                      final rawT = _ctrl.value;
+                      final logicalPos = _currentLogicalPosition;
+                      final visualPos = isRtl
+                          ? (count - 1) - logicalPos
+                          : logicalPos;
+
+                      final flightWave = _dragLogicalPos != null
+                          ? 0.35
+                          : math.sin(rawT * math.pi);
+                      final hopDistance = (_toLogicalPos - _fromLogicalPos)
+                          .abs()
+                          .clamp(0.0, 2.2);
+                      final pillScaleX =
+                          1.0 + 0.13 * flightWave * (0.65 + 0.35 * hopDistance);
+                      final pillScaleY = 1.0 - 0.055 * flightWave;
+                      final trackScale = _dragLogicalPos != null
+                          ? 1.014
+                          : (1.0 + 0.008 * flightWave);
+
+                      return Transform.scale(
+                        scale: trackScale,
+                        child: Container(
+                          height: trackHeight,
+                          decoration: BoxDecoration(
+                            color: capsuleBg,
+                            borderRadius: BorderRadius.circular(999),
+                            border: Border.all(
+                              color: capsuleBorder,
+                              width: math.max(tokens.borderWidth, 1.25),
+                            ),
+                            boxShadow: tokens.isNight
+                                ? [
+                                    BoxShadow(
+                                      color: Colors.black.withValues(
+                                        alpha: 0.44,
+                                      ),
+                                      blurRadius: 22,
+                                      spreadRadius: -2,
+                                      offset: const Offset(0, 9),
+                                    ),
+                                    BoxShadow(
+                                      color: tokens.brandPrimary.withValues(
+                                        alpha: 0.12,
+                                      ),
+                                      blurRadius: 16,
+                                      offset: const Offset(0, 2),
+                                    ),
+                                  ]
+                                : [
+                                    BoxShadow(
+                                      color: tokens.brandPrimary.withValues(
+                                        alpha: tokens.isLiquidGlass
+                                            ? 0.14
+                                            : 0.09,
+                                      ),
+                                      blurRadius: 24,
+                                      spreadRadius: -2,
+                                      offset: const Offset(0, 10),
+                                    ),
+                                    const BoxShadow(
+                                      color: Color(0x120F172A),
+                                      blurRadius: 8,
+                                      offset: Offset(0, 3),
+                                    ),
+                                  ],
+                          ),
+                          clipBehavior: Clip.antiAlias,
+                          child: Stack(
+                            fit: StackFit.expand,
+                            children: [
+                              CustomPaint(
+                                painter: _NuvioJellyPillPainter(
+                                  visualPosition: visualPos,
+                                  count: count,
+                                  inset: _pillInset,
+                                  pillScaleX: pillScaleX,
+                                  pillScaleY: pillScaleY,
+                                  accentColor: tokens.brandPrimary,
+                                  isNight: tokens.isNight,
+                                ),
+                              ),
+                              Padding(
+                                padding: const EdgeInsets.all(_pillInset),
+                                child: Row(
+                                  children: [
+                                    for (int i = 0; i < count; i++)
+                                      Expanded(
+                                        child: _buildTabItem(
+                                          context: context,
+                                          tokens: tokens,
+                                          item: widget.items[i],
+                                          index: i,
+                                          selectionProgress:
+                                              (1.0 - (logicalPos - i).abs())
+                                                  .clamp(0.0, 1.0),
+                                          isDense: isDense,
+                                        ),
+                                      ),
+                                  ],
+                                ),
+                              ),
+                            ],
+                          ),
+                        ),
+                      );
+                    },
+                  ),
+                );
+              },
+            ),
+          ),
+        ),
+      ),
+    );
+  }
+
+  Widget _buildTabItem({
+    required BuildContext context,
+    required EvaTokens tokens,
+    required EvaFloatingNavItem item,
+    required int index,
+    required double selectionProgress,
+    required bool isDense,
+  }) {
+    final isSelected = selectionProgress >= 0.5;
+    final activeFg = tokens.isNight
+        ? Color.lerp(tokens.brandPrimary, Colors.white, 0.18)!
+        : tokens.brandPrimary;
+    final inactiveFg = tokens.textSecondary;
+    final fgColor = Color.lerp(inactiveFg, activeFg, selectionProgress)!;
+    final iconSize = isDense ? 20.0 : 22.0;
+
+    Widget iconWidget = Icon(
+      isSelected ? item.selectedIcon : item.icon,
+      size: iconSize,
+      color: fgColor,
+    );
+
+    if (item.badgeCount != null && item.badgeCount! > 0) {
+      iconWidget = Badge(
+        label: Text(
+          '${item.badgeCount}',
+          style: const TextStyle(fontSize: 9.5, fontWeight: FontWeight.w800),
+        ),
+        child: iconWidget,
+      );
+    } else if (item.showDotBadge) {
+      iconWidget = Badge(
+        smallSize: 7.5,
+        backgroundColor: tokens.accentAppetite,
+        child: iconWidget,
+      );
+    }
+
+    return Semantics(
+      selected: index == widget.selectedIndex,
+      button: true,
+      label: item.label,
+      child: GestureDetector(
+        behavior: HitTestBehavior.opaque,
+        onTap: () {
+          if (index != widget.selectedIndex) {
+            widget.onDestinationSelected(index);
+          }
+        },
+        child: Padding(
+          padding: EdgeInsets.symmetric(horizontal: isDense ? 2.0 : 4.0),
+          child: Column(
+            mainAxisAlignment: MainAxisAlignment.center,
+            children: [
+              Transform.translate(
+                offset: Offset(0, -1.0 * selectionProgress),
+                child: Transform.scale(
+                  scale: 1.0 + 0.08 * selectionProgress,
+                  child: iconWidget,
+                ),
+              ),
+              SizedBox(height: isDense ? 2.5 : 3.0),
+              Text(
+                item.label,
+                maxLines: 1,
+                softWrap: false,
+                overflow: TextOverflow.ellipsis,
+                textAlign: TextAlign.center,
+                style: Theme.of(context).textTheme.labelSmall?.copyWith(
+                  fontSize: isDense ? 10.5 : 11.5,
+                  height: 1.15,
+                  letterSpacing: isDense ? -0.15 : 0.0,
+                  color: fgColor,
+                  fontWeight: isSelected ? FontWeight.w800 : FontWeight.w600,
+                ),
+              ),
+            ],
+          ),
+        ),
+      ),
+    );
+  }
+}
+
+class _NuvioJellyPillPainter extends CustomPainter {
+  const _NuvioJellyPillPainter({
+    required this.visualPosition,
+    required this.count,
+    required this.inset,
+    required this.pillScaleX,
+    required this.pillScaleY,
+    required this.accentColor,
+    required this.isNight,
+  });
+
+  final double visualPosition;
+  final int count;
+  final double inset;
+  final double pillScaleX;
+  final double pillScaleY;
+  final Color accentColor;
+  final bool isNight;
+
+  @override
+  void paint(Canvas canvas, Size size) {
+    if (count <= 0 || size.width <= inset * 2 || size.height <= inset * 2) {
+      return;
+    }
+
+    final tabWidth = (size.width - inset * 2) / count;
+    final itemHeight = size.height - inset * 2;
+    final centerX = inset + (visualPosition + 0.5) * tabWidth;
+    final centerY = size.height / 2;
+
+    // 1. Subtle radial ambient glow behind active pill (modeled on NuvioMobile's drawJellyGlow)
+    final glowRadius = math.max(tabWidth * 1.45, 92.0);
+    final glowCenter = Offset(centerX, centerY);
+    final glowPaint = Paint()
+      ..shader = RadialGradient(
+        colors: [
+          accentColor.withValues(alpha: isNight ? 0.20 : 0.11),
+          accentColor.withValues(alpha: isNight ? 0.07 : 0.04),
+          accentColor.withValues(alpha: 0.0),
+        ],
+        stops: const [0.0, 0.48, 1.0],
+      ).createShader(Rect.fromCircle(center: glowCenter, radius: glowRadius));
+    canvas.drawRect(Offset.zero & size, glowPaint);
+
+    // 2. Volume-preserving jelly stadium pill
+    final rawLeft = centerX - (tabWidth * pillScaleX) / 2;
+    final rawRight = centerX + (tabWidth * pillScaleX) / 2;
+    final clampedLeft = rawLeft.clamp(inset, size.width - inset);
+    final clampedRight = rawRight.clamp(inset, size.width - inset);
+    final halfH = (itemHeight * pillScaleY) / 2;
+
+    final pillRect = Rect.fromLTRB(
+      clampedLeft,
+      centerY - halfH,
+      clampedRight,
+      centerY + halfH,
+    );
+    final pillRRect = RRect.fromRectAndRadius(
+      pillRect,
+      Radius.circular(pillRect.height / 2),
+    );
+
+    final fillPaint = Paint()
+      ..shader = LinearGradient(
+        begin: Alignment.topCenter,
+        end: Alignment.bottomCenter,
+        colors: [
+          accentColor.withValues(alpha: isNight ? 0.28 : 0.16),
+          accentColor.withValues(alpha: isNight ? 0.16 : 0.09),
+        ],
+      ).createShader(pillRect);
+    canvas.drawRRect(pillRRect, fillPaint);
+
+    final borderPaint = Paint()
+      ..style = PaintingStyle.stroke
+      ..strokeWidth = 1.1
+      ..color = accentColor.withValues(alpha: isNight ? 0.44 : 0.24);
+    canvas.drawRRect(pillRRect, borderPaint);
+  }
+
+  @override
+  bool shouldRepaint(covariant _NuvioJellyPillPainter oldDelegate) {
+    return oldDelegate.visualPosition != visualPosition ||
+        oldDelegate.count != count ||
+        oldDelegate.pillScaleX != pillScaleX ||
+        oldDelegate.pillScaleY != pillScaleY ||
+        oldDelegate.accentColor != accentColor ||
+        oldDelegate.isNight != isNight;
+  }
+}
+
 /// Tactile press scale micro-interaction that never blocks child gestures.
 class EvaPressable extends StatefulWidget {
   const EvaPressable({

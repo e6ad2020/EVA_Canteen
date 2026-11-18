@@ -309,7 +309,12 @@ class _AdminCatalogStudioViewState
                 )
               : canReorderIntraCategory
               ? ReorderableListView.builder(
-                  padding: const EdgeInsets.fromLTRB(16, 8, 16, 28),
+                  padding: EdgeInsets.fromLTRB(
+                    16,
+                    8,
+                    16,
+                    24 + EvaFloatingNavBar.bottomClearance(context),
+                  ),
                   buildDefaultDragHandles: false,
                   itemCount: filtered.length,
                   onReorderItem: (oldIndex, newIndex) {
@@ -351,12 +356,20 @@ class _AdminCatalogStudioViewState
                 )
               : LayoutBuilder(
                   builder: (context, constraints) {
+                    final navClearance = EvaFloatingNavBar.bottomClearance(
+                      context,
+                    );
                     final cols = constraints.maxWidth >= 1100
                         ? 3
                         : (constraints.maxWidth >= 700 ? 2 : 1);
                     if (cols == 1) {
                       return ListView.separated(
-                        padding: const EdgeInsets.fromLTRB(16, 8, 16, 28),
+                        padding: EdgeInsets.fromLTRB(
+                          16,
+                          8,
+                          16,
+                          24 + navClearance,
+                        ),
                         itemCount: filtered.length,
                         separatorBuilder: (_, _) => const SizedBox(height: 10),
                         itemBuilder: (context, idx) {
@@ -379,7 +392,12 @@ class _AdminCatalogStudioViewState
                       );
                     }
                     return GridView.builder(
-                      padding: const EdgeInsets.fromLTRB(16, 8, 16, 28),
+                      padding: EdgeInsets.fromLTRB(
+                        16,
+                        8,
+                        16,
+                        24 + navClearance,
+                      ),
                       gridDelegate: SliverGridDelegateWithFixedCrossAxisCount(
                         crossAxisCount: cols,
                         crossAxisSpacing: 12,
@@ -437,7 +455,12 @@ class _AdminCatalogStudioViewState
         ),
         Expanded(
           child: ReorderableListView.builder(
-            padding: const EdgeInsets.fromLTRB(16, 8, 16, 28),
+            padding: EdgeInsets.fromLTRB(
+              16,
+              8,
+              16,
+              24 + EvaFloatingNavBar.bottomClearance(context),
+            ),
             buildDefaultDragHandles: false,
             itemCount: activeCats.length,
             onReorderItem: (oldIndex, newIndex) {
@@ -568,7 +591,12 @@ class _AdminCatalogStudioViewState
     }
 
     return ListView.separated(
-      padding: const EdgeInsets.fromLTRB(16, 14, 16, 28),
+      padding: EdgeInsets.fromLTRB(
+        16,
+        14,
+        16,
+        24 + EvaFloatingNavBar.bottomClearance(context),
+      ),
       itemCount: allBundles.length,
       separatorBuilder: (_, _) => const SizedBox(height: 12),
       itemBuilder: (context, idx) {

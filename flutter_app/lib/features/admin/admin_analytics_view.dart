@@ -195,7 +195,12 @@ class _AdminAnalyticsViewState extends ConsumerState<AdminAnalyticsView> {
                   ),
                 )
               : ListView(
-                  padding: const EdgeInsets.fromLTRB(16, 16, 16, 32),
+                  padding: EdgeInsets.fromLTRB(
+                    16,
+                    16,
+                    16,
+                    28 + EvaFloatingNavBar.bottomClearance(context),
+                  ),
                   children: [
                     // 1. KPI Summary Strip
                     EvaReveal(

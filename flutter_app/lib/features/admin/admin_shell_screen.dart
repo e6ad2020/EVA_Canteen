@@ -91,67 +91,8 @@ class AdminShellScreen extends ConsumerWidget {
 
     return LayoutBuilder(
       builder: (context, constraints) {
-        final isWide = constraints.maxWidth >= 840;
-
-        Widget? bottomBar;
-        if (!isWide) {
-          bottomBar = Container(
-            decoration: BoxDecoration(
-              color: tokens.surfaceElevated,
-              border: Border(
-                top: BorderSide(
-                  color: tokens.borderSubtle,
-                  width: tokens.borderWidth,
-                ),
-              ),
-            ),
-            child: NavigationBar(
-              backgroundColor: tokens.surfaceElevated,
-              selectedIndex: navigationShell.currentIndex,
-              onDestinationSelected: (idx) {
-                HapticFeedback.selectionClick();
-                navigationShell.goBranch(idx);
-              },
-              destinations: [
-                NavigationDestination(
-                  icon: Badge(
-                    isLabelVisible: activeKdsCount > 0,
-                    label: Text('$activeKdsCount'),
-                    child: const Icon(Icons.kitchen_outlined),
-                  ),
-                  selectedIcon: Badge(
-                    isLabelVisible: activeKdsCount > 0,
-                    label: Text('$activeKdsCount'),
-                    child: const Icon(Icons.kitchen_rounded),
-                  ),
-                  label: i18n.t('admin_kds_tab'),
-                ),
-                NavigationDestination(
-                  icon: const Icon(Icons.inventory_2_outlined),
-                  selectedIcon: const Icon(Icons.inventory_2_rounded),
-                  label: i18n.t('admin_catalog_tab'),
-                ),
-                NavigationDestination(
-                  icon: const Icon(Icons.insights_outlined),
-                  selectedIcon: const Icon(Icons.insights_rounded),
-                  label: i18n.t('admin_analytics_tab'),
-                ),
-                NavigationDestination(
-                  icon: const Icon(Icons.account_balance_wallet_outlined),
-                  selectedIcon: const Icon(
-                    Icons.account_balance_wallet_rounded,
-                  ),
-                  label: i18n.t('admin_ops_tab'),
-                ),
-                NavigationDestination(
-                  icon: const Icon(Icons.tune_outlined),
-                  selectedIcon: const Icon(Icons.tune_rounded),
-                  label: i18n.t('nav_settings'),
-                ),
-              ],
-            ),
-          );
-        }
+        final isWide =
+            constraints.maxWidth >= EvaFloatingNavBar.shellWideBreakpoint;
 
         return Scaffold(
           body: EvaScaffoldBackground(
@@ -269,13 +210,59 @@ class AdminShellScreen extends ConsumerWidget {
                               Expanded(child: animatedBody),
                             ],
                           )
-                        : animatedBody,
+                        : Stack(
+                            fit: StackFit.expand,
+                            children: [
+                              animatedBody,
+                              Positioned(
+                                left: 0,
+                                right: 0,
+                                bottom: 0,
+                                child: EvaFloatingNavBar(
+                                  selectedIndex: navigationShell.currentIndex,
+                                  onDestinationSelected: (idx) {
+                                    HapticFeedback.selectionClick();
+                                    navigationShell.goBranch(idx);
+                                  },
+                                  items: [
+                                    EvaFloatingNavItem(
+                                      icon: Icons.kitchen_outlined,
+                                      selectedIcon: Icons.kitchen_rounded,
+                                      label: i18n.t('admin_kds_tab'),
+                                      badgeCount: activeKdsCount,
+                                    ),
+                                    EvaFloatingNavItem(
+                                      icon: Icons.inventory_2_outlined,
+                                      selectedIcon: Icons.inventory_2_rounded,
+                                      label: i18n.t('admin_catalog_tab'),
+                                    ),
+                                    EvaFloatingNavItem(
+                                      icon: Icons.insights_outlined,
+                                      selectedIcon: Icons.insights_rounded,
+                                      label: i18n.t('admin_analytics_tab'),
+                                    ),
+                                    EvaFloatingNavItem(
+                                      icon:
+                                          Icons.account_balance_wallet_outlined,
+                                      selectedIcon:
+                                          Icons.account_balance_wallet_rounded,
+                                      label: i18n.t('admin_ops_tab'),
+                                    ),
+                                    EvaFloatingNavItem(
+                                      icon: Icons.tune_outlined,
+                                      selectedIcon: Icons.tune_rounded,
+                                      label: i18n.t('nav_settings'),
+                                    ),
+                                  ],
+                                ),
+                              ),
+                            ],
+                          ),
                   ),
                 ],
               ),
             ),
           ),
-          bottomNavigationBar: bottomBar,
         );
       },
     );

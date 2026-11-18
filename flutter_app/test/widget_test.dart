@@ -2,6 +2,7 @@ import 'package:eva_canteen/core/models/domain_models.dart';
 import 'package:eva_canteen/core/network/eva_socket_client.dart';
 import 'package:eva_canteen/core/state/canteen_providers.dart';
 import 'package:eva_canteen/design_system/eva_theme.dart';
+import 'package:eva_canteen/design_system/widgets/eva_widgets.dart';
 import 'package:eva_canteen/main.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_test/flutter_test.dart';
@@ -489,6 +490,38 @@ void main() {
       await tester.drag(find.byType(CustomScrollView), const Offset(0, -120));
       await tester.pumpAndSettle();
       expect(tester.takeException(), isNull);
+
+      // Verify EvaFloatingNavBar is active on mobile (< 840dp) with zero BackdropFilter
+      expect(find.byType(EvaFloatingNavBar), findsOneWidget);
+      expect(find.byType(BackdropFilter), findsNothing);
+
+      // Add an item to cart on mobile and verify checkout dock sits completely above EvaFloatingNavBar
+      await tester.drag(find.byType(CustomScrollView), const Offset(0, 120));
+      await tester.pumpAndSettle();
+      await tester.tap(find.text('Add').first);
+      await tester.pumpAndSettle();
+      expect(find.text('Review order'), findsOneWidget);
+
+      final dockRect = tester.getRect(
+        find.byKey(const ValueKey('checkout_dock_visible')),
+      );
+      final navBarRect = tester.getRect(find.byType(EvaFloatingNavBar));
+      expect(dockRect.bottom, lessThanOrEqualTo(navBarRect.top));
+
+      // Scrub horizontally across EvaFloatingNavBar from Menu (left) to Settings (right)
+      final navCenterLeft = Offset(
+        navBarRect.left + 44,
+        navBarRect.center.dy,
+      );
+      final navDragDistance = Offset(navBarRect.width - 88, 0);
+      await tester.timedDragFrom(
+        navCenterLeft,
+        navDragDistance,
+        const Duration(milliseconds: 220),
+      );
+      await tester.pumpAndSettle();
+      expect(tester.takeException(), isNull);
+      expect(find.text('Light Blue'), findsOneWidget);
     },
   );
 }

@@ -45,7 +45,12 @@ class SharedSettingsView extends ConsumerWidget {
         ),
         Expanded(
           child: ListView(
-            padding: const EdgeInsets.fromLTRB(16, 16, 16, 40),
+            padding: EdgeInsets.fromLTRB(
+              16,
+              16,
+              16,
+              32 + EvaFloatingNavBar.bottomClearance(context),
+            ),
             children: [
               Center(
                 child: ConstrainedBox(

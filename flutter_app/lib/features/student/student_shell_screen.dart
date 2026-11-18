@@ -48,53 +48,8 @@ class StudentShellScreen extends ConsumerWidget {
 
     return LayoutBuilder(
       builder: (context, constraints) {
-        final isWide = constraints.maxWidth >= 840;
-
-        Widget? bottomBar;
-        if (!isWide) {
-          bottomBar = Container(
-            decoration: BoxDecoration(
-              color: tokens.surfaceElevated,
-              border: Border(
-                top: BorderSide(
-                  color: tokens.borderSubtle,
-                  width: tokens.borderWidth,
-                ),
-              ),
-            ),
-            child: NavigationBar(
-              backgroundColor: tokens.surfaceElevated,
-              selectedIndex: navigationShell.currentIndex,
-              onDestinationSelected: (idx) {
-                HapticFeedback.selectionClick();
-                navigationShell.goBranch(idx);
-              },
-              destinations: [
-                NavigationDestination(
-                  icon: const Icon(Icons.restaurant_menu_outlined),
-                  selectedIcon: const Icon(Icons.restaurant_menu_rounded),
-                  label: i18n.t('nav_menu'),
-                ),
-                NavigationDestination(
-                  icon: Badge(
-                    isLabelVisible: hasLiveInFlight,
-                    child: const Icon(Icons.confirmation_number_outlined),
-                  ),
-                  selectedIcon: Badge(
-                    isLabelVisible: hasLiveInFlight,
-                    child: const Icon(Icons.confirmation_number_rounded),
-                  ),
-                  label: i18n.t('nav_orders'),
-                ),
-                NavigationDestination(
-                  icon: const Icon(Icons.tune_outlined),
-                  selectedIcon: const Icon(Icons.tune_rounded),
-                  label: i18n.t('nav_settings'),
-                ),
-              ],
-            ),
-          );
-        }
+        final isWide =
+            constraints.maxWidth >= EvaFloatingNavBar.shellWideBreakpoint;
 
         return Scaffold(
           body: EvaScaffoldBackground(
@@ -159,13 +114,49 @@ class StudentShellScreen extends ConsumerWidget {
                               Expanded(child: animatedBody),
                             ],
                           )
-                        : animatedBody,
+                        : Stack(
+                            fit: StackFit.expand,
+                            children: [
+                              animatedBody,
+                              Positioned(
+                                left: 0,
+                                right: 0,
+                                bottom: 0,
+                                child: EvaFloatingNavBar(
+                                  selectedIndex: navigationShell.currentIndex,
+                                  onDestinationSelected: (idx) {
+                                    HapticFeedback.selectionClick();
+                                    navigationShell.goBranch(idx);
+                                  },
+                                  items: [
+                                    EvaFloatingNavItem(
+                                      icon: Icons.restaurant_menu_outlined,
+                                      selectedIcon:
+                                          Icons.restaurant_menu_rounded,
+                                      label: i18n.t('nav_menu'),
+                                    ),
+                                    EvaFloatingNavItem(
+                                      icon: Icons.confirmation_number_outlined,
+                                      selectedIcon:
+                                          Icons.confirmation_number_rounded,
+                                      label: i18n.t('nav_orders'),
+                                      showDotBadge: hasLiveInFlight,
+                                    ),
+                                    EvaFloatingNavItem(
+                                      icon: Icons.tune_outlined,
+                                      selectedIcon: Icons.tune_rounded,
+                                      label: i18n.t('nav_settings'),
+                                    ),
+                                  ],
+                                ),
+                              ),
+                            ],
+                          ),
                   ),
                 ],
               ),
             ),
           ),
-          bottomNavigationBar: bottomBar,
         );
       },
     );

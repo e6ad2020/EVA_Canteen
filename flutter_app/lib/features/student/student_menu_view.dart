@@ -484,12 +484,16 @@ class _StudentMenuViewState extends ConsumerState<StudentMenuView> {
                         final double spacing = cols <= 2 ? 10 : 14;
                         final double cardHeight = cols <= 2 ? 258 : 276;
 
+                        final navClearance = EvaFloatingNavBar.bottomClearance(
+                          context,
+                        );
+
                         return SliverPadding(
                           padding: EdgeInsets.fromLTRB(
                             sidePad,
                             8,
                             sidePad,
-                            cartSummary.isEmpty ? 28 : 104,
+                            (cartSummary.isEmpty ? 24.0 : 96.0) + navClearance,
                           ),
                           sliver: SliverGrid(
                             gridDelegate:
@@ -522,11 +526,15 @@ class _StudentMenuViewState extends ConsumerState<StudentMenuView> {
                 ),
               ),
 
-              // Animated Floating Checkout Dock
+              // Animated Floating Checkout Dock (lifts cleanly above EvaFloatingNavBar on mobile)
               Positioned(
                 left: 16,
                 right: 16,
-                bottom: 14,
+                bottom:
+                    MediaQuery.sizeOf(context).width <
+                        EvaFloatingNavBar.shellWideBreakpoint
+                    ? 84
+                    : 14,
                 child: AnimatedSwitcher(
                   duration: const Duration(milliseconds: 220),
                   switchInCurve: Curves.easeOutCubic,

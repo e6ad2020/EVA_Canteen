@@ -402,30 +402,34 @@ class _AdminKdsViewState extends ConsumerState<AdminKdsView> {
     EvaTranslator i18n,
     EvaTokens tokens,
   ) {
+    final navClearance = EvaFloatingNavBar.bottomClearance(context);
     if (orders.isEmpty) {
-      return Center(
-        child: Column(
-          mainAxisSize: MainAxisSize.min,
-          children: [
-            Icon(
-              Icons.inbox_rounded,
-              size: 48,
-              color: tokens.textSecondary.withValues(alpha: 0.45),
-            ),
-            const SizedBox(height: 10),
-            Text(
-              i18n.t('kds_empty_column'),
-              style: Theme.of(
-                context,
-              ).textTheme.titleMedium?.copyWith(color: tokens.textSecondary),
-            ),
-          ],
+      return Padding(
+        padding: EdgeInsets.only(bottom: navClearance),
+        child: Center(
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              Icon(
+                Icons.inbox_rounded,
+                size: 48,
+                color: tokens.textSecondary.withValues(alpha: 0.45),
+              ),
+              const SizedBox(height: 10),
+              Text(
+                i18n.t('kds_empty_column'),
+                style: Theme.of(
+                  context,
+                ).textTheme.titleMedium?.copyWith(color: tokens.textSecondary),
+              ),
+            ],
+          ),
         ),
       );
     }
 
     return ListView.separated(
-      padding: const EdgeInsets.all(16),
+      padding: EdgeInsets.fromLTRB(16, 16, 16, 20 + navClearance),
       itemCount: orders.length,
       separatorBuilder: (_, _) => const SizedBox(height: 12),
       itemBuilder: (context, idx) =>
@@ -439,19 +443,23 @@ class _AdminKdsViewState extends ConsumerState<AdminKdsView> {
     EvaTranslator i18n,
     EvaTokens tokens,
   ) {
+    final navClearance = EvaFloatingNavBar.bottomClearance(context);
     if (orders.isEmpty) {
-      return Center(
-        child: Text(
-          i18n.t('no_orders_yet'),
-          style: Theme.of(
-            context,
-          ).textTheme.titleMedium?.copyWith(color: tokens.textSecondary),
+      return Padding(
+        padding: EdgeInsets.only(bottom: navClearance),
+        child: Center(
+          child: Text(
+            i18n.t('no_orders_yet'),
+            style: Theme.of(
+              context,
+            ).textTheme.titleMedium?.copyWith(color: tokens.textSecondary),
+          ),
         ),
       );
     }
 
     return ListView.separated(
-      padding: const EdgeInsets.all(20),
+      padding: EdgeInsets.fromLTRB(20, 20, 20, 24 + navClearance),
       itemCount: orders.length,
       separatorBuilder: (_, _) => const SizedBox(height: 12),
       itemBuilder: (context, idx) => Center(

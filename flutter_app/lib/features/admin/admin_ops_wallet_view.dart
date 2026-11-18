@@ -365,7 +365,12 @@ class _AdminOpsWalletViewState extends ConsumerState<AdminOpsWalletView> {
 
         Expanded(
           child: ListView(
-            padding: const EdgeInsets.fromLTRB(16, 16, 16, 36),
+            padding: EdgeInsets.fromLTRB(
+              16,
+              16,
+              16,
+              28 + EvaFloatingNavBar.bottomClearance(context),
+            ),
             children: [
               Center(
                 child: ConstrainedBox(

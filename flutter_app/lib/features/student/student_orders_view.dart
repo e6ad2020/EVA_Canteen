@@ -19,10 +19,12 @@ class StudentOrdersView extends ConsumerWidget {
     final store = ref.watch(canteenStoreProvider);
     final user = store.currentUser;
 
+    final navClearance = EvaFloatingNavBar.bottomClearance(context);
+
     if (user == null || user.role == UserRole.guest) {
       return Center(
         child: Padding(
-          padding: const EdgeInsets.all(24),
+          padding: EdgeInsets.fromLTRB(24, 24, 24, 24 + navClearance),
           child: ConstrainedBox(
             constraints: const BoxConstraints(maxWidth: 420),
             child: EvaSurfaceCard(
@@ -71,7 +73,7 @@ class StudentOrdersView extends ConsumerWidget {
     if (activeOrder == null && pastOrders.isEmpty) {
       return Center(
         child: Padding(
-          padding: const EdgeInsets.all(24),
+          padding: EdgeInsets.fromLTRB(24, 24, 24, 24 + navClearance),
           child: ConstrainedBox(
             constraints: const BoxConstraints(maxWidth: 380),
             child: EvaSurfaceCard(
@@ -128,7 +130,7 @@ class StudentOrdersView extends ConsumerWidget {
         ),
         Expanded(
           child: ListView(
-            padding: const EdgeInsets.fromLTRB(16, 16, 16, 36),
+            padding: EdgeInsets.fromLTRB(16, 16, 16, 28 + navClearance),
             children: [
               Center(
                 child: ConstrainedBox(
