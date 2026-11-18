@@ -717,7 +717,9 @@ class EvaThemeBuilder {
           FontWeight.w400,
           1.35,
           1.45,
-          color: tokens.textSecondary,
+          color: tokens.textSecondary.withValues(
+            alpha: tokens.isNight ? 0.45 : 0.42,
+          ),
         ),
         labelStyle: style(
           13,

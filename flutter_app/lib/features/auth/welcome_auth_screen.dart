@@ -690,7 +690,7 @@ class _SimpleBrandHeader extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return Center(
-      child: EvaBrandLogo(size: isWide ? 276 : 248, hero: true),
+      child: EvaBrandLogo(size: isWide ? 236 : 210, hero: true),
     );
   }
 }

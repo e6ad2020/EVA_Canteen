@@ -1011,7 +1011,7 @@ void main() {
       );
       await tester.pumpAndSettle();
 
-      // 1. Verify status badge is at top-left, logo is enlarged hero (248dp wide), title is centered, and footer buttons are stroked on 360x800 phone
+      // 1. Verify status badge is at top-left, logo is hero-sized (210dp wide), title is centered, hintStyle is translucent, and footer buttons are stroked on 360x800 phone
       final statusRect = tester.getRect(
         find.byKey(const ValueKey('welcome_status_top_left')),
       );
@@ -1022,9 +1022,16 @@ void main() {
       final logoFinder = find.byType(EvaBrandLogo);
       expect(logoFinder, findsOneWidget);
       final logoSize = tester.getSize(logoFinder);
-      expect(logoSize.width, 248.0);
-      expect(logoSize.height, closeTo(248.0 * 0.72, 0.5));
+      expect(logoSize.width, 210.0);
+      expect(logoSize.height, closeTo(210.0 * 0.72, 0.5));
       expect(tester.widget<EvaBrandLogo>(logoFinder).hero, isTrue);
+
+      final emailField = tester.widget<TextField>(find.byType(TextField).first);
+      final hintColor = Theme.of(
+        tester.element(find.byWidget(emailField)),
+      ).inputDecorationTheme.hintStyle?.color;
+      expect(hintColor, isNotNull);
+      expect(hintColor!.a, lessThan(0.6));
 
       final titleWidget = tester.widget<Text>(find.text('Welcome back'));
       expect(titleWidget.textAlign, TextAlign.center);
@@ -1130,6 +1137,82 @@ void main() {
         find.byKey(const ValueKey('cart_confirm_order_btn')),
       );
       expect(enabledConfirmBtn.onPressed, isNotNull);
+    },
+  );
+
+  testWidgets(
+    'Settings About Project button opens web-style About modal and Copyright dialog without overflow',
+    (tester) async {
+      await tester.binding.setSurfaceSize(const Size(360, 800));
+      addTearDown(() => tester.binding.setSurfaceSize(null));
+
+      SharedPreferences.setMockInitialValues({
+        'eva_saved_session_v2':
+            '{"email":"eyad@canteen.app","role":"student","profilePic":"pic1","balance":100,"token":"jwt-1"}',
+      });
+      final prefs = await SharedPreferences.getInstance();
+      final mockSocket = EvaSocketClient(enableNetwork: false);
+
+      final container = ProviderContainer(
+        overrides: [
+          sharedPrefsProvider.overrideWithValue(prefs),
+          socketClientProvider.overrideWithValue(mockSocket),
+        ],
+      );
+      addTearDown(container.dispose);
+
+      await tester.pumpWidget(
+        UncontrolledProviderScope(
+          container: container,
+          child: const EvaCanteenApp(),
+        ),
+      );
+      await tester.pumpAndSettle();
+
+      // Navigate to Settings tab via floating navbar
+      await tester.tap(find.text('Settings'));
+      await tester.pumpAndSettle();
+
+      // Scroll down to About Project button & tap it
+      final aboutBtn = find.byKey(const ValueKey('about_project_button'));
+      await tester.scrollUntilVisible(
+        aboutBtn,
+        240,
+        scrollable: find.byType(Scrollable).first,
+      );
+      await tester.pumpAndSettle();
+      await tester.tap(aboutBtn);
+      await tester.pumpAndSettle();
+
+      // Note: Image.network in widget tests triggers mock HTTP 400 -> errorBuilder handles it cleanly
+      expect(find.text('About Project'), findsWidgets);
+      expect(
+        find.textContaining('Eyad Gaber • Anwar Qasem • Dina Mahmoud • Ahmed Mohamed'),
+        findsOneWidget,
+      );
+      expect(
+        find.byKey(const ValueKey('copyright_info_button')),
+        findsOneWidget,
+      );
+      expect(
+        find.byKey(const ValueKey('about_project_close_button')),
+        findsOneWidget,
+      );
+
+      // Tap copyright icon -> closes About modal & opens License & Copyright modal
+      await tester.tap(find.byKey(const ValueKey('copyright_info_button')));
+      await tester.pumpAndSettle();
+      expect(find.text('License & Copyright'), findsOneWidget);
+      expect(
+        find.textContaining('Copyright (C) 2025 EVA International School'),
+        findsOneWidget,
+      );
+      expect(find.text('GNU General Public License'), findsOneWidget);
+
+      // Dismiss Copyright modal cleanly via OK
+      await tester.tap(find.byKey(const ValueKey('copyright_close_button')));
+      await tester.pumpAndSettle();
+      expect(find.text('License & Copyright'), findsNothing);
     },
   );
 }

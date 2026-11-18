@@ -3,6 +3,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 import 'package:material_ui/material_ui.dart';
 
+import '../../core/localization/eva_i18n.dart';
 import '../../core/models/domain_models.dart';
 import '../../core/state/canteen_providers.dart';
 import '../../design_system/eva_theme.dart';
@@ -375,27 +376,74 @@ class SharedSettingsView extends ConsumerWidget {
                         child: EvaSurfaceCard(
                           padding: const EdgeInsets.all(20),
                           child: Column(
-                            crossAxisAlignment: CrossAxisAlignment.start,
+                            crossAxisAlignment: CrossAxisAlignment.stretch,
                             children: [
                               Row(
                                 children: [
                                   const EvaBrandLogo(size: 36),
                                   const SizedBox(width: 12),
                                   Expanded(
-                                    child: Text(
-                                      i18n.t('about_project_title'),
-                                      style: Theme.of(
-                                        context,
-                                      ).textTheme.titleLarge,
+                                    child: Column(
+                                      crossAxisAlignment:
+                                          CrossAxisAlignment.start,
+                                      children: [
+                                        Text(
+                                          i18n.t('canteen_name'),
+                                          style: Theme.of(
+                                            context,
+                                          ).textTheme.titleMedium,
+                                        ),
+                                        const SizedBox(height: 2),
+                                        Text(
+                                          i18n.t('about_project_school_badge'),
+                                          maxLines: 1,
+                                          overflow: TextOverflow.ellipsis,
+                                          style: Theme.of(
+                                            context,
+                                          ).textTheme.bodySmall,
+                                        ),
+                                      ],
                                     ),
                                   ),
                                 ],
                               ),
-                              const SizedBox(height: 12),
-                              Text(
-                                i18n.t('about_project_credits'),
-                                style: Theme.of(context).textTheme.bodyMedium
-                                    ?.copyWith(color: tokens.textSecondary),
+                              const SizedBox(height: 14),
+                              SizedBox(
+                                height: 48,
+                                child: OutlinedButton.icon(
+                                  key: const ValueKey('about_project_button'),
+                                  onPressed: () {
+                                    HapticFeedback.lightImpact();
+                                    _showAboutProjectDialog(
+                                      context,
+                                      i18n,
+                                      tokens,
+                                    );
+                                  },
+                                  style: OutlinedButton.styleFrom(
+                                    backgroundColor: tokens.brandSoftBg,
+                                    foregroundColor: tokens.textPrimary,
+                                    side: BorderSide(
+                                      color: tokens.borderSubtle,
+                                      width: tokens.borderWidth,
+                                    ),
+                                    shape: RoundedRectangleBorder(
+                                      borderRadius: BorderRadius.circular(12),
+                                    ),
+                                  ),
+                                  icon: Icon(
+                                    Icons.info_outline_rounded,
+                                    size: 19,
+                                    color: tokens.brandPrimary,
+                                  ),
+                                  label: Text(
+                                    i18n.t('about_project_button'),
+                                    style: Theme.of(context)
+                                        .textTheme
+                                        .labelLarge
+                                        ?.copyWith(fontWeight: FontWeight.w700),
+                                  ),
+                                ),
                               ),
                             ],
                           ),
@@ -407,6 +455,362 @@ class SharedSettingsView extends ConsumerWidget {
               ),
             ],
       ),
+    );
+  }
+
+  static const String _kProjectTeamImageUrl =
+      'https://i.postimg.cc/jdTC3Sq2/Whats-App-Image-2024-12-10-at-13-31-40-da111f53.jpg';
+
+  void _showAboutProjectDialog(
+    BuildContext context,
+    EvaTranslator i18n,
+    EvaTokens tokens,
+  ) {
+    showGeneralDialog<void>(
+      context: context,
+      barrierDismissible: true,
+      barrierLabel: i18n.t('about_project_title'),
+      barrierColor: Colors.black.withValues(alpha: 0.56),
+      transitionDuration: const Duration(milliseconds: 220),
+      transitionBuilder: (ctx, animation, _, child) {
+        final curved = CurvedAnimation(
+          parent: animation,
+          curve: Curves.easeOutCubic,
+          reverseCurve: Curves.easeInCubic,
+        );
+        return FadeTransition(
+          opacity: curved,
+          child: ScaleTransition(
+            scale: Tween<double>(begin: 0.94, end: 1.0).animate(curved),
+            child: child,
+          ),
+        );
+      },
+      pageBuilder: (dialogCtx, _, _) {
+        final theme = Theme.of(dialogCtx);
+        return SafeArea(
+          child: Center(
+            child: Padding(
+              padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 24),
+              child: ConstrainedBox(
+                constraints: const BoxConstraints(maxWidth: 420),
+                child: Material(
+                  color: tokens.surfaceElevated,
+                  surfaceTintColor: Colors.transparent,
+                  elevation: 16,
+                  shape: RoundedRectangleBorder(
+                    borderRadius: BorderRadius.circular(20),
+                    side: BorderSide(
+                      color: tokens.borderSubtle,
+                      width: tokens.borderWidth,
+                    ),
+                  ),
+                  child: SingleChildScrollView(
+                    padding: const EdgeInsets.fromLTRB(24, 22, 24, 20),
+                    child: Column(
+                      mainAxisSize: MainAxisSize.min,
+                      crossAxisAlignment: CrossAxisAlignment.stretch,
+                      children: [
+                        Text(
+                          i18n.t('about_project_title'),
+                          textAlign: TextAlign.center,
+                          style: theme.textTheme.titleLarge?.copyWith(
+                            fontWeight: FontWeight.w700,
+                          ),
+                        ),
+                        const SizedBox(height: 16),
+                        Center(
+                          child: Container(
+                            width: 280,
+                            height: 176,
+                            decoration: BoxDecoration(
+                              color: tokens.surfaceSubtle,
+                              borderRadius: BorderRadius.circular(14),
+                              border: Border.all(
+                                color: tokens.borderSubtle,
+                                width: 1.8,
+                              ),
+                              boxShadow: [
+                                BoxShadow(
+                                  color: Colors.black.withValues(
+                                    alpha: tokens.isNight ? 0.35 : 0.12,
+                                  ),
+                                  blurRadius: 14,
+                                  offset: const Offset(0, 6),
+                                ),
+                              ],
+                            ),
+                            clipBehavior: Clip.antiAlias,
+                            child: Image.network(
+                              _kProjectTeamImageUrl,
+                              fit: BoxFit.cover,
+                              loadingBuilder: (context, child, progress) {
+                                if (progress == null) return child;
+                                return Center(
+                                  child: CircularProgressIndicator(
+                                    strokeWidth: 2.2,
+                                    color: tokens.brandPrimary,
+                                  ),
+                                );
+                              },
+                              errorBuilder: (_, _, _) => Container(
+                                decoration: BoxDecoration(
+                                  gradient: LinearGradient(
+                                    begin: Alignment.topLeft,
+                                    end: Alignment.bottomRight,
+                                    colors: [
+                                      tokens.brandSoftBg,
+                                      tokens.surfaceSubtle,
+                                    ],
+                                  ),
+                                ),
+                                padding: const EdgeInsets.all(16),
+                                child: Column(
+                                  mainAxisAlignment: MainAxisAlignment.center,
+                                  children: [
+                                    const EvaBrandLogo(size: 60),
+                                    const SizedBox(height: 10),
+                                    Text(
+                                      i18n.t('about_project_school_badge'),
+                                      textAlign: TextAlign.center,
+                                      maxLines: 2,
+                                      overflow: TextOverflow.ellipsis,
+                                      style: theme.textTheme.labelMedium
+                                          ?.copyWith(
+                                            color: tokens.textSecondary,
+                                            fontWeight: FontWeight.w700,
+                                          ),
+                                    ),
+                                  ],
+                                ),
+                              ),
+                            ),
+                          ),
+                        ),
+                        const SizedBox(height: 18),
+                        Text(
+                          i18n.t('about_project_description'),
+                          textAlign: TextAlign.center,
+                          style: theme.textTheme.bodyMedium?.copyWith(
+                            color: tokens.textPrimary,
+                            height: 1.55,
+                          ),
+                        ),
+                        const SizedBox(height: 22),
+                        SizedBox(
+                          height: 44,
+                          child: Stack(
+                            alignment: Alignment.center,
+                            children: [
+                              Padding(
+                                padding: const EdgeInsets.symmetric(
+                                  horizontal: 52,
+                                ),
+                                child: ConstrainedBox(
+                                  constraints: const BoxConstraints(
+                                    minWidth: 120,
+                                  ),
+                                  child: FilledButton(
+                                    key: const ValueKey(
+                                      'about_project_close_button',
+                                    ),
+                                    onPressed: () => Navigator.pop(dialogCtx),
+                                    child: Text(i18n.t('ok_button')),
+                                  ),
+                                ),
+                              ),
+                              Align(
+                                alignment: AlignmentDirectional.centerEnd,
+                                child: Tooltip(
+                                  message: i18n.t('copyright_title'),
+                                  child: InkWell(
+                                    key: const ValueKey(
+                                      'copyright_info_button',
+                                    ),
+                                    onTap: () {
+                                      HapticFeedback.selectionClick();
+                                      Navigator.pop(dialogCtx);
+                                      _showCopyrightDialog(
+                                        context,
+                                        i18n,
+                                        tokens,
+                                      );
+                                    },
+                                    borderRadius: BorderRadius.circular(999),
+                                    child: Container(
+                                      width: 38,
+                                      height: 38,
+                                      decoration: BoxDecoration(
+                                        color: tokens.surfaceSubtle,
+                                        shape: BoxShape.circle,
+                                        border: Border.all(
+                                          color: tokens.borderSubtle,
+                                          width: 1.5,
+                                        ),
+                                      ),
+                                      child: Icon(
+                                        Icons.copyright_rounded,
+                                        size: 19,
+                                        color: tokens.textPrimary,
+                                      ),
+                                    ),
+                                  ),
+                                ),
+                              ),
+                            ],
+                          ),
+                        ),
+                      ],
+                    ),
+                  ),
+                ),
+              ),
+            ),
+          ),
+        );
+      },
+    );
+  }
+
+  void _showCopyrightDialog(
+    BuildContext context,
+    EvaTranslator i18n,
+    EvaTokens tokens,
+  ) {
+    showGeneralDialog<void>(
+      context: context,
+      barrierDismissible: true,
+      barrierLabel: i18n.t('copyright_title'),
+      barrierColor: Colors.black.withValues(alpha: 0.56),
+      transitionDuration: const Duration(milliseconds: 220),
+      transitionBuilder: (ctx, animation, _, child) {
+        final curved = CurvedAnimation(
+          parent: animation,
+          curve: Curves.easeOutCubic,
+          reverseCurve: Curves.easeInCubic,
+        );
+        return FadeTransition(
+          opacity: curved,
+          child: ScaleTransition(
+            scale: Tween<double>(begin: 0.94, end: 1.0).animate(curved),
+            child: child,
+          ),
+        );
+      },
+      pageBuilder: (dialogCtx, _, _) {
+        final theme = Theme.of(dialogCtx);
+        return SafeArea(
+          child: Center(
+            child: Padding(
+              padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 24),
+              child: ConstrainedBox(
+                constraints: const BoxConstraints(maxWidth: 440),
+                child: Material(
+                  color: tokens.surfaceElevated,
+                  surfaceTintColor: Colors.transparent,
+                  elevation: 16,
+                  shape: RoundedRectangleBorder(
+                    borderRadius: BorderRadius.circular(20),
+                    side: BorderSide(
+                      color: tokens.borderSubtle,
+                      width: tokens.borderWidth,
+                    ),
+                  ),
+                  child: Padding(
+                    padding: const EdgeInsets.fromLTRB(24, 22, 24, 20),
+                    child: Column(
+                      mainAxisSize: MainAxisSize.min,
+                      crossAxisAlignment: CrossAxisAlignment.stretch,
+                      children: [
+                        Text(
+                          i18n.t('copyright_title'),
+                          textAlign: TextAlign.center,
+                          style: theme.textTheme.titleLarge?.copyWith(
+                            fontWeight: FontWeight.w700,
+                          ),
+                        ),
+                        const SizedBox(height: 14),
+                        ConstrainedBox(
+                          constraints: const BoxConstraints(maxHeight: 360),
+                          child: SingleChildScrollView(
+                            child: Column(
+                              crossAxisAlignment: CrossAxisAlignment.stretch,
+                              children: [
+                                _CopyrightSectionHeading(
+                                  title: i18n.t('copyright_info_title'),
+                                  tokens: tokens,
+                                ),
+                                Text(
+                                  i18n.t('copyright_info_text'),
+                                  style: theme.textTheme.bodySmall?.copyWith(
+                                    color: tokens.textSecondary,
+                                    height: 1.55,
+                                  ),
+                                ),
+                                const SizedBox(height: 14),
+                                _CopyrightSectionHeading(
+                                  title: i18n.t('license_info_title'),
+                                  tokens: tokens,
+                                ),
+                                Text(
+                                  i18n.t('license_info_text'),
+                                  style: theme.textTheme.bodySmall?.copyWith(
+                                    color: tokens.textSecondary,
+                                    height: 1.55,
+                                  ),
+                                ),
+                                const SizedBox(height: 14),
+                                _CopyrightSectionHeading(
+                                  title: i18n.t('gpl_license_title'),
+                                  tokens: tokens,
+                                ),
+                                Text(
+                                  i18n.t('gpl_license_text_1'),
+                                  style: theme.textTheme.bodySmall?.copyWith(
+                                    color: tokens.textSecondary,
+                                    height: 1.55,
+                                  ),
+                                ),
+                                const SizedBox(height: 10),
+                                Text(
+                                  i18n.t('gpl_license_text_2'),
+                                  style: theme.textTheme.bodySmall?.copyWith(
+                                    color: tokens.textSecondary,
+                                    height: 1.55,
+                                  ),
+                                ),
+                                const SizedBox(height: 10),
+                                SelectableText(
+                                  i18n.t('gpl_license_text_3'),
+                                  style: theme.textTheme.bodySmall?.copyWith(
+                                    color: tokens.textSecondary,
+                                    height: 1.55,
+                                  ),
+                                ),
+                              ],
+                            ),
+                          ),
+                        ),
+                        const SizedBox(height: 18),
+                        Center(
+                          child: ConstrainedBox(
+                            constraints: const BoxConstraints(minWidth: 120),
+                            child: FilledButton(
+                              key: const ValueKey('copyright_close_button'),
+                              onPressed: () => Navigator.pop(dialogCtx),
+                              child: Text(i18n.t('ok_button')),
+                            ),
+                          ),
+                        ),
+                      ],
+                    ),
+                  ),
+                ),
+              ),
+            ),
+          ),
+        );
+      },
     );
   }
 
@@ -442,6 +846,36 @@ class SharedSettingsView extends ConsumerWidget {
             child: const Text('Apply'),
           ),
         ],
+      ),
+    );
+  }
+}
+
+class _CopyrightSectionHeading extends StatelessWidget {
+  const _CopyrightSectionHeading({
+    required this.title,
+    required this.tokens,
+  });
+
+  final String title;
+  final EvaTokens tokens;
+
+  @override
+  Widget build(BuildContext context) {
+    return Container(
+      margin: const EdgeInsets.only(bottom: 6),
+      padding: const EdgeInsets.only(bottom: 4),
+      decoration: BoxDecoration(
+        border: Border(
+          bottom: BorderSide(color: tokens.borderSubtle),
+        ),
+      ),
+      child: Text(
+        title,
+        style: Theme.of(context).textTheme.titleSmall?.copyWith(
+          fontWeight: FontWeight.w700,
+          color: tokens.textPrimary,
+        ),
       ),
     );
   }

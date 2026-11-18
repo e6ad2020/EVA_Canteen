@@ -346,15 +346,68 @@ class EvaTranslator {
       'ar': 'عنوان الخادم',
     },
     'sign_out_cta': {'en': 'Sign out', 'ar': 'تسجيل الخروج'},
-    'about_project_title': {
-      'en': 'About EVA Canteen',
-      'ar': 'حول كانتين إيفا',
-    },
+    'about_project_button': {'en': 'About Project', 'ar': 'عن المشروع'},
+    'about_project_title': {'en': 'About Project', 'ar': 'عن المشروع'},
     'about_project_credits': {
       'en':
           'Designed & engineered by:\nEyad Gaber • Anwar Qasem • Dina Mahmoud • Ahmed Mohamed\n\nLicensed under GNU GPL v3.0.',
       'ar':
           'تصميم وتطوير:\nإياد جابر • أنور قاسم • دينا محمود • أحمد محمد\n\nمرخص بموجب رخصة GNU GPL v3.0.',
+    },
+    'about_project_description': {
+      'en':
+          'This project was developed by students at EVA International Applied Technology School:\n\nEyad Gaber • Anwar Qasem • Dina Mahmoud • Ahmed Mohamed',
+      'ar':
+          'تم تطوير هذا المشروع من قبل طلاب في مدرسة إيفا الدولية للتكنولوجيا التطبيقية:\n\nإياد جابر • أنور قاسم • دينا محمود • أحمد محمد',
+    },
+    'about_project_school_badge': {
+      'en': 'EVA International Applied Technology School',
+      'ar': 'مدرسة إيفا الدولية للتكنولوجيا التطبيقية',
+    },
+    'ok_button': {'en': 'OK', 'ar': 'حسناً'},
+    'copyright_title': {
+      'en': 'License & Copyright',
+      'ar': 'الترخيص وحقوق النشر',
+    },
+    'copyright_info_title': {
+      'en': 'Copyright Information',
+      'ar': 'معلومات حقوق النشر',
+    },
+    'copyright_info_text': {
+      'en': 'Copyright (C) 2025 EVA International School',
+      'ar': 'حقوق النشر (C) 2025 مدرسة إيفا الدولية للتكنولوچيا التطبيقية',
+    },
+    'license_info_title': {
+      'en': 'License Information',
+      'ar': 'معلومات الترخيص',
+    },
+    'license_info_text': {
+      'en':
+          'This project is licensed under the GNU General Public License v3.0 or later.',
+      'ar':
+          'هذا المشروع مرخص بموجب رخصة جنو العمومية العامة الإصدار 3.0 أو أحدث.',
+    },
+    'gpl_license_title': {
+      'en': 'GNU General Public License',
+      'ar': 'رخصة جنو العمومية العامة',
+    },
+    'gpl_license_text_1': {
+      'en':
+          'This program is free software: you can redistribute it and/or modify it under the terms of the GNU General Public License as published by the Free Software Foundation, either version 3 of the License, or (at your option) any later version.',
+      'ar':
+          'هذا البرنامج هو برنامج حر؛ يمكنك إعادة توزيعه و/أو تعديله تحت شروط رخصة جنو العمومية العامة كما نشرتها مؤسسة البرمجيات الحرة؛ سواء الإصدار 3 من الرخصة، أو (حسب اختيارك) أي إصدار لاحق.',
+    },
+    'gpl_license_text_2': {
+      'en':
+          'This program is distributed in the hope that it will be useful, but WITHOUT ANY WARRANTY; without even the implied warranty of MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE. See the GNU General Public License for more details.',
+      'ar':
+          'يُوزَّع هذا البرنامج على أمل أن يكون مفيداً، ولكن دون أية ضمانات؛ دون حتى ضمان المبيعية أو الملاءمة لغرض معين. انظر رخصة جنو العمومية العامة لمزيد من التفاصيل.',
+    },
+    'gpl_license_text_3': {
+      'en':
+          'You should have received a copy of the GNU General Public License along with this program. If not, see https://www.gnu.org/licenses/.',
+      'ar':
+          'من المفترض أن تكون قد استلمت نسخة من رخصة جنو العمومية العامة مع هذا البرنامج؛ وإن لم يحدث، فاذهب إلى https://www.gnu.org/licenses/.',
     },
     'catalog_grid_rank_hint': {
       'en':
