@@ -681,4 +681,135 @@ void main() {
       );
     },
   );
+
+  testWidgets(
+    'Admin Catalog Items tab renders menu-matched 2-col/4-col GridView and ranks items via 2D drag & 1-tap nudges',
+    (tester) async {
+      await tester.binding.setSurfaceSize(const Size(360, 800));
+      addTearDown(() => tester.binding.setSurfaceSize(null));
+
+      SharedPreferences.setMockInitialValues({
+        'eva_saved_session_v2':
+            '{"email":"admin@canteen.app","role":"admin","profilePic":"pic1","balance":0,"token":"test-jwt"}',
+      });
+      final prefs = await SharedPreferences.getInstance();
+      final mockSocket = EvaSocketClient(enableNetwork: false);
+
+      final container = ProviderContainer(
+        overrides: [
+          sharedPrefsProvider.overrideWithValue(prefs),
+          socketClientProvider.overrideWithValue(mockSocket),
+        ],
+      );
+      addTearDown(container.dispose);
+
+      await tester.pumpWidget(
+        UncontrolledProviderScope(
+          container: container,
+          child: const EvaCanteenApp(),
+        ),
+      );
+      await tester.pumpAndSettle();
+
+      mockSocket.injectTestEvent('initial_categories', [
+        {
+          'key': 'sandwiches',
+          'name_key': 'cat_sandwiches',
+          'productIds': ['p1', 'p2', 'p3', 'p4'],
+        },
+        {'key': 'archive', 'name_key': 'sort_archive', 'productIds': []},
+      ]);
+      mockSocket.injectTestEvent('initial_translations', {
+        'cat_sandwiches': {'en': 'Sandwiches', 'ar': 'الساندويتشات'},
+        'item_p1': {'en': 'Alpha Panini', 'ar': 'بانيني ألفا'},
+        'item_p2': {'en': 'Bravo Burger', 'ar': 'برجر برافو'},
+        'item_p3': {'en': 'Crispy Club', 'ar': 'كلوب مقرمش'},
+        'item_p4': {'en': 'Delta Wrap', 'ar': 'راب دلتا'},
+      });
+      mockSocket.injectTestEvent('initial_products', [
+        for (int i = 1; i <= 4; i++)
+          {
+            'id': 'p$i',
+            'name_key': 'item_p$i',
+            'description_key': 'item_p$i',
+            'price': 30 + i * 5,
+            'quantity': 999,
+            'image': '',
+            'category': 'sandwiches',
+          },
+      ]);
+      await tester.pumpAndSettle();
+
+      // Open Admin Catalog tab
+      await tester.tap(find.text('Catalog'));
+      await tester.pumpAndSettle();
+      expect(tester.takeException(), isNull);
+
+      // Verify 2-column GridView on 360dp phone in All view AND Category view
+      final gridFinder = find.byKey(const ValueKey('admin_catalog_items_grid'));
+      expect(gridFinder, findsOneWidget);
+      var gridDelegate =
+          tester.widget<GridView>(gridFinder).gridDelegate
+              as SliverGridDelegateWithFixedCrossAxisCount;
+      expect(gridDelegate.crossAxisCount, 2);
+
+      // Select Sandwiches category chip — stays a 2-column GridView (not a 1-column list!)
+      await tester.tap(find.widgetWithText(ChoiceChip, 'Sandwiches'));
+      await tester.pumpAndSettle();
+      expect(tester.takeException(), isNull);
+      gridDelegate =
+          tester.widget<GridView>(gridFinder).gridDelegate
+              as SliverGridDelegateWithFixedCrossAxisCount;
+      expect(gridDelegate.crossAxisCount, 2);
+      expect(find.text('#1'), findsOneWidget);
+      expect(find.text('#2'), findsOneWidget);
+      expect(find.text('#3'), findsOneWidget);
+      expect(find.text('#4'), findsOneWidget);
+
+      // Scroll slightly on 360x800 phone so row 2 sits completely above EvaFloatingNavBar
+      await tester.drag(gridFinder, const Offset(0, -140));
+      await tester.pumpAndSettle();
+
+      // 1-Tap Rank Nudge: move p3 (#3) earlier to #2
+      await tester.tap(find.byKey(const ValueKey('rank_earlier_p3')));
+      await tester.pumpAndSettle();
+      expect(tester.takeException(), isNull);
+      expect(container.read(canteenStoreProvider).categories.first.productIds, [
+        'p1',
+        'p3',
+        'p2',
+        'p4',
+      ]);
+
+      // 2D Grid Drag-and-Drop: hold p4 (bottom-right) and drop onto p1 (top-left, #1)
+      final p4Center = tester.getCenter(
+        find.byKey(const ValueKey('admin_prod_card_p4')),
+      );
+      final p1Center = tester.getCenter(
+        find.byKey(const ValueKey('admin_prod_card_p1')),
+      );
+      final drag = await tester.startGesture(p4Center);
+      await tester.pump(const Duration(milliseconds: 260));
+      await drag.moveTo(p1Center);
+      await tester.pump(const Duration(milliseconds: 80));
+      await drag.up();
+      await tester.pumpAndSettle();
+      expect(tester.takeException(), isNull);
+      expect(container.read(canteenStoreProvider).categories.first.productIds, [
+        'p4',
+        'p1',
+        'p3',
+        'p2',
+      ]);
+
+      // Verify desktop (1280x900) scales cleanly to 4-column grid matching StudentMenuView
+      await tester.binding.setSurfaceSize(const Size(1280, 900));
+      await tester.pumpAndSettle();
+      expect(tester.takeException(), isNull);
+      gridDelegate =
+          tester.widget<GridView>(gridFinder).gridDelegate
+              as SliverGridDelegateWithFixedCrossAxisCount;
+      expect(gridDelegate.crossAxisCount, 4);
+    },
+  );
 }

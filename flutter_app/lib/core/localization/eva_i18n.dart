@@ -356,5 +356,15 @@ class EvaTranslator {
       'ar':
           'تصميم وتطوير:\nإياد جابر • أنور قاسم • دينا محمود • أحمد محمد\n\nمرخص بموجب رخصة GNU GPL v3.0.',
     },
+    'catalog_grid_rank_hint': {
+      'en':
+          'Hold & drag cards across the grid or tap ‹ › to rank items just like the live menu.',
+      'ar':
+          'اضغط مطولاً واسحب البطاقات داخل الشبكة أو اضغط ‹ › لترتيب الأصناف كما تظهر في القائمة.',
+    },
+    'stock_out_short': {'en': 'Out', 'ar': 'نفد'},
+    'stock_qty_short': {'en': 'Qty', 'ar': 'كمية'},
+    'rank_earlier_tooltip': {'en': 'Move earlier', 'ar': 'تقديم الترتيب'},
+    'rank_later_tooltip': {'en': 'Move later', 'ar': 'تأخير الترتيب'},
   };
 }
