@@ -3,6 +3,9 @@
   "version": "1.0.0",
   "private": true,
   "license": "GPL-3.0-or-later",
+  "engines": {
+    "node": ">=22.13.0 <25.0.0"
+  },
   "scripts": {
     "start": "node server.js",
     "dev": "node server.js",

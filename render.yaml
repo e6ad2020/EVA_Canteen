@@ -1,0 +1,34 @@
+# Render Blueprint for EVA Canteen Backend (HTTP + WebSocket + SQLite)
+# Docs: https://render.com/docs/blueprint-spec
+#
+# NOTE: On the Free plan, Render does not support Persistent Disks and spins down
+# after 15 minutes of inactivity (local SQLite resets on sleep/redeploy).
+# For permanent storage & zero sleep, upgrade to `plan: starter` and uncomment
+# the `disk` + `DB_PATH` / `UPLOADS_DIR` lines below.
+
+services:
+  - type: web
+    name: eva-canteen-backend
+    runtime: node
+    plan: free
+    branch: flutter-v2
+    buildCommand: npm install
+    startCommand: npm start
+    healthCheckPath: /api/health
+    # disk:
+    #   name: eva-canteen-data
+    #   mountPath: /var/data
+    #   sizeGB: 1
+    envVars:
+      - key: NODE_ENV
+        value: production
+      - key: ADMIN_EMAIL
+        value: admin@canteen.app
+      - key: ADMIN_PASSWORD
+        sync: false
+      - key: JWT_SECRET
+        generateValue: true
+      # - key: DB_PATH
+      #   value: /var/data/canteen.db
+      # - key: UPLOADS_DIR
+      #   value: /var/data/uploads

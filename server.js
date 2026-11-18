@@ -16,6 +16,7 @@ const db = require('./database');
 const { hashPassword, comparePassword } = require('./password_hash');
 
 const app = express();
+app.set('trust proxy', 1);
 const server = http.createServer(app);
 const wss = new WebSocket.Server({
     server,
@@ -23,6 +24,7 @@ const wss = new WebSocket.Server({
 });
 
 const PORT = Number(process.env.PORT) || 8080;
+const HOST = (process.env.HOST || '0.0.0.0').trim();
 
 const SERVER_ADMIN_EMAIL = (process.env.ADMIN_EMAIL || 'admin@canteen.app').trim().toLowerCase();
 const SERVER_ADMIN_PASSWORD = process.env.ADMIN_PASSWORD || 'admin123';
@@ -34,7 +36,7 @@ const JWT_SECRET =
         .update(`${SERVER_ADMIN_EMAIL}:${SERVER_ADMIN_PASSWORD}:eva-canteen-jwt-v1`)
         .digest('hex');
 
-const UPLOADS_DIR = path.join(__dirname, 'uploads');
+const UPLOADS_DIR = path.resolve(process.env.UPLOADS_DIR || path.join(__dirname, 'uploads'));
 const FLUTTER_WEB_DIR = path.join(__dirname, 'flutter_app', 'build', 'web');
 if (!fs.existsSync(UPLOADS_DIR)) {
     fs.mkdirSync(UPLOADS_DIR, { recursive: true });
@@ -2414,7 +2416,7 @@ async function start() {
         await db.initDatabase();
         console.log('Database initialized successfully.');
 
-        server.listen(PORT, () => {
+        server.listen(PORT, HOST, () => {
             const localIp = getLocalIpAddress();
             const separator = '===================================================';
             const modeLabel =
@@ -2428,6 +2430,7 @@ async function start() {
             console.log('EVA Canteen Server Running (SQLite)');
             console.log(separator);
             console.log(`\nMode:             ${modeLabel}`);
+            console.log(`Bind:             ${HOST}:${PORT}`);
             console.log(`Local:            http://localhost:${PORT}`);
             console.log(`On Your Network:  http://${localIp}:${PORT}`);
             console.log(`\n${separator}\n`);
@@ -2440,18 +2443,35 @@ async function start() {
 
 start();
 
+let isShuttingDown = false;
+
 function shutdown(signal) {
+    if (isShuttingDown) {
+        return;
+    }
+    isShuttingDown = true;
     console.log(`Received ${signal}, shutting down...`);
     clearInterval(heartbeatInterval);
 
-    server.close(async () => {
+    for (const client of wss.clients) {
         try {
-            await db.close();
-        } catch (err) {
-            console.error('Failed to close database cleanly:', err);
-        } finally {
-            process.exit(0);
+            client.close(1001, 'Server restarting');
+        } catch {
+            client.terminate();
         }
+    }
+
+    wss.close(() => {
+        server.close(async () => {
+            try {
+                await db.close();
+            } catch (err) {
+                console.error('Failed to close database cleanly:', err);
+            } finally {
+                process.exit(0);
+            }
+        });
+        server.closeAllConnections?.();
     });
 
     setTimeout(() => process.exit(1), 10_000).unref();
