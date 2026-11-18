@@ -143,10 +143,8 @@ class StudentShellScreen extends ConsumerWidget {
                                   child: EvaFloatingNavBar(
                                     selectedIndex: navigationShell.currentIndex,
                                     showLabels: showLabels,
-                                    onDestinationSelected: (idx) {
-                                      HapticFeedback.selectionClick();
-                                      navigationShell.goBranch(idx);
-                                    },
+                                    onDestinationSelected:
+                                        navigationShell.goBranch,
                                     items: [
                                       EvaFloatingNavItem(
                                         icon: Icons.restaurant_menu_outlined,

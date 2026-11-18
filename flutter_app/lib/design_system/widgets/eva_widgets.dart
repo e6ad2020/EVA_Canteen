@@ -221,8 +221,8 @@ class EvaGlassBar extends StatefulWidget {
 class _EvaGlassBarState extends State<EvaGlassBar>
     with SingleTickerProviderStateMixin {
   late final AnimationController _ctrl;
-  late final Animation<double> _curved;
-  bool _settled = false;
+  late final CurvedAnimation _curved;
+  late final Animation<double> _scale;
 
   @override
   void initState() {
@@ -232,16 +232,13 @@ class _EvaGlassBarState extends State<EvaGlassBar>
       duration: const Duration(milliseconds: 240),
     );
     _curved = CurvedAnimation(parent: _ctrl, curve: Curves.easeOutCubic);
-    _ctrl.addStatusListener((status) {
-      if (status == AnimationStatus.completed && mounted && !_settled) {
-        setState(() => _settled = true);
-      }
-    });
+    _scale = Tween<double>(begin: 0.985, end: 1.0).animate(_curved);
     _ctrl.forward();
   }
 
   @override
   void dispose() {
+    _curved.dispose();
     _ctrl.dispose();
     super.dispose();
   }
@@ -301,25 +298,24 @@ class _EvaGlassBarState extends State<EvaGlassBar>
       ),
     );
 
-    if (_settled || disableMotion) return bar;
+    if (disableMotion) return bar;
 
-    return AnimatedBuilder(
-      animation: _curved,
-      child: bar,
-      builder: (context, child) {
-        final t = _curved.value;
-        if (t >= 0.999) return child!;
-        return Opacity(
-          opacity: t.clamp(0.0, 1.0),
-          child: Transform.translate(
-            offset: Offset(0, (1 - t) * -10),
-            child: Transform.scale(
-              scale: 0.985 + (0.015 * t),
+    return FadeTransition(
+      opacity: _curved,
+      child: ScaleTransition(
+        scale: _scale,
+        child: AnimatedBuilder(
+          animation: _curved,
+          child: bar,
+          builder: (context, child) {
+            final dy = (1.0 - _curved.value) * -10.0;
+            return Transform.translate(
+              offset: Offset(0.0, dy),
               child: child,
-            ),
-          ),
-        );
-      },
+            );
+          },
+        ),
+      ),
     );
   }
 }
@@ -355,13 +351,23 @@ class EvaFloatingHeaderScaffold extends StatefulWidget {
 }
 
 class _EvaFloatingHeaderScaffoldState extends State<EvaFloatingHeaderScaffold> {
-  late double _headerHeight = widget.initialHeaderHeight;
-  bool _isScrolled = false;
+  late final ValueNotifier<double> _headerHeightNotifier =
+      ValueNotifier<double>(widget.initialHeaderHeight);
+  late final ValueNotifier<bool> _isScrolledNotifier = ValueNotifier<bool>(
+    false,
+  );
+
+  @override
+  void dispose() {
+    _headerHeightNotifier.dispose();
+    _isScrolledNotifier.dispose();
+    super.dispose();
+  }
 
   void _onHeaderHeightMeasured(double measuredHeight) {
     if (!mounted) return;
-    if ((measuredHeight - _headerHeight).abs() > 0.5) {
-      setState(() => _headerHeight = measuredHeight);
+    if ((measuredHeight - _headerHeightNotifier.value).abs() > 0.5) {
+      _headerHeightNotifier.value = measuredHeight;
     }
   }
 
@@ -369,8 +375,8 @@ class _EvaFloatingHeaderScaffoldState extends State<EvaFloatingHeaderScaffold> {
     if (notification.depth != 0) return false;
     if (notification.metrics.axis != Axis.vertical) return false;
     final nextScrolled = notification.metrics.pixels > widget.scrollThreshold;
-    if (nextScrolled != _isScrolled) {
-      setState(() => _isScrolled = nextScrolled);
+    if (nextScrolled != _isScrolledNotifier.value) {
+      _isScrolledNotifier.value = nextScrolled;
     }
     return false;
   }
@@ -379,55 +385,79 @@ class _EvaFloatingHeaderScaffoldState extends State<EvaFloatingHeaderScaffold> {
   Widget build(BuildContext context) {
     final tokens = EvaTokens.of(context);
     final topInset = MediaQuery.paddingOf(context).top;
-    final topClearance = topInset + _headerHeight + 4.0;
-    // Ends behind the opaque body of EvaGlassBar so there is never a visible seam
-    final scrimHeight = topInset + math.min(_headerHeight * 0.56, 40.0);
 
     return Stack(
       fit: StackFit.expand,
       children: [
         NotificationListener<ScrollNotification>(
           onNotification: _onScrollNotification,
-          child: widget.bodyBuilder(context, topClearance, _isScrolled),
+          child: ValueListenableBuilder<double>(
+            valueListenable: _headerHeightNotifier,
+            builder: (context, headerHeight, _) {
+              final topClearance = topInset + headerHeight + 4.0;
+              return widget.bodyBuilder(
+                context,
+                topClearance,
+                _isScrolledNotifier.value,
+              );
+            },
+          ),
         ),
-        Positioned(
-          top: 0,
-          left: 0,
-          right: 0,
-          height: scrimHeight,
-          child: IgnorePointer(
-            child: AnimatedOpacity(
-              duration: const Duration(milliseconds: 220),
-              curve: Curves.easeOutCubic,
-              opacity: _isScrolled ? 1.0 : (topInset > 0 ? 0.45 : 0.0),
-              child: DecoratedBox(
-                decoration: BoxDecoration(
-                  gradient: LinearGradient(
-                    begin: Alignment.topCenter,
-                    end: Alignment.bottomCenter,
-                    stops: const [0.0, 0.56, 1.0],
-                    colors: [
-                      tokens.canvasBackground.withValues(
-                        alpha: tokens.isNight ? 0.95 : 0.92,
+        ValueListenableBuilder<double>(
+          valueListenable: _headerHeightNotifier,
+          builder: (context, headerHeight, _) {
+            // Ends behind the opaque body of EvaGlassBar so there is never a visible seam
+            final scrimHeight = topInset + math.min(headerHeight * 0.56, 40.0);
+            return Positioned(
+              top: 0,
+              left: 0,
+              right: 0,
+              height: scrimHeight,
+              child: IgnorePointer(
+                child: ValueListenableBuilder<bool>(
+                  valueListenable: _isScrolledNotifier,
+                  builder: (context, isScrolled, child) => AnimatedOpacity(
+                    duration: const Duration(milliseconds: 220),
+                    curve: Curves.easeOutCubic,
+                    opacity: isScrolled ? 1.0 : (topInset > 0 ? 0.45 : 0.0),
+                    child: child,
+                  ),
+                  child: DecoratedBox(
+                    decoration: BoxDecoration(
+                      gradient: LinearGradient(
+                        begin: Alignment.topCenter,
+                        end: Alignment.bottomCenter,
+                        stops: const [0.0, 0.56, 1.0],
+                        colors: [
+                          tokens.canvasBackground.withValues(
+                            alpha: tokens.isNight ? 0.95 : 0.92,
+                          ),
+                          tokens.canvasBackground.withValues(
+                            alpha: tokens.isNight ? 0.68 : 0.62,
+                          ),
+                          tokens.canvasBackground.withValues(alpha: 0.0),
+                        ],
                       ),
-                      tokens.canvasBackground.withValues(
-                        alpha: tokens.isNight ? 0.68 : 0.62,
-                      ),
-                      tokens.canvasBackground.withValues(alpha: 0.0),
-                    ],
+                    ),
                   ),
                 ),
               ),
-            ),
-          ),
+            );
+          },
         ),
         Positioned(
           top: topInset,
           left: 0,
           right: 0,
-          child: _HeaderSizeObserver(
-            onHeightChanged: _onHeaderHeightMeasured,
-            child: widget.headerBuilder(context, _isScrolled),
+          child: RepaintBoundary(
+            child: _HeaderSizeObserver(
+              onHeightChanged: _onHeaderHeightMeasured,
+              child: ValueListenableBuilder<bool>(
+                valueListenable: _isScrolledNotifier,
+                builder: (context, isScrolled, _) =>
+                    widget.headerBuilder(context, isScrolled),
+              ),
+            ),
           ),
         ),
       ],
@@ -685,7 +715,7 @@ class _JellyFrame {
   final double glowOpacity;
 }
 
-class _JellyMotion {
+class _JellyMotion extends ChangeNotifier {
   _JellyMotion(int initialVisualIndex, int count)
     : _tabCount = count,
       _position = _JellySpring(
@@ -763,6 +793,11 @@ class _JellyMotion {
       ((x - inset) / _tabWidth).floor().clamp(0, _maxIndex);
 
   void resize(double width, double height, int count) {
+    if ((_width - width).abs() < 0.05 &&
+        (_height - height).abs() < 0.05 &&
+        _tabCount == count) {
+      return;
+    }
     _width = width;
     _height = height;
     _tabCount = count;
@@ -771,7 +806,7 @@ class _JellyMotion {
       _originX = _width / 2.0;
       _glowY = _height / 2.0;
     }
-    _publish();
+    _publish(notify: false);
   }
 
   void snapToRest(int visualIndex) {
@@ -799,13 +834,21 @@ class _JellyMotion {
 
   void select(int visualIndex) {
     dragging = false;
-    if (visualIndex >= 0) {
-      _target = visualIndex.clamp(0, _maxIndex).toDouble();
+    final clamped = visualIndex >= 0
+        ? visualIndex.clamp(0, _maxIndex).toDouble()
+        : _target;
+    if (_releasePending && (_target - clamped).abs() < 0.001) {
+      // finish() already targeted this index; keep _pressTarget & _shapeTarget
+      // intact so the NuvioMobile tap-release jelly flight curve isn't cut short.
+      running = true;
+      return;
     }
+    _target = clamped;
     _releasePending = true;
     _pressTarget = 0.0;
     _shapeTarget = 1.0;
     running = true;
+    notifyListeners();
   }
 
   void begin(double x, double y) {
@@ -824,6 +867,7 @@ class _JellyMotion {
     _shapeTarget = 1.26;
     _panel.velocity = 0.0;
     running = true;
+    notifyListeners();
   }
 
   int drag(double dx, double dy) {
@@ -851,12 +895,14 @@ class _JellyMotion {
     _target = index.toDouble();
     _releasePending = true;
     running = true;
+    notifyListeners();
     return index;
   }
 
   void cancel(int selectedVisualIndex) {
     dragging = false;
     _panel.velocity = 0.0;
+    _releasePending = false;
     select(selectedVisualIndex);
   }
 
@@ -885,7 +931,6 @@ class _JellyMotion {
       _trackX.advance(1.0, dt);
       if (_trackX.isAtRest(1.0)) _originX = _width / 2.0;
     }
-    _publish();
     running =
         dragging ||
         _releasePending ||
@@ -899,9 +944,10 @@ class _JellyMotion {
         !_trackX.isAtRest(1.0) ||
         !_trackPress.isAtRest(1.0) ||
         !_glow.isAtRest(0.0);
+    _publish();
   }
 
-  void _publish() {
+  void _publish({bool notify = true}) {
     final speed = _velocity.value / 10.0;
     frame = _JellyFrame(
       position: _position.value,
@@ -916,6 +962,9 @@ class _JellyMotion {
       glowY: _glowY,
       glowOpacity: _glow.value.clamp(0.0, 1.0),
     );
+    if (notify) {
+      notifyListeners();
+    }
   }
 }
 
@@ -952,7 +1001,7 @@ class EvaFloatingNavBar extends StatefulWidget {
 
 class _EvaFloatingNavBarState extends State<EvaFloatingNavBar>
     with SingleTickerProviderStateMixin {
-  late _JellyMotion _motion;
+  late final _JellyMotion _motion;
   late final Ticker _ticker;
   Duration? _lastTickElapsed;
   int? _activePointerId;
@@ -1026,9 +1075,7 @@ class _EvaFloatingNavBarState extends State<EvaFloatingNavBar>
         ? (1.0 / 60.0)
         : (elapsed - prev).inMicroseconds / 1000000.0;
 
-    setState(() {
-      _motion.advance(dt);
-    });
+    _motion.advance(dt);
 
     if (!_motion.running && _activePointerId == null) {
       _stopTicker();
@@ -1052,6 +1099,7 @@ class _EvaFloatingNavBarState extends State<EvaFloatingNavBar>
   @override
   void dispose() {
     _ticker.dispose();
+    _motion.dispose();
     super.dispose();
   }
 
@@ -1077,6 +1125,15 @@ class _EvaFloatingNavBarState extends State<EvaFloatingNavBar>
       tokens.brandPrimary,
       tokens.isNight ? 0.30 : (tokens.isLiquidGlass ? 0.26 : 0.16),
     )!;
+    final activeFg = tokens.isNight
+        ? Color.lerp(tokens.brandPrimary, Colors.white, 0.18)!
+        : tokens.brandPrimary;
+    final inactiveFg = tokens.textSecondary;
+    final baseLabelStyle = Theme.of(context).textTheme.labelSmall?.copyWith(
+      fontSize: isDense ? 10.5 : 11.5,
+      height: 1.15,
+      letterSpacing: isDense ? -0.15 : 0.0,
+    );
 
     final clampedScaler = MediaQuery.textScalerOf(
       context,
@@ -1118,13 +1175,6 @@ class _EvaFloatingNavBarState extends State<EvaFloatingNavBar>
                   builder: (context, constraints) {
                     final trackWidth = constraints.maxWidth;
                     _motion.resize(trackWidth, trackHeight, count);
-                    final frame = _motion.frame;
-                    final originAlignX = trackWidth > 0
-                        ? ((frame.originX / trackWidth) * 2.0 - 1.0).clamp(
-                            -1.0,
-                            1.0,
-                          )
-                        : 0.0;
 
                     return Listener(
                       behavior: HitTestBehavior.opaque,
@@ -1142,8 +1192,6 @@ class _EvaFloatingNavBarState extends State<EvaFloatingNavBar>
                         HapticFeedback.selectionClick();
                         if (!disableMotion) {
                           _ensureTickerRunning();
-                        } else {
-                          setState(() {});
                         }
                       },
                       onPointerMove: (event) {
@@ -1158,7 +1206,6 @@ class _EvaFloatingNavBarState extends State<EvaFloatingNavBar>
                         if (!disableMotion) {
                           _ensureTickerRunning();
                         }
-                        setState(() {});
                       },
                       onPointerUp: (event) {
                         if (event.pointer != _activePointerId) return;
@@ -1173,7 +1220,6 @@ class _EvaFloatingNavBarState extends State<EvaFloatingNavBar>
                         if (disableMotion) {
                           _motion.snapToRest(visualIdx);
                           _stopTicker();
-                          setState(() {});
                         } else {
                           _ensureTickerRunning();
                         }
@@ -1193,115 +1239,139 @@ class _EvaFloatingNavBarState extends State<EvaFloatingNavBar>
                         if (disableMotion) {
                           _motion.snapToRest(selectedVisual);
                           _stopTicker();
-                          setState(() {});
                         } else {
                           _motion.cancel(selectedVisual);
                           _ensureTickerRunning();
                         }
                       },
-                      child: Transform.translate(
-                        offset: Offset(frame.panelOffset, frame.trackOffsetY),
-                        child: Transform(
-                          alignment: Alignment(originAlignX, 0.0),
-                          transform: Matrix4.diagonal3Values(
-                            frame.trackScale * frame.trackScaleX,
-                            frame.trackScale,
-                            1.0,
-                          ),
-                          child: Container(
-                            height: trackHeight,
-                            decoration: BoxDecoration(
-                              color: capsuleBg,
-                              borderRadius: BorderRadius.circular(999),
-                              border: Border.all(
-                                color: capsuleBorder,
-                                width: math.max(tokens.borderWidth, 1.25),
+                      child: ListenableBuilder(
+                        listenable: _motion,
+                        builder: (context, _) {
+                          final frame = _motion.frame;
+                          final originAlignX = trackWidth > 0
+                              ? ((frame.originX / trackWidth) * 2.0 - 1.0)
+                                    .clamp(-1.0, 1.0)
+                              : 0.0;
+                          // Quantize glow alpha to 16 steps & keep blurRadius constant
+                          // so Impeller and CanvasKit cache the stadium RRect shadow mask
+                          // across 60/120 Hz frames instead of regenerating Gaussian kernels.
+                          final quantizedGlow =
+                              (frame.glowOpacity * 16.0).round() / 16.0;
+
+                          return Transform.translate(
+                            offset: Offset(
+                              frame.panelOffset,
+                              frame.trackOffsetY,
+                            ),
+                            child: Transform(
+                              alignment: Alignment(originAlignX, 0.0),
+                              transform: Matrix4.diagonal3Values(
+                                frame.trackScale * frame.trackScaleX,
+                                frame.trackScale,
+                                1.0,
                               ),
-                              boxShadow: tokens.isNight
-                                  ? [
-                                      BoxShadow(
-                                        color: Colors.black.withValues(
-                                          alpha: 0.44,
-                                        ),
-                                        blurRadius: 22,
-                                        spreadRadius: -2,
-                                        offset: const Offset(0, 9),
-                                      ),
-                                      BoxShadow(
-                                        color: tokens.brandPrimary.withValues(
-                                          alpha:
-                                              0.12 + 0.14 * frame.glowOpacity,
-                                        ),
-                                        blurRadius:
-                                            16 + 8 * frame.glowOpacity,
-                                        offset: const Offset(0, 2),
-                                      ),
-                                    ]
-                                  : [
-                                      BoxShadow(
-                                        color: tokens.brandPrimary.withValues(
-                                          alpha:
-                                              (tokens.isLiquidGlass
-                                                  ? 0.14
-                                                  : 0.09) +
-                                              0.12 * frame.glowOpacity,
-                                        ),
-                                        blurRadius:
-                                            24 + 8 * frame.glowOpacity,
-                                        spreadRadius: -2,
-                                        offset: const Offset(0, 10),
-                                      ),
-                                      const BoxShadow(
-                                        color: Color(0x120F172A),
-                                        blurRadius: 8,
-                                        offset: Offset(0, 3),
-                                      ),
-                                    ],
-                            ),
-                            clipBehavior: Clip.antiAlias,
-                            child: Stack(
-                              fit: StackFit.expand,
-                              children: [
-                                CustomPaint(
-                                  painter: _NuvioJellyPillPainter(
-                                    frame: frame,
-                                    count: count,
-                                    inset: _JellyMotion.inset,
-                                    accentColor: tokens.brandPrimary,
-                                    isNight: tokens.isNight,
+                              child: DecoratedBox(
+                                decoration: BoxDecoration(
+                                  color: capsuleBg,
+                                  borderRadius: BorderRadius.circular(999),
+                                  border: Border.all(
+                                    color: capsuleBorder,
+                                    width: math.max(tokens.borderWidth, 1.25),
                                   ),
-                                ),
-                                Padding(
-                                  padding: const EdgeInsets.all(
-                                    _JellyMotion.inset,
-                                  ),
-                                  child: Row(
-                                    children: [
-                                      for (int i = 0; i < count; i++)
-                                        Expanded(
-                                          child: _buildTabItem(
-                                            context: context,
-                                            tokens: tokens,
-                                            item: widget.items[i],
-                                            index: i,
-                                            visualIndex: _visualIndex(
-                                              i,
-                                              count,
-                                              isRtl,
+                                  boxShadow: tokens.isNight
+                                      ? [
+                                          BoxShadow(
+                                            color: Colors.black.withValues(
+                                              alpha: 0.44,
                                             ),
-                                            frame: frame,
-                                            labelFraction: labelFraction,
-                                            isDense: isDense,
-                                            textScaler: clampedScaler,
+                                            blurRadius: 22,
+                                            spreadRadius: -2,
+                                            offset: const Offset(0, 9),
                                           ),
+                                          BoxShadow(
+                                            color: tokens.brandPrimary
+                                                .withValues(
+                                                  alpha:
+                                                      0.12 +
+                                                      0.14 * quantizedGlow,
+                                                ),
+                                            blurRadius: 20,
+                                            offset: const Offset(0, 2),
+                                          ),
+                                        ]
+                                      : [
+                                          BoxShadow(
+                                            color: tokens.brandPrimary
+                                                .withValues(
+                                                  alpha:
+                                                      (tokens.isLiquidGlass
+                                                          ? 0.14
+                                                          : 0.09) +
+                                                      0.12 * quantizedGlow,
+                                                ),
+                                            blurRadius: 26,
+                                            spreadRadius: -2,
+                                            offset: const Offset(0, 10),
+                                          ),
+                                          const BoxShadow(
+                                            color: Color(0x120F172A),
+                                            blurRadius: 8,
+                                            offset: Offset(0, 3),
+                                          ),
+                                        ],
+                                ),
+                                child: SizedBox(
+                                  height: trackHeight,
+                                  child: Stack(
+                                    fit: StackFit.expand,
+                                    children: [
+                                      CustomPaint(
+                                        willChange: _motion.running,
+                                        painter: _NuvioJellyPillPainter(
+                                          motion: _motion,
+                                          count: count,
+                                          inset: _JellyMotion.inset,
+                                          accentColor: tokens.brandPrimary,
+                                          isNight: tokens.isNight,
                                         ),
+                                      ),
+                                      Padding(
+                                        padding: const EdgeInsets.all(
+                                          _JellyMotion.inset,
+                                        ),
+                                        child: Row(
+                                          children: [
+                                            for (int i = 0; i < count; i++)
+                                              Expanded(
+                                                child: _buildTabItem(
+                                                  tokens: tokens,
+                                                  item: widget.items[i],
+                                                  index: i,
+                                                  visualIndex: _visualIndex(
+                                                    i,
+                                                    count,
+                                                    isRtl,
+                                                  ),
+                                                  frame: frame,
+                                                  labelFraction: labelFraction,
+                                                  isDense: isDense,
+                                                  textScaler: clampedScaler,
+                                                  activeFg: activeFg,
+                                                  inactiveFg: inactiveFg,
+                                                  baseLabelStyle:
+                                                      baseLabelStyle,
+                                                ),
+                                              ),
+                                          ],
+                                        ),
+                                      ),
                                     ],
                                   ),
                                 ),
-                              ],
+                              ),
                             ),
-                          ),
-                        ),
+                          );
+                        },
                       ),
                     );
                   },
@@ -1315,7 +1385,6 @@ class _EvaFloatingNavBarState extends State<EvaFloatingNavBar>
   }
 
   Widget _buildTabItem({
-    required BuildContext context,
     required EvaTokens tokens,
     required EvaFloatingNavItem item,
     required int index,
@@ -1324,22 +1393,72 @@ class _EvaFloatingNavBarState extends State<EvaFloatingNavBar>
     required double labelFraction,
     required bool isDense,
     required TextScaler textScaler,
+    required Color activeFg,
+    required Color inactiveFg,
+    required TextStyle? baseLabelStyle,
   }) {
-    final coverage = (1.0 - (frame.position - visualIndex).abs()).clamp(
+    final rawCoverage = (1.0 - (frame.position - visualIndex).abs()).clamp(
       0.0,
       1.0,
     );
+    final coverage = rawCoverage < 0.001 ? 0.0 : rawCoverage;
+    final effectiveContentScale = coverage == 0.0 ? 1.0 : frame.contentScale;
+
+    return _EvaNavTabItem(
+      item: item,
+      isSelectedSemantics: index == widget.selectedIndex,
+      coverage: coverage,
+      contentScale: effectiveContentScale,
+      labelFraction: labelFraction,
+      isDense: isDense,
+      textScaler: textScaler,
+      activeFg: activeFg,
+      inactiveFg: inactiveFg,
+      dotBadgeColor: tokens.accentAppetite,
+      baseLabelStyle: baseLabelStyle,
+    );
+  }
+}
+
+class _EvaNavTabItem extends StatelessWidget {
+  const _EvaNavTabItem({
+    required this.item,
+    required this.isSelectedSemantics,
+    required this.coverage,
+    required this.contentScale,
+    required this.labelFraction,
+    required this.isDense,
+    required this.textScaler,
+    required this.activeFg,
+    required this.inactiveFg,
+    required this.dotBadgeColor,
+    required this.baseLabelStyle,
+  });
+
+  final EvaFloatingNavItem item;
+  final bool isSelectedSemantics;
+  final double coverage;
+  final double contentScale;
+  final double labelFraction;
+  final bool isDense;
+  final TextScaler textScaler;
+  final Color activeFg;
+  final Color inactiveFg;
+  final Color dotBadgeColor;
+  final TextStyle? baseLabelStyle;
+
+  @override
+  Widget build(BuildContext context) {
     final isSelected = coverage >= 0.5;
-    final activeFg = tokens.isNight
-        ? Color.lerp(tokens.brandPrimary, Colors.white, 0.18)!
-        : tokens.brandPrimary;
-    final inactiveFg = tokens.textSecondary;
-    final fgColor = Color.lerp(inactiveFg, activeFg, coverage)!;
+    final fgColor = coverage <= 0.0
+        ? inactiveFg
+        : (coverage >= 1.0
+              ? activeFg
+              : Color.lerp(inactiveFg, activeFg, coverage)!);
     final iconSize = isDense ? 20.0 : 22.0;
 
     // NuvioMobile contentScale: active item blooms up to ~1.18x while holding the pill
-    final itemScale =
-        1.0 + (0.06 + (frame.contentScale - 1.0)) * coverage;
+    final itemScale = 1.0 + (0.06 + (contentScale - 1.0)) * coverage;
 
     Widget iconWidget = Icon(
       isSelected ? item.selectedIcon : item.icon,
@@ -1359,7 +1478,7 @@ class _EvaFloatingNavBarState extends State<EvaFloatingNavBar>
     } else if (item.showDotBadge) {
       iconWidget = Badge(
         smallSize: 7.5,
-        backgroundColor: tokens.accentAppetite,
+        backgroundColor: dotBadgeColor,
         child: iconWidget,
       );
     }
@@ -1374,10 +1493,7 @@ class _EvaFloatingNavBarState extends State<EvaFloatingNavBar>
         softWrap: false,
         overflow: TextOverflow.ellipsis,
         textAlign: TextAlign.center,
-        style: Theme.of(context).textTheme.labelSmall?.copyWith(
-          fontSize: isDense ? 10.5 : 11.5,
-          height: 1.15,
-          letterSpacing: isDense ? -0.15 : 0.0,
+        style: baseLabelStyle?.copyWith(
           color: fgColor,
           fontWeight: isSelected ? FontWeight.w800 : FontWeight.w600,
         ),
@@ -1391,42 +1507,49 @@ class _EvaFloatingNavBarState extends State<EvaFloatingNavBar>
       );
     }
 
+    final iconLiftY = -1.0 * coverage * labelFraction;
+    final Widget liftedIcon = iconLiftY.abs() < 0.01
+        ? iconWidget
+        : Transform.translate(offset: Offset(0, iconLiftY), child: iconWidget);
+
+    Widget column = Column(
+      mainAxisAlignment: MainAxisAlignment.center,
+      children: [
+        liftedIcon,
+        if (labelSection != null) ...[
+          SizedBox(height: (isDense ? 2.5 : 3.0) * labelFraction),
+          labelSection,
+        ],
+      ],
+    );
+
+    if ((itemScale - 1.0).abs() >= 0.001) {
+      column = Transform.scale(scale: itemScale, child: column);
+    }
+
     return Semantics(
-      selected: index == widget.selectedIndex,
+      selected: isSelectedSemantics,
       button: true,
       label: item.label,
       child: Padding(
         padding: EdgeInsets.symmetric(horizontal: isDense ? 2.0 : 4.0),
-        child: Transform.scale(
-          scale: itemScale,
-          child: Column(
-            mainAxisAlignment: MainAxisAlignment.center,
-            children: [
-              Transform.translate(
-                offset: Offset(0, -1.0 * coverage * labelFraction),
-                child: iconWidget,
-              ),
-              if (labelSection != null) ...[
-                SizedBox(height: (isDense ? 2.5 : 3.0) * labelFraction),
-                labelSection,
-              ],
-            ],
-          ),
-        ),
+        child: column,
       ),
     );
   }
 }
 
 class _NuvioJellyPillPainter extends CustomPainter {
-  const _NuvioJellyPillPainter({
-    required this.frame,
+  _NuvioJellyPillPainter({
+    required this.motion,
     required this.count,
     required this.inset,
     required this.accentColor,
     required this.isNight,
-  });
+  }) : frame = motion.frame,
+       super(repaint: motion);
 
+  final _JellyMotion motion;
   final _JellyFrame frame;
   final int count;
   final double inset;
@@ -1439,17 +1562,25 @@ class _NuvioJellyPillPainter extends CustomPainter {
       return;
     }
 
+    final f = motion.frame;
     final tabWidth = (size.width - inset * 2) / count;
     final itemHeight = size.height - inset * 2;
-    final centerX = inset + (frame.position + 0.5) * tabWidth;
+    final centerX = inset + (f.position + 0.5) * tabWidth;
     final centerY = size.height / 2;
+    final capsuleRRect = RRect.fromRectAndRadius(
+      Offset.zero & size,
+      Radius.circular(size.height / 2),
+    );
+
+    canvas.save();
+    canvas.clipRRect(capsuleRRect);
 
     // 1. Ambient pill glow + dynamic finger-hold spotlight glow (NuvioMobile drawJellyGlow)
-    final holdBoost = frame.glowOpacity;
+    final holdBoost = f.glowOpacity;
     final glowRadius = math.max(tabWidth * (1.45 + 0.55 * holdBoost), 96.0);
     final glowCenter = Offset(
-      centerX + (frame.originX - centerX) * 0.35 * holdBoost,
-      centerY + (frame.glowY - centerY) * 0.35 * holdBoost,
+      centerX + (f.originX - centerX) * 0.35 * holdBoost,
+      centerY + (f.glowY - centerY) * 0.35 * holdBoost,
     );
     final baseGlowAlpha =
         (isNight ? 0.20 : 0.11) + (isNight ? 0.14 : 0.10) * holdBoost;
@@ -1462,11 +1593,11 @@ class _NuvioJellyPillPainter extends CustomPainter {
         ],
         stops: const [0.0, 0.46, 1.0],
       ).createShader(Rect.fromCircle(center: glowCenter, radius: glowRadius));
-    canvas.drawRect(Offset.zero & size, glowPaint);
+    canvas.drawRRect(capsuleRRect, glowPaint);
 
     // 2. Volume-preserving & hold-inflating jelly stadium pill (NuvioMobile jellyPillPath)
-    final halfW = (tabWidth * frame.pillScaleX) / 2;
-    final halfH = (itemHeight * frame.pillScaleY) / 2;
+    final halfW = (tabWidth * f.pillScaleX) / 2;
+    final halfH = (itemHeight * f.pillScaleY) / 2;
     final baseRadius = math.min(tabWidth, itemHeight) / 2;
 
     final pillRect = Rect.fromLTRB(
@@ -1478,20 +1609,20 @@ class _NuvioJellyPillPainter extends CustomPainter {
     final pillRRect = RRect.fromRectAndCorners(
       pillRect,
       topLeft: Radius.elliptical(
-        baseRadius * frame.pillScaleX,
-        baseRadius * frame.pillScaleY,
+        baseRadius * f.pillScaleX,
+        baseRadius * f.pillScaleY,
       ),
       topRight: Radius.elliptical(
-        baseRadius * frame.pillScaleX,
-        baseRadius * frame.pillScaleY,
+        baseRadius * f.pillScaleX,
+        baseRadius * f.pillScaleY,
       ),
       bottomLeft: Radius.elliptical(
-        baseRadius * frame.pillScaleX,
-        baseRadius * frame.pillScaleY,
+        baseRadius * f.pillScaleX,
+        baseRadius * f.pillScaleY,
       ),
       bottomRight: Radius.elliptical(
-        baseRadius * frame.pillScaleX,
-        baseRadius * frame.pillScaleY,
+        baseRadius * f.pillScaleX,
+        baseRadius * f.pillScaleY,
       ),
     );
 
@@ -1517,6 +1648,7 @@ class _NuvioJellyPillPainter extends CustomPainter {
         alpha: (isNight ? 0.44 : 0.25) + 0.14 * holdBoost,
       );
     canvas.drawRRect(pillRRect, borderPaint);
+    canvas.restore();
   }
 
   @override
@@ -1571,8 +1703,9 @@ class _EvaPressableState extends State<EvaPressable> {
   }
 }
 
-/// Staggered fade + upward entrance animation that detaches its Opacity &
-/// Transform layers once complete so scrolling stays 100% flicker-free.
+/// Staggered fade + upward entrance animation with constant widget topology
+/// (FadeTransition over RepaintBoundary — zero RenderObject reparenting and
+/// zero saveLayer at rest once alpha == 255).
 class EvaReveal extends StatefulWidget {
   const EvaReveal({
     super.key,
@@ -1592,8 +1725,7 @@ class EvaReveal extends StatefulWidget {
 class _EvaRevealState extends State<EvaReveal>
     with SingleTickerProviderStateMixin {
   late final AnimationController _ctrl;
-  late final Animation<double> _curved;
-  bool _done = false;
+  late final CurvedAnimation _curved;
 
   @override
   void initState() {
@@ -1604,16 +1736,12 @@ class _EvaRevealState extends State<EvaReveal>
       duration: Duration(milliseconds: 190 + clamped * 28),
     );
     _curved = CurvedAnimation(parent: _ctrl, curve: Curves.easeOutCubic);
-    _ctrl.addStatusListener((status) {
-      if (status == AnimationStatus.completed && mounted && !_done) {
-        setState(() => _done = true);
-      }
-    });
     _ctrl.forward();
   }
 
   @override
   void dispose() {
+    _curved.dispose();
     _ctrl.dispose();
     super.dispose();
   }
@@ -1621,28 +1749,30 @@ class _EvaRevealState extends State<EvaReveal>
   @override
   Widget build(BuildContext context) {
     final disableMotion = MediaQuery.maybeDisableAnimationsOf(context) ?? false;
-    if (_done || disableMotion) return widget.child;
+    if (disableMotion) return widget.child;
 
-    return AnimatedBuilder(
-      animation: _curved,
-      child: widget.child,
-      builder: (context, inner) {
-        final t = _curved.value;
-        if (t >= 0.999) return inner!;
-        return Opacity(
-          opacity: t.clamp(0.0, 1.0),
-          child: Transform.translate(
-            offset: Offset(0, (1 - t) * widget.offsetY),
-            child: inner,
-          ),
-        );
-      },
+    return RepaintBoundary(
+      child: FadeTransition(
+        opacity: _curved,
+        child: AnimatedBuilder(
+          animation: _curved,
+          child: widget.child,
+          builder: (context, inner) {
+            final dy = (1.0 - _curved.value) * widget.offsetY;
+            return Transform.translate(
+              offset: Offset(0.0, dy),
+              child: inner,
+            );
+          },
+        ),
+      ),
     );
   }
 }
 
 /// Smooth tab-switch transition wrapper for StatefulNavigationShell that
-/// preserves child state and detaches Opacity/Transform at rest.
+/// preserves child state with constant widget topology (zero RenderObject
+/// reparenting at start/end and zero offscreen saveLayer at rest).
 class EvaShellTransition extends StatefulWidget {
   const EvaShellTransition({
     super.key,
@@ -1664,10 +1794,14 @@ class _EvaShellTransitionState extends State<EvaShellTransition>
     duration: const Duration(milliseconds: 180),
     value: 1.0,
   );
-  late final Animation<double> _curved = CurvedAnimation(
+  late final CurvedAnimation _curved = CurvedAnimation(
     parent: _ctrl,
     curve: Curves.easeOutCubic,
   );
+  late final Animation<double> _opacity = Tween<double>(
+    begin: 0.4,
+    end: 1.0,
+  ).animate(_curved);
   double _slideDir = 1.0;
 
   @override
@@ -1685,26 +1819,28 @@ class _EvaShellTransitionState extends State<EvaShellTransition>
 
   @override
   void dispose() {
+    _curved.dispose();
     _ctrl.dispose();
     super.dispose();
   }
 
   @override
   Widget build(BuildContext context) {
-    return AnimatedBuilder(
-      animation: _curved,
-      child: widget.child,
-      builder: (context, child) {
-        final t = _curved.value;
-        if (t >= 0.999) return child!;
-        return Opacity(
-          opacity: (0.4 + 0.6 * t).clamp(0.0, 1.0),
-          child: Transform.translate(
-            offset: Offset((1 - t) * 8 * _slideDir, 0),
-            child: child,
-          ),
-        );
-      },
+    return RepaintBoundary(
+      child: FadeTransition(
+        opacity: _opacity,
+        child: AnimatedBuilder(
+          animation: _curved,
+          child: widget.child,
+          builder: (context, child) {
+            final dx = (1.0 - _curved.value) * 8.0 * _slideDir;
+            return Transform.translate(
+              offset: Offset(dx, 0.0),
+              child: child,
+            );
+          },
+        ),
+      ),
     );
   }
 }
@@ -1772,10 +1908,15 @@ class EvaBrandLogo extends StatelessWidget {
   final double size;
   final bool hero;
 
-  Widget _buildLayeredEmblem(EvaTokens tokens, double fallbackIconSize) {
+  Widget _buildLayeredEmblem(
+    EvaTokens tokens,
+    double fallbackIconSize,
+    int cachePx,
+  ) {
     Widget swooshLayer = Image.asset(
       'assets/images/logo_swoosh.png',
       fit: BoxFit.contain,
+      cacheWidth: cachePx,
       gaplessPlayback: true,
       filterQuality: FilterQuality.medium,
       color: tokens.logoSwooshTint == const Color(0xFFFFFFFF)
@@ -1801,6 +1942,7 @@ class EvaBrandLogo extends StatelessWidget {
         Image.asset(
           'assets/images/logo_fill.png',
           fit: BoxFit.contain,
+          cacheWidth: cachePx,
           gaplessPlayback: true,
           filterQuality: FilterQuality.medium,
           color: tokens.logoFill,
@@ -1810,6 +1952,7 @@ class EvaBrandLogo extends StatelessWidget {
         Image.asset(
           'assets/images/logo_outline.png',
           fit: BoxFit.contain,
+          cacheWidth: cachePx,
           gaplessPlayback: true,
           filterQuality: FilterQuality.medium,
           color: tokens.logoOutline,
@@ -1827,6 +1970,8 @@ class EvaBrandLogo extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final tokens = EvaTokens.of(context);
+    final dpr = MediaQuery.devicePixelRatioOf(context);
+    final cachePx = (size * dpr).round().clamp(64, 944);
     if (hero) {
       return RepaintBoundary(
         child: SizedBox(
@@ -1835,6 +1980,7 @@ class EvaBrandLogo extends StatelessWidget {
           child: Image.asset(
             'assets/images/logo.png',
             fit: BoxFit.contain,
+            cacheWidth: cachePx,
             gaplessPlayback: true,
             filterQuality: FilterQuality.medium,
             errorBuilder: (_, _, _) => Icon(
@@ -1861,7 +2007,7 @@ class EvaBrandLogo extends StatelessWidget {
         ),
         clipBehavior: Clip.antiAlias,
         padding: EdgeInsets.all(size * 0.025),
-        child: _buildLayeredEmblem(tokens, size * 0.58),
+        child: _buildLayeredEmblem(tokens, size * 0.58, cachePx),
       ),
     );
   }
@@ -1883,6 +2029,8 @@ class EvaAvatar extends StatelessWidget {
   Widget build(BuildContext context) {
     final tokens = EvaTokens.of(context);
     final asset = UserProfile.avatarAssetForPic(profilePic);
+    final dpr = MediaQuery.devicePixelRatioOf(context);
+    final cachePx = (radius * 2 * dpr).round().clamp(64, 800);
     return AnimatedScale(
       scale: isSelected ? 1.06 : 1.0,
       duration: const Duration(milliseconds: 180),
@@ -1904,6 +2052,7 @@ class EvaAvatar extends StatelessWidget {
           child: Image.asset(
             asset,
             fit: BoxFit.cover,
+            cacheWidth: cachePx,
             gaplessPlayback: true,
             filterQuality: FilterQuality.medium,
             errorBuilder: (_, _, _) => Icon(
@@ -2217,6 +2366,13 @@ class EvaQuantityStepper extends StatefulWidget {
 
 class _EvaQuantityStepperState extends State<EvaQuantityStepper>
     with SingleTickerProviderStateMixin {
+  static final Animatable<double> _kStepperFadeTween = CurveTween(
+    curve: const Interval(0.0, 0.85, curve: Curves.easeOutCubic),
+  );
+  static final Animatable<double> _kStepperScaleTween = CurveTween(
+    curve: Curves.easeOutBack,
+  );
+
   double _dir = 1.0;
   late final AnimationController _pulseCtrl;
   late final Animation<double> _pulseScale;
@@ -2288,16 +2444,9 @@ class _EvaQuantityStepperState extends State<EvaQuantityStepper>
           children: [...previousChildren, ?currentChild],
         ),
         transitionBuilder: (child, anim) => FadeTransition(
-          opacity: CurvedAnimation(
-            parent: anim,
-            curve: const Interval(0.0, 0.85, curve: Curves.easeOutCubic),
-          ),
+          opacity: _kStepperFadeTween.animate(anim),
           child: ScaleTransition(
-            scale: CurvedAnimation(
-              parent: anim,
-              curve: Curves.easeOutBack,
-              reverseCurve: Curves.easeInCubic,
-            ),
+            scale: _kStepperScaleTween.animate(anim),
             child: child,
           ),
         ),

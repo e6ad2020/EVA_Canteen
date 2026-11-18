@@ -15,6 +15,35 @@ import '../features/student/student_menu_view.dart';
 import '../features/student/student_orders_view.dart';
 import '../features/student/student_shell_screen.dart';
 
+final Animatable<double> _kRouteFadeTween = CurveTween(
+  curve: Curves.easeOutCubic,
+);
+final Animatable<double> _kRouteScaleTween = Tween<double>(
+  begin: 0.985,
+  end: 1.0,
+).chain(CurveTween(curve: Curves.easeOutCubic));
+
+CustomTransitionPage<void> _buildEvaTransitionPage({
+  required LocalKey key,
+  required Widget child,
+}) {
+  return CustomTransitionPage<void>(
+    key: key,
+    transitionDuration: const Duration(milliseconds: 240),
+    reverseTransitionDuration: const Duration(milliseconds: 200),
+    child: RepaintBoundary(child: child),
+    transitionsBuilder: (context, animation, secondaryAnimation, pageChild) {
+      return FadeTransition(
+        opacity: _kRouteFadeTween.animate(animation),
+        child: ScaleTransition(
+          scale: _kRouteScaleTween.animate(animation),
+          child: pageChild,
+        ),
+      );
+    },
+  );
+}
+
 final appRouterProvider = Provider<GoRouter>((ref) {
   final authRefresh = ValueNotifier<UserProfile?>(
     ref.read(canteenStoreProvider).currentUser,
@@ -56,30 +85,18 @@ final appRouterProvider = Provider<GoRouter>((ref) {
         path: '/welcome',
         pageBuilder: (context, state) {
           final isAdmin = state.uri.queryParameters['admin'] == '1';
-          return CustomTransitionPage<void>(
+          return _buildEvaTransitionPage(
             key: state.pageKey,
-            transitionDuration: const Duration(milliseconds: 240),
-            reverseTransitionDuration: const Duration(milliseconds: 200),
             child: WelcomeAuthScreen(initialAdminMode: isAdmin),
-            transitionsBuilder: (context, animation, secondaryAnimation, child) {
-              final curved = CurvedAnimation(
-                parent: animation,
-                curve: Curves.easeOutCubic,
-              );
-              return FadeTransition(
-                opacity: curved,
-                child: ScaleTransition(
-                  scale: Tween<double>(begin: 0.985, end: 1.0).animate(curved),
-                  child: child,
-                ),
-              );
-            },
           );
         },
       ),
       StatefulShellRoute.indexedStack(
-        builder: (context, state, navigationShell) {
-          return StudentShellScreen(navigationShell: navigationShell);
+        pageBuilder: (context, state, navigationShell) {
+          return _buildEvaTransitionPage(
+            key: state.pageKey,
+            child: StudentShellScreen(navigationShell: navigationShell),
+          );
         },
         branches: [
           StatefulShellBranch(
@@ -109,8 +126,11 @@ final appRouterProvider = Provider<GoRouter>((ref) {
         ],
       ),
       StatefulShellRoute.indexedStack(
-        builder: (context, state, navigationShell) {
-          return AdminShellScreen(navigationShell: navigationShell);
+        pageBuilder: (context, state, navigationShell) {
+          return _buildEvaTransitionPage(
+            key: state.pageKey,
+            child: AdminShellScreen(navigationShell: navigationShell),
+          );
         },
         branches: [
           StatefulShellBranch(
