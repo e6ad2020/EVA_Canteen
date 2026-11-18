@@ -1,4 +1,4 @@
-package school.eva.canteen.eva_canteen
+package com.evacanteen.app
 
 import io.flutter.embedding.android.FlutterActivity
 
