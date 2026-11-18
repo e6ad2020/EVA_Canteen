@@ -986,7 +986,7 @@ void main() {
   );
 
   testWidgets(
-    'Welcome screen pins Open status to top-left with 132dp hero logo, and 5-item Cart keeps Payment Method + Confirm button fixed above fold',
+    'Welcome screen pins Open status to top-left with enlarged hero logo, and 5-item Cart keeps Payment Method + Confirm button fixed above fold',
     (tester) async {
       await tester.binding.setSurfaceSize(const Size(360, 800));
       addTearDown(() => tester.binding.setSurfaceSize(null));
@@ -1011,7 +1011,7 @@ void main() {
       );
       await tester.pumpAndSettle();
 
-      // 1. Verify status badge is at top-left and logo is enlarged hero (132x132) on 360x800 phone
+      // 1. Verify status badge is at top-left and logo is enlarged hero (204dp wide) on 360x800 phone
       final statusRect = tester.getRect(
         find.byKey(const ValueKey('welcome_status_top_left')),
       );
@@ -1022,8 +1022,8 @@ void main() {
       final logoFinder = find.byType(EvaBrandLogo);
       expect(logoFinder, findsOneWidget);
       final logoSize = tester.getSize(logoFinder);
-      expect(logoSize.width, 132.0);
-      expect(logoSize.height, 132.0);
+      expect(logoSize.width, 204.0);
+      expect(logoSize.height, closeTo(204.0 * 0.72, 0.5));
       expect(tester.widget<EvaBrandLogo>(logoFinder).hero, isTrue);
 
       // 2. Sign in as a customer (balance 50 L.E) with 5 distinct items in cart

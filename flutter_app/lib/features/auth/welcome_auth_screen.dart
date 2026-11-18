@@ -126,7 +126,7 @@ class _WelcomeAuthScreenState extends ConsumerState<WelcomeAuthScreen> {
                           physics: const ClampingScrollPhysics(),
                           padding: EdgeInsets.fromLTRB(
                             horizontalPad,
-                            isWide ? 44 : 42,
+                            isWide ? 40 : 38,
                             horizontalPad,
                             isWide ? 28 : 18,
                           ),
@@ -134,7 +134,7 @@ class _WelcomeAuthScreenState extends ConsumerState<WelcomeAuthScreen> {
                             constraints: BoxConstraints(
                               minHeight: math.max(
                                 0,
-                                viewport.maxHeight - (isWide ? 72 : 60),
+                                viewport.maxHeight - (isWide ? 68 : 56),
                               ),
                             ),
                             child: Center(
@@ -152,7 +152,7 @@ class _WelcomeAuthScreenState extends ConsumerState<WelcomeAuthScreen> {
                                       index: 1,
                                       child: _SimpleBrandHeader(isWide: isWide),
                                     ),
-                                    SizedBox(height: isWide ? 22 : 18),
+                                    SizedBox(height: isWide ? 18 : 14),
 
                                     // Centered Auth Card
                                     EvaReveal(
@@ -606,7 +606,7 @@ class _SimpleBrandHeader extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return Center(
-      child: EvaBrandLogo(size: isWide ? 148 : 132, hero: true),
+      child: EvaBrandLogo(size: isWide ? 232 : 204, hero: true),
     );
   }
 }

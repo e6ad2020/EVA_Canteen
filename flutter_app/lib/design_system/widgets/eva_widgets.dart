@@ -1831,8 +1831,18 @@ class EvaBrandLogo extends StatelessWidget {
       return RepaintBoundary(
         child: SizedBox(
           width: size,
-          height: size,
-          child: _buildLayeredEmblem(tokens, size * 0.64),
+          height: size * 0.72,
+          child: Image.asset(
+            'assets/images/logo.png',
+            fit: BoxFit.contain,
+            gaplessPlayback: true,
+            filterQuality: FilterQuality.medium,
+            errorBuilder: (_, _, _) => Icon(
+              Icons.restaurant_menu_rounded,
+              color: tokens.brandPrimary,
+              size: size * 0.5,
+            ),
+          ),
         ),
       );
     }
