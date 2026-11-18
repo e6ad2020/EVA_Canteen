@@ -1,6 +1,7 @@
 import 'package:eva_canteen/core/models/domain_models.dart';
 import 'package:eva_canteen/core/network/eva_socket_client.dart';
 import 'package:eva_canteen/core/state/canteen_providers.dart';
+import 'package:eva_canteen/design_system/eva_theme.dart';
 import 'package:eva_canteen/main.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_test/flutter_test.dart';
@@ -102,11 +103,11 @@ void main() {
       );
       await tester.pumpAndSettle();
 
-      // Verify English LTR on Welcome screen
-      expect(find.text('Fresh Campus Meals, Zero Queue.'), findsOneWidget);
+      // Verify English LTR on Welcome screen with modern retail copy
+      expect(find.text('Order ahead, skip the wait.'), findsOneWidget);
       expect(
         Directionality.of(
-          tester.element(find.text('Fresh Campus Meals, Zero Queue.')),
+          tester.element(find.text('Order ahead, skip the wait.')),
         ),
         TextDirection.ltr,
       );
@@ -116,27 +117,27 @@ void main() {
       await tester.pumpAndSettle();
 
       expect(
-        find.text('وجبات طازجة في مدرستك، بدون طابور.'),
+        find.text('اطلب مسبقاً، واستلم بدون انتظار.'),
         findsOneWidget,
       );
       expect(
         Directionality.of(
-          tester.element(find.text('وجبات طازجة في مدرستك، بدون طابور.')),
+          tester.element(find.text('اطلب مسبقاً، واستلم بدون انتظار.')),
         ),
         TextDirection.rtl,
       );
 
       // Enter Guest Browse Menu mode
-      await tester.tap(find.text('تصفح القائمة فقط'));
+      await tester.tap(find.text('تصفح القائمة كزائر'));
       await tester.pumpAndSettle();
 
-      // Should now be on Student Menu screen in Arabic
+      // Should now be on Menu screen in Arabic
       expect(find.text('القائمة'), findsWidgets);
     },
   );
 
   testWidgets(
-    'Student Menu displays products and inline stepper updates tray bar',
+    'Menu displays products and inline stepper updates animated checkout dock',
     (tester) async {
       await tester.binding.setSurfaceSize(const Size(1200, 900));
       addTearDown(() => tester.binding.setSurfaceSize(null));
@@ -195,7 +196,7 @@ void main() {
       await tester.pumpAndSettle();
 
       expect(container.read(cartProvider)['p1'], 1);
-      expect(find.text('Review Order'), findsOneWidget);
+      expect(find.text('Review order'), findsOneWidget);
     },
   );
 
@@ -247,16 +248,141 @@ void main() {
               'isDiscount': false,
             },
           ],
-          'user': {'email': 'eyad@eva.edu', 'profilePic': 'pic2'},
+          'user': {'email': 'eyad@example.com', 'profilePic': 'pic2'},
         },
       ]);
       await tester.pump();
       await tester.pump(const Duration(milliseconds: 250));
 
       expect(find.text('#07'), findsOneWidget);
-      expect(find.text('eyad@eva.edu'), findsOneWidget);
+      expect(find.text('eyad@example.com'), findsOneWidget);
       expect(find.text('Iced Latte'), findsOneWidget);
-      expect(find.text('Start Preparing'), findsOneWidget);
+      expect(find.text('Start preparing'), findsOneWidget);
+    },
+  );
+
+  testWidgets(
+    'Narrow 360x800 phone viewport renders Welcome, Menu, and Admin Operations without overflow',
+    (tester) async {
+      await tester.binding.setSurfaceSize(const Size(360, 800));
+      addTearDown(() => tester.binding.setSurfaceSize(null));
+
+      SharedPreferences.setMockInitialValues({
+        'eva_saved_session_v2':
+            '{"email":"admin@canteen.app","role":"admin","profilePic":"pic1","balance":0,"token":"test-jwt"}',
+      });
+      final prefs = await SharedPreferences.getInstance();
+      final mockSocket = EvaSocketClient(enableNetwork: false);
+
+      final container = ProviderContainer(
+        overrides: [
+          sharedPrefsProvider.overrideWithValue(prefs),
+          socketClientProvider.overrideWithValue(mockSocket),
+        ],
+      );
+      addTearDown(container.dispose);
+
+      await tester.pumpWidget(
+        UncontrolledProviderScope(
+          container: container,
+          child: const EvaCanteenApp(),
+        ),
+      );
+      await tester.pumpAndSettle();
+      expect(tester.takeException(), isNull);
+
+      // Navigate to Operations tab on 5-tab mobile bottom bar
+      await tester.tap(find.text('Operations'));
+      await tester.pumpAndSettle();
+      expect(tester.takeException(), isNull);
+
+      // Inject an extremely long unspaced email to verify zero horizontal overflow
+      mockSocket.injectTestEvent('users_list', [
+        {
+          'email':
+              'tttttttttttttttttttttttttttttttttttttttttttttttttttttttt@example.com',
+          'role': 'student',
+          'profilePic': 'pic3',
+          'balance': 250,
+        },
+      ]);
+      await tester.pumpAndSettle();
+      expect(tester.takeException(), isNull);
+
+      // Switch to Arabic RTL on 360dp phone and verify zero overflow across tabs
+      await tester.tap(find.text('عربي'));
+      await tester.pumpAndSettle();
+      expect(tester.takeException(), isNull);
+    },
+  );
+
+  testWidgets(
+    'Light Blue and Light Red themes activate Liquid Glass tokens and illustrated wallpapers',
+    (tester) async {
+      await tester.binding.setSurfaceSize(const Size(412, 915));
+      addTearDown(() => tester.binding.setSurfaceSize(null));
+
+      SharedPreferences.setMockInitialValues({});
+      final prefs = await SharedPreferences.getInstance();
+      final mockSocket = EvaSocketClient(enableNetwork: false);
+
+      final container = ProviderContainer(
+        overrides: [
+          sharedPrefsProvider.overrideWithValue(prefs),
+          socketClientProvider.overrideWithValue(mockSocket),
+        ],
+      );
+      addTearDown(container.dispose);
+
+      // Start in Dark mode first to verify Light Blue/Red automatically switches to Daylight Liquid Glass
+      container
+          .read(appPreferencesProvider.notifier)
+          .setSurfaceMode(EvaSurfaceMode.nightShift);
+      container.read(canteenStoreProvider.notifier).enterBrowseGuestMode();
+
+      await tester.pumpWidget(
+        UncontrolledProviderScope(
+          container: container,
+          child: const EvaCanteenApp(),
+        ),
+      );
+      await tester.pumpAndSettle();
+
+      // Open Settings tab
+      await tester.tap(find.text('Settings'));
+      await tester.pumpAndSettle();
+
+      // Select 'Light Blue' theme
+      await tester.tap(find.text('Light Blue'));
+      await tester.pumpAndSettle();
+
+      var appPrefs = container.read(appPreferencesProvider);
+      expect(appPrefs.accentPreset, EvaAccentPreset.lightBlue);
+      expect(appPrefs.surfaceMode, EvaSurfaceMode.daylight);
+
+      var tokens = EvaTokens.of(tester.element(find.text('Light Blue')));
+      expect(tokens.isLiquidGlass, isTrue);
+      expect(tokens.brandPrimary, const Color(0xFF0D47A1));
+      expect(
+        tokens.wallpaperFolder,
+        'assets/images/wallpapers/light_blue',
+      );
+
+      // Select 'Light Red' theme
+      await tester.tap(find.text('Light Red'));
+      await tester.pumpAndSettle();
+
+      appPrefs = container.read(appPreferencesProvider);
+      expect(appPrefs.accentPreset, EvaAccentPreset.lightRed);
+      expect(appPrefs.surfaceMode, EvaSurfaceMode.daylight);
+
+      tokens = EvaTokens.of(tester.element(find.text('Light Red')));
+      expect(tokens.isLiquidGlass, isTrue);
+      expect(tokens.brandPrimary, const Color(0xFFB71C1C));
+      expect(
+        tokens.wallpaperFolder,
+        'assets/images/wallpapers/light_red',
+      );
     },
   );
 }

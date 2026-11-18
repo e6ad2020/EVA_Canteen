@@ -1,4 +1,6 @@
 import 'dart:math' as math;
+import 'dart:ui' show ImageFilter;
+
 import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:material_ui/material_ui.dart';
@@ -16,70 +18,416 @@ class EvaScaffoldBackground extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final tokens = EvaTokens.of(context);
-    if (!tokens.showDoodlePattern) {
-      return ColoredBox(color: tokens.canvasBackground, child: child);
-    }
+    final wallpaperFolder = tokens.wallpaperFolder;
 
     return ColoredBox(
       color: tokens.canvasBackground,
-      child: CustomPaint(
-        painter: _SubtleBistroDoodlePainter(
-          strokeColor: tokens.brandPrimary.withValues(
-            alpha: tokens.isNight ? 0.045 : 0.038,
+      child: Stack(
+        fit: StackFit.expand,
+        children: [
+          Positioned.fill(
+            child: AnimatedSwitcher(
+              duration: const Duration(milliseconds: 280),
+              child: wallpaperFolder != null
+                  ? LayoutBuilder(
+                      key: ValueKey('wallpaper_$wallpaperFolder'),
+                      builder: (context, constraints) {
+                        final isDesktop = constraints.maxWidth >= 768;
+                        final assetPath =
+                            '$wallpaperFolder/${isDesktop ? "desktop.png" : "phone.png"}';
+                        return Stack(
+                          fit: StackFit.expand,
+                          children: [
+                            Image.asset(
+                              assetPath,
+                              fit: BoxFit.cover,
+                              alignment: Alignment.center,
+                              errorBuilder: (_, _, _) =>
+                                  ColoredBox(color: tokens.canvasBackground),
+                            ),
+                            // Subtle veil keeps illustrated line art crisp without competing with UI text
+                            const ColoredBox(color: Color(0x1FFFFFFF)),
+                          ],
+                        );
+                      },
+                    )
+                  : tokens.showDoodlePattern
+                  ? CustomPaint(
+                      key: ValueKey('grid_${tokens.isNight}'),
+                      painter: _SubtleArchitecturalPatternPainter(
+                        dotColor: tokens.brandPrimary.withValues(
+                          alpha: tokens.isNight ? 0.07 : 0.055,
+                        ),
+                      ),
+                    )
+                  : SizedBox.expand(
+                      key: ValueKey('plain_${tokens.canvasBackground.toARGB32()}'),
+                    ),
+            ),
           ),
-        ),
-        child: child,
+          child,
+        ],
       ),
     );
   }
 }
 
-class _SubtleBistroDoodlePainter extends CustomPainter {
-  const _SubtleBistroDoodlePainter({required this.strokeColor});
+class _SubtleArchitecturalPatternPainter extends CustomPainter {
+  const _SubtleArchitecturalPatternPainter({required this.dotColor});
 
-  final Color strokeColor;
+  final Color dotColor;
 
   @override
   void paint(Canvas canvas, Size size) {
     final paint = Paint()
-      ..color = strokeColor
-      ..style = PaintingStyle.stroke
-      ..strokeWidth = 1.4
-      ..strokeCap = StrokeCap.round;
+      ..color = dotColor
+      ..style = PaintingStyle.fill;
 
-    const tile = 132.0;
-    for (double y = 24; y < size.height + tile; y += tile) {
-      for (double x = 24; x < size.width + tile; x += tile) {
-        final rowIdx = (y / tile).floor();
-        final dx = x + (rowIdx.isEven ? 0 : tile * 0.5);
-        // Minimal coffee cup & croissant geometric accents
-        canvas.drawArc(
-          Rect.fromCenter(center: Offset(dx, y), width: 20, height: 16),
-          0,
-          math.pi,
-          false,
-          paint,
-        );
-        canvas.drawLine(Offset(dx - 11, y), Offset(dx + 11, y), paint);
-
-        final sliceCenter = Offset(dx + 58, y + 54);
-        final path = Path()
-          ..moveTo(sliceCenter.dx, sliceCenter.dy - 10)
-          ..lineTo(sliceCenter.dx + 10, sliceCenter.dy + 9)
-          ..lineTo(sliceCenter.dx - 10, sliceCenter.dy + 9)
-          ..close();
-        canvas.drawPath(path, paint);
+    const spacing = 28.0;
+    for (double y = 14; y < size.height; y += spacing) {
+      for (double x = 14; x < size.width; x += spacing) {
+        canvas.drawCircle(Offset(x, y), 1.15, paint);
       }
     }
   }
 
   @override
-  bool shouldRepaint(covariant _SubtleBistroDoodlePainter oldDelegate) =>
-      oldDelegate.strokeColor != strokeColor;
+  bool shouldRepaint(covariant _SubtleArchitecturalPatternPainter oldDelegate) =>
+      oldDelegate.dotColor != dotColor;
+}
+
+/// Frosted Liquid-Glass surface in 'Light Blue' / 'Light Red' themes,
+/// and crisp architectural card in standard Light / Dark themes.
+class EvaSurfaceCard extends StatelessWidget {
+  const EvaSurfaceCard({
+    super.key,
+    required this.child,
+    this.padding,
+    this.borderRadius,
+    this.backgroundColor,
+    this.borderColor,
+    this.borderWidth,
+    this.onTap,
+    this.clipBehavior = Clip.antiAlias,
+  });
+
+  final Widget child;
+  final EdgeInsetsGeometry? padding;
+  final double? borderRadius;
+  final Color? backgroundColor;
+  final Color? borderColor;
+  final double? borderWidth;
+  final VoidCallback? onTap;
+  final Clip clipBehavior;
+
+  @override
+  Widget build(BuildContext context) {
+    final tokens = EvaTokens.of(context);
+    final radius = borderRadius ?? tokens.cardRadius;
+    final resolvedBg = backgroundColor ?? tokens.surfaceCard;
+    final resolvedBorder = borderColor ?? tokens.borderSubtle;
+    final resolvedBorderWidth = borderWidth ?? tokens.borderWidth;
+
+    Widget inner = padding != null
+        ? Padding(padding: padding!, child: child)
+        : child;
+
+    if (onTap != null) {
+      inner = InkWell(
+        borderRadius: BorderRadius.circular(radius),
+        onTap: onTap,
+        child: inner,
+      );
+    }
+
+    inner = Material(type: MaterialType.transparency, child: inner);
+
+    Widget surface = AnimatedContainer(
+      duration: const Duration(milliseconds: 200),
+      curve: Curves.easeOutCubic,
+      decoration: BoxDecoration(
+        color: resolvedBg,
+        borderRadius: BorderRadius.circular(radius),
+        border: Border.all(color: resolvedBorder, width: resolvedBorderWidth),
+        boxShadow: tokens.isNight || tokens.isLiquidGlass
+            ? null
+            : const [
+                BoxShadow(
+                  color: Color(0x080F172A),
+                  blurRadius: 12,
+                  offset: Offset(0, 3),
+                ),
+              ],
+      ),
+      child: inner,
+    );
+
+    if (tokens.isLiquidGlass) {
+      surface = ClipRRect(
+        borderRadius: BorderRadius.circular(radius),
+        clipBehavior: clipBehavior,
+        child: BackdropFilter(
+          filter: ImageFilter.blur(sigmaX: 10, sigmaY: 10),
+          child: surface,
+        ),
+      );
+    } else if (clipBehavior != Clip.none) {
+      surface = ClipRRect(
+        borderRadius: BorderRadius.circular(radius),
+        clipBehavior: clipBehavior,
+        child: surface,
+      );
+    }
+
+    if (onTap != null) {
+      return EvaPressable(child: surface);
+    }
+    return surface;
+  }
+}
+
+/// Frosted header/bar container that adapts to Liquid Glass themes.
+class EvaGlassBar extends StatelessWidget {
+  const EvaGlassBar({
+    super.key,
+    required this.child,
+    this.padding = const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
+    this.bottomBorder = true,
+    this.topBorder = false,
+  });
+
+  final Widget child;
+  final EdgeInsetsGeometry padding;
+  final bool bottomBorder;
+  final bool topBorder;
+
+  @override
+  Widget build(BuildContext context) {
+    final tokens = EvaTokens.of(context);
+    final box = Container(
+      padding: padding,
+      decoration: BoxDecoration(
+        color: tokens.isLiquidGlass
+            ? const Color(0xCCFFFFFF)
+            : tokens.surfaceElevated,
+        border: Border(
+          bottom: bottomBorder
+              ? BorderSide(color: tokens.borderSubtle, width: tokens.borderWidth)
+              : BorderSide.none,
+          top: topBorder
+              ? BorderSide(color: tokens.borderSubtle, width: tokens.borderWidth)
+              : BorderSide.none,
+        ),
+      ),
+      child: Material(type: MaterialType.transparency, child: child),
+    );
+
+    if (!tokens.isLiquidGlass) return box;
+
+    return ClipRect(
+      child: BackdropFilter(
+        filter: ImageFilter.blur(sigmaX: 12, sigmaY: 12),
+        child: box,
+      ),
+    );
+  }
+}
+
+/// Tactile press scale micro-interaction that never blocks child gestures.
+class EvaPressable extends StatefulWidget {
+  const EvaPressable({
+    super.key,
+    required this.child,
+    this.pressedScale = 0.975,
+  });
+
+  final Widget child;
+  final double pressedScale;
+
+  @override
+  State<EvaPressable> createState() => _EvaPressableState();
+}
+
+class _EvaPressableState extends State<EvaPressable> {
+  bool _pressed = false;
+
+  @override
+  Widget build(BuildContext context) {
+    final disableMotion = MediaQuery.maybeDisableAnimationsOf(context) ?? false;
+    if (disableMotion) return widget.child;
+
+    return Listener(
+      onPointerDown: (_) => setState(() => _pressed = true),
+      onPointerUp: (_) => setState(() => _pressed = false),
+      onPointerCancel: (_) => setState(() => _pressed = false),
+      child: AnimatedScale(
+        scale: _pressed ? widget.pressedScale : 1.0,
+        duration: const Duration(milliseconds: 110),
+        curve: Curves.easeOutCubic,
+        child: widget.child,
+      ),
+    );
+  }
+}
+
+/// Staggered fade + upward entrance animation with zero pending timers.
+class EvaReveal extends StatelessWidget {
+  const EvaReveal({
+    super.key,
+    required this.child,
+    this.index = 0,
+    this.offsetY = 10,
+  });
+
+  final Widget child;
+  final int index;
+  final double offsetY;
+
+  @override
+  Widget build(BuildContext context) {
+    final disableMotion = MediaQuery.maybeDisableAnimationsOf(context) ?? false;
+    if (disableMotion) return child;
+
+    final clamped = math.min(index, 7);
+    final duration = Duration(milliseconds: 200 + clamped * 32);
+
+    return TweenAnimationBuilder<double>(
+      tween: Tween(begin: 0.0, end: 1.0),
+      duration: duration,
+      curve: Curves.easeOutCubic,
+      child: child,
+      builder: (context, t, inner) {
+        return Opacity(
+          opacity: t.clamp(0.0, 1.0),
+          child: Transform.translate(
+            offset: Offset(0, (1 - t) * offsetY),
+            child: inner,
+          ),
+        );
+      },
+    );
+  }
+}
+
+/// Smooth tab-switch transition wrapper for StatefulNavigationShell that
+/// preserves child state and scroll controllers.
+class EvaShellTransition extends StatefulWidget {
+  const EvaShellTransition({
+    super.key,
+    required this.currentIndex,
+    required this.child,
+  });
+
+  final int currentIndex;
+  final Widget child;
+
+  @override
+  State<EvaShellTransition> createState() => _EvaShellTransitionState();
+}
+
+class _EvaShellTransitionState extends State<EvaShellTransition>
+    with SingleTickerProviderStateMixin {
+  late final AnimationController _ctrl = AnimationController(
+    vsync: this,
+    duration: const Duration(milliseconds: 190),
+    value: 1.0,
+  );
+  late final Animation<double> _curved = CurvedAnimation(
+    parent: _ctrl,
+    curve: Curves.easeOutCubic,
+  );
+  double _slideDir = 1.0;
+
+  @override
+  void didUpdateWidget(covariant EvaShellTransition oldWidget) {
+    super.didUpdateWidget(oldWidget);
+    if (oldWidget.currentIndex != widget.currentIndex) {
+      final disableMotion =
+          MediaQuery.maybeDisableAnimationsOf(context) ?? false;
+      if (!disableMotion) {
+        _slideDir = widget.currentIndex > oldWidget.currentIndex ? 1.0 : -1.0;
+        _ctrl.forward(from: 0.0);
+      }
+    }
+  }
+
+  @override
+  void dispose() {
+    _ctrl.dispose();
+    super.dispose();
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return AnimatedBuilder(
+      animation: _curved,
+      child: widget.child,
+      builder: (context, child) {
+        final t = _curved.value;
+        return Opacity(
+          opacity: (0.35 + 0.65 * t).clamp(0.0, 1.0),
+          child: Transform.translate(
+            offset: Offset((1 - t) * 8 * _slideDir, 0),
+            child: child,
+          ),
+        );
+      },
+    );
+  }
+}
+
+/// Diagonal 135° split swatch for Light Blue / Light Red / Monochrome themes,
+/// or solid circle for single-hue themes.
+class EvaThemeSwatch extends StatelessWidget {
+  const EvaThemeSwatch({
+    super.key,
+    required this.preset,
+    required this.isNight,
+    this.size = 18,
+  });
+
+  final EvaAccentPreset preset;
+  final bool isNight;
+  final double size;
+
+  @override
+  Widget build(BuildContext context) {
+    final tokens = EvaTokens.of(context);
+    final hasDiagonal =
+        !isNight && preset.swatchStart != null && preset.swatchEnd != null;
+
+    return Container(
+      width: size,
+      height: size,
+      decoration: BoxDecoration(
+        shape: BoxShape.circle,
+        border: Border.all(
+          color: tokens.borderSubtle,
+          width: 1.2,
+        ),
+        color: hasDiagonal
+            ? null
+            : (isNight ? preset.nightColor : preset.daylightColor),
+        gradient: hasDiagonal
+            ? LinearGradient(
+                begin: Alignment.topLeft,
+                end: Alignment.bottomRight,
+                stops: const [0.0, 0.49, 0.51, 1.0],
+                colors: [
+                  preset.swatchStart!,
+                  preset.swatchStart!,
+                  preset.swatchEnd!,
+                  preset.swatchEnd!,
+                ],
+              )
+            : null,
+      ),
+    );
+  }
 }
 
 class EvaBrandLogo extends StatelessWidget {
-  const EvaBrandLogo({super.key, this.size = 44});
+  const EvaBrandLogo({super.key, this.size = 40});
 
   final double size;
 
@@ -90,9 +438,9 @@ class EvaBrandLogo extends StatelessWidget {
       width: size,
       height: size,
       decoration: BoxDecoration(
-        color: tokens.surfaceCard,
+        color: tokens.surfaceElevated,
         borderRadius: BorderRadius.circular(size * 0.28),
-        border: Border.all(color: tokens.borderSubtle),
+        border: Border.all(color: tokens.borderSubtle, width: tokens.borderWidth),
       ),
       clipBehavior: Clip.antiAlias,
       padding: EdgeInsets.all(size * 0.08),
@@ -125,27 +473,32 @@ class EvaAvatar extends StatelessWidget {
   Widget build(BuildContext context) {
     final tokens = EvaTokens.of(context);
     final asset = UserProfile.avatarAssetForPic(profilePic);
-    return AnimatedContainer(
+    return AnimatedScale(
+      scale: isSelected ? 1.06 : 1.0,
       duration: const Duration(milliseconds: 180),
-      width: radius * 2,
-      height: radius * 2,
-      decoration: BoxDecoration(
-        shape: BoxShape.circle,
-        color: tokens.surfaceSubtle,
-        border: Border.all(
-          color: isSelected ? tokens.brandPrimary : tokens.borderSubtle,
-          width: isSelected ? 2.5 : 1,
+      curve: Curves.easeOutBack,
+      child: AnimatedContainer(
+        duration: const Duration(milliseconds: 180),
+        width: radius * 2,
+        height: radius * 2,
+        decoration: BoxDecoration(
+          shape: BoxShape.circle,
+          color: tokens.surfaceSubtle,
+          border: Border.all(
+            color: isSelected ? tokens.brandPrimary : tokens.borderSubtle,
+            width: isSelected ? 2.5 : 1.2,
+          ),
         ),
-      ),
-      clipBehavior: Clip.antiAlias,
-      child: ClipOval(
-        child: Image.asset(
-          asset,
-          fit: BoxFit.cover,
-          errorBuilder: (_, _, _) => Icon(
-            Icons.person_rounded,
-            color: tokens.brandPrimary,
-            size: radius,
+        clipBehavior: Clip.antiAlias,
+        child: ClipOval(
+          child: Image.asset(
+            asset,
+            fit: BoxFit.cover,
+            errorBuilder: (_, _, _) => Icon(
+              Icons.person_rounded,
+              color: tokens.brandPrimary,
+              size: radius,
+            ),
           ),
         ),
       ),
@@ -271,17 +624,21 @@ class EvaStatusBadge extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return Container(
+    return AnimatedContainer(
+      duration: const Duration(milliseconds: 200),
       padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 5),
       decoration: BoxDecoration(
         color: background,
         borderRadius: BorderRadius.circular(999),
+        border: Border.all(
+          color: foreground.withValues(alpha: 0.22),
+        ),
       ),
       child: Row(
         mainAxisSize: MainAxisSize.min,
         children: [
           if (icon != null) ...[
-            Icon(icon, size: 14, color: foreground),
+            Icon(icon, size: 13.5, color: foreground),
             const SizedBox(width: 5),
           ] else if (pulsing) ...[
             Container(
@@ -292,13 +649,17 @@ class EvaStatusBadge extends StatelessWidget {
                 shape: BoxShape.circle,
               ),
             ),
-            const SizedBox(width: 6),
+            const SizedBox(width: 5),
           ],
-          Text(
-            label,
-            style: Theme.of(context).textTheme.labelMedium?.copyWith(
-              color: foreground,
-              fontWeight: FontWeight.w700,
+          Flexible(
+            child: Text(
+              label,
+              maxLines: 1,
+              overflow: TextOverflow.ellipsis,
+              style: Theme.of(context).textTheme.labelMedium?.copyWith(
+                color: foreground,
+                fontWeight: FontWeight.w700,
+              ),
             ),
           ),
         ],
@@ -330,7 +691,7 @@ class EvaQuantityStepper extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final tokens = EvaTokens.of(context);
-    final height = compact ? 36.0 : 40.0;
+    final height = compact ? 34.0 : 40.0;
 
     return AnimatedSwitcher(
       duration: const Duration(milliseconds: 180),
@@ -355,15 +716,22 @@ class EvaQuantityStepper extends StatelessWidget {
                   foregroundColor: disabled
                       ? tokens.textSecondary
                       : tokens.brandPrimary,
-                  minimumSize: Size(compact ? 72 : 84, height),
+                  minimumSize: Size(compact ? 64 : 84, height),
                   padding: EdgeInsets.symmetric(horizontal: compact ? 10 : 14),
                   shape: RoundedRectangleBorder(
                     borderRadius: BorderRadius.circular(999),
+                    side: BorderSide(
+                      color: disabled
+                          ? tokens.borderSubtle
+                          : tokens.brandPrimary.withValues(alpha: 0.25),
+                    ),
                   ),
                 ),
-                icon: const Icon(Icons.add_rounded, size: 18),
+                icon: Icon(Icons.add_rounded, size: compact ? 16 : 18),
                 label: Text(
                   addLabel,
+                  maxLines: 1,
+                  overflow: TextOverflow.ellipsis,
                   style: Theme.of(context).textTheme.labelMedium?.copyWith(
                     color: disabled
                         ? tokens.textSecondary
@@ -395,12 +763,16 @@ class EvaQuantityStepper extends StatelessWidget {
                     },
                   ),
                   Padding(
-                    padding: const EdgeInsets.symmetric(horizontal: 6),
-                    child: Text(
-                      '$quantity',
-                      style: Theme.of(context).textTheme.labelLarge?.copyWith(
-                        color: tokens.brandOnPrimary,
-                        fontFeatures: EvaThemeBuilder.tabularNums,
+                    padding: const EdgeInsets.symmetric(horizontal: 5),
+                    child: AnimatedSwitcher(
+                      duration: const Duration(milliseconds: 140),
+                      child: Text(
+                        '$quantity',
+                        key: ValueKey<int>(quantity),
+                        style: Theme.of(context).textTheme.labelLarge?.copyWith(
+                          color: tokens.brandOnPrimary,
+                          fontFeatures: EvaThemeBuilder.tabularNums,
+                        ),
                       ),
                     ),
                   ),
@@ -445,7 +817,7 @@ class _StepperIconBtn extends StatelessWidget {
       child: SizedBox(
         width: size,
         height: size,
-        child: Icon(icon, size: 18, color: color),
+        child: Icon(icon, size: 17, color: color),
       ),
     );
   }
@@ -467,12 +839,13 @@ class LanguageQuickToggle extends ConsumerWidget {
         ref.read(appPreferencesProvider.notifier).toggleLanguage();
       },
       style: OutlinedButton.styleFrom(
-        minimumSize: const Size(44, 38),
-        padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
-        backgroundColor: tokens.surfaceCard,
+        minimumSize: const Size(0, 34),
+        tapTargetSize: MaterialTapTargetSize.shrinkWrap,
+        padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
+        backgroundColor: tokens.surfaceElevated,
         shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(999)),
       ),
-      icon: Icon(Icons.translate_rounded, size: 16, color: tokens.brandPrimary),
+      icon: Icon(Icons.translate_rounded, size: 15, color: tokens.brandPrimary),
       label: Text(
         isAr ? 'EN' : 'عربي',
         style: Theme.of(context).textTheme.labelMedium?.copyWith(
@@ -495,50 +868,55 @@ class ConnectionStatusBanner extends ConsumerWidget {
     final i18n = ref.watch(i18nProvider);
     final tokens = EvaTokens.of(context);
 
-    if (phase == SocketConnectionPhase.connected) {
-      return const SizedBox.shrink();
-    }
-
-    return Container(
-      width: double.infinity,
-      padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
-      color: tokens.statusPendingBg,
-      child: Row(
-        children: [
-          SizedBox(
-            width: 14,
-            height: 14,
-            child: CircularProgressIndicator(
-              strokeWidth: 2,
-              color: tokens.statusPendingFg,
-            ),
-          ),
-          const SizedBox(width: 10),
-          Expanded(
-            child: Text(
-              i18n.t('reconnecting_banner'),
-              style: Theme.of(context).textTheme.labelMedium?.copyWith(
-                color: tokens.statusPendingFg,
+    return AnimatedSize(
+      duration: const Duration(milliseconds: 220),
+      curve: Curves.easeOutCubic,
+      child: phase == SocketConnectionPhase.connected
+          ? const SizedBox.shrink()
+          : Container(
+              width: double.infinity,
+              padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+              color: tokens.statusPendingBg,
+              child: Row(
+                children: [
+                  SizedBox(
+                    width: 14,
+                    height: 14,
+                    child: CircularProgressIndicator(
+                      strokeWidth: 2,
+                      color: tokens.statusPendingFg,
+                    ),
+                  ),
+                  const SizedBox(width: 10),
+                  Expanded(
+                    child: Text(
+                      i18n.t('reconnecting_banner'),
+                      maxLines: 2,
+                      overflow: TextOverflow.ellipsis,
+                      style: Theme.of(context).textTheme.labelMedium?.copyWith(
+                        color: tokens.statusPendingFg,
+                      ),
+                    ),
+                  ),
+                  TextButton(
+                    onPressed: () =>
+                        ref.read(socketClientProvider).reconnectNow(),
+                    child: Text(
+                      'Retry',
+                      style: TextStyle(
+                        color: tokens.statusPendingFg,
+                        fontWeight: FontWeight.w700,
+                      ),
+                    ),
+                  ),
+                ],
               ),
             ),
-          ),
-          TextButton(
-            onPressed: () => ref.read(socketClientProvider).reconnectNow(),
-            child: Text(
-              'Retry',
-              style: TextStyle(
-                color: tokens.statusPendingFg,
-                fontWeight: FontWeight.w700,
-              ),
-            ),
-          ),
-        ],
-      ),
     );
   }
 }
 
-/// Crisp deterministic ticket barcode graphic for the Student Live Pickup Pass.
+/// Crisp deterministic ticket barcode graphic for the Live Pickup Pass.
 class EvaPickupBarcodeBar extends StatelessWidget {
   const EvaPickupBarcodeBar({super.key, required this.orderId});
 

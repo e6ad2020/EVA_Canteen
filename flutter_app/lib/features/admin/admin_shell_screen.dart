@@ -1,3 +1,5 @@
+import 'dart:ui' show ImageFilter;
+
 import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
@@ -54,6 +56,8 @@ class AdminShellScreen extends ConsumerWidget {
                       i18n.isRtl
                           ? 'طلب جديد ${latest.pickupNumber} من ${latest.userEmail}'
                           : 'New order ${latest.pickupNumber} from ${latest.userEmail}',
+                      maxLines: 1,
+                      overflow: TextOverflow.ellipsis,
                       style: TextStyle(
                         color: tokens.brandOnPrimary,
                         fontWeight: FontWeight.w700,
@@ -82,13 +86,90 @@ class AdminShellScreen extends ConsumerWidget {
       }
     });
 
+    final animatedBody = EvaShellTransition(
+      currentIndex: navigationShell.currentIndex,
+      child: navigationShell,
+    );
+
     return LayoutBuilder(
       builder: (context, constraints) {
-        final isWide = constraints.maxWidth >= 900;
+        final isWide = constraints.maxWidth >= 840;
+
+        Widget? bottomBar;
+        if (!isWide) {
+          final nav = Container(
+            decoration: BoxDecoration(
+              border: Border(
+                top: BorderSide(
+                  color: tokens.borderSubtle,
+                  width: tokens.borderWidth,
+                ),
+              ),
+            ),
+            child: NavigationBar(
+              backgroundColor: tokens.isLiquidGlass
+                  ? const Color(0xD9FFFFFF)
+                  : tokens.surfaceElevated,
+              selectedIndex: navigationShell.currentIndex,
+              onDestinationSelected: (idx) {
+                HapticFeedback.selectionClick();
+                navigationShell.goBranch(idx);
+              },
+              destinations: [
+                NavigationDestination(
+                  icon: Badge(
+                    isLabelVisible: activeKdsCount > 0,
+                    label: Text('$activeKdsCount'),
+                    child: const Icon(Icons.kitchen_outlined),
+                  ),
+                  selectedIcon: Badge(
+                    isLabelVisible: activeKdsCount > 0,
+                    label: Text('$activeKdsCount'),
+                    child: const Icon(Icons.kitchen_rounded),
+                  ),
+                  label: i18n.t('admin_kds_tab'),
+                ),
+                NavigationDestination(
+                  icon: const Icon(Icons.inventory_2_outlined),
+                  selectedIcon: const Icon(Icons.inventory_2_rounded),
+                  label: i18n.t('admin_catalog_tab'),
+                ),
+                NavigationDestination(
+                  icon: const Icon(Icons.insights_outlined),
+                  selectedIcon: const Icon(Icons.insights_rounded),
+                  label: i18n.t('admin_analytics_tab'),
+                ),
+                NavigationDestination(
+                  icon: const Icon(Icons.account_balance_wallet_outlined),
+                  selectedIcon: const Icon(
+                    Icons.account_balance_wallet_rounded,
+                  ),
+                  label: i18n.t('admin_ops_tab'),
+                ),
+                NavigationDestination(
+                  icon: const Icon(Icons.tune_outlined),
+                  selectedIcon: const Icon(Icons.tune_rounded),
+                  label: i18n.t('nav_settings'),
+                ),
+              ],
+            ),
+          );
+
+          bottomBar = tokens.isLiquidGlass
+              ? ClipRect(
+                  child: BackdropFilter(
+                    filter: ImageFilter.blur(sigmaX: 12, sigmaY: 12),
+                    child: nav,
+                  ),
+                )
+              : nav;
+        }
 
         return Scaffold(
+          extendBody: tokens.isLiquidGlass,
           body: EvaScaffoldBackground(
             child: SafeArea(
+              bottom: !tokens.isLiquidGlass || isWide,
               child: Column(
                 children: [
                   const ConnectionStatusBanner(),
@@ -97,10 +178,11 @@ class AdminShellScreen extends ConsumerWidget {
                         ? Row(
                             children: [
                               NavigationRail(
-                                backgroundColor: tokens.surfaceCard,
                                 selectedIndex: navigationShell.currentIndex,
-                                onDestinationSelected: (idx) =>
-                                    navigationShell.goBranch(idx),
+                                onDestinationSelected: (idx) {
+                                  HapticFeedback.selectionClick();
+                                  navigationShell.goBranch(idx);
+                                },
                                 labelType: NavigationRailLabelType.all,
                                 minWidth: 92,
                                 leading: Padding(
@@ -109,7 +191,7 @@ class AdminShellScreen extends ConsumerWidget {
                                   ),
                                   child: Column(
                                     children: [
-                                      const EvaBrandLogo(size: 42),
+                                      const EvaBrandLogo(size: 40),
                                       const SizedBox(height: 10),
                                       Tooltip(
                                         message: i18n.t(
@@ -146,14 +228,12 @@ class AdminShellScreen extends ConsumerWidget {
                                     ],
                                   ),
                                 ),
-                                trailing: Expanded(
+                                trailing: const Expanded(
                                   child: Align(
                                     alignment: Alignment.bottomCenter,
                                     child: Padding(
-                                      padding: const EdgeInsets.only(
-                                        bottom: 16,
-                                      ),
-                                      child: const LanguageQuickToggle(),
+                                      padding: EdgeInsets.only(bottom: 16),
+                                      child: LanguageQuickToggle(),
                                     ),
                                   ),
                                 ),
@@ -209,76 +289,21 @@ class AdminShellScreen extends ConsumerWidget {
                                 width: 1,
                                 color: tokens.borderSubtle,
                               ),
-                              Expanded(child: navigationShell),
+                              Expanded(child: animatedBody),
                             ],
                           )
-                        : navigationShell,
+                        : Padding(
+                            padding: EdgeInsets.only(
+                              bottom: tokens.isLiquidGlass ? 66 : 0,
+                            ),
+                            child: animatedBody,
+                          ),
                   ),
                 ],
               ),
             ),
           ),
-          bottomNavigationBar: isWide
-              ? null
-              : NavigationBar(
-                  backgroundColor: tokens.surfaceCard,
-                  surfaceTintColor: Colors.transparent,
-                  indicatorColor: tokens.brandSoftBg,
-                  selectedIndex: navigationShell.currentIndex,
-                  onDestinationSelected: (idx) => navigationShell.goBranch(idx),
-                  labelBehavior:
-                      NavigationDestinationLabelBehavior.alwaysShow,
-                  destinations: [
-                    NavigationDestination(
-                      icon: Badge(
-                        isLabelVisible: activeKdsCount > 0,
-                        label: Text('$activeKdsCount'),
-                        child: const Icon(Icons.kitchen_outlined),
-                      ),
-                      selectedIcon: Badge(
-                        isLabelVisible: activeKdsCount > 0,
-                        label: Text('$activeKdsCount'),
-                        child: Icon(
-                          Icons.kitchen_rounded,
-                          color: tokens.brandPrimary,
-                        ),
-                      ),
-                      label: i18n.t('admin_kds_tab'),
-                    ),
-                    NavigationDestination(
-                      icon: const Icon(Icons.inventory_2_outlined),
-                      selectedIcon: Icon(
-                        Icons.inventory_2_rounded,
-                        color: tokens.brandPrimary,
-                      ),
-                      label: i18n.t('admin_catalog_tab'),
-                    ),
-                    NavigationDestination(
-                      icon: const Icon(Icons.insights_outlined),
-                      selectedIcon: Icon(
-                        Icons.insights_rounded,
-                        color: tokens.brandPrimary,
-                      ),
-                      label: i18n.t('admin_analytics_tab'),
-                    ),
-                    NavigationDestination(
-                      icon: const Icon(Icons.account_balance_wallet_outlined),
-                      selectedIcon: Icon(
-                        Icons.account_balance_wallet_rounded,
-                        color: tokens.brandPrimary,
-                      ),
-                      label: i18n.t('admin_ops_tab'),
-                    ),
-                    NavigationDestination(
-                      icon: const Icon(Icons.tune_outlined),
-                      selectedIcon: Icon(
-                        Icons.tune_rounded,
-                        color: tokens.brandPrimary,
-                      ),
-                      label: i18n.t('nav_settings'),
-                    ),
-                  ],
-                ),
+          bottomNavigationBar: bottomBar,
         );
       },
     );

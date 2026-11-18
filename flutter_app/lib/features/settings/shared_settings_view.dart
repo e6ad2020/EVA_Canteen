@@ -21,238 +21,363 @@ class SharedSettingsView extends ConsumerWidget {
     final tokens = EvaTokens.of(context);
     final user = store.currentUser;
 
-    return ListView(
-      padding: const EdgeInsets.fromLTRB(16, 16, 16, 40),
+    return Column(
       children: [
-        Center(
-          child: ConstrainedBox(
-            constraints: const BoxConstraints(maxWidth: 720),
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.stretch,
-              children: [
-                if (user != null)
-                  Card(
-                    child: Padding(
-                      padding: const EdgeInsets.all(18),
-                      child: Row(
-                        children: [
-                          EvaAvatar(profilePic: user.profilePic, radius: 26),
-                          const SizedBox(width: 14),
-                          Expanded(
-                            child: Column(
-                              crossAxisAlignment: CrossAxisAlignment.start,
-                              children: [
-                                Text(
-                                  user.email,
-                                  style: Theme.of(context).textTheme.titleMedium,
-                                ),
-                                const SizedBox(height: 4),
-                                Text(
-                                  switch (user.role) {
-                                    UserRole.admin => i18n.t(
-                                      'admin_portal_title',
-                                    ),
-                                    UserRole.student =>
-                                      '${i18n.t('wallet_balance_label')}: ${i18n.formatPrice(user.balance)}',
-                                    UserRole.guest => i18n.t(
-                                      'browse_menu_guest',
-                                    ),
+        EvaGlassBar(
+          padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
+          child: Center(
+            child: ConstrainedBox(
+              constraints: const BoxConstraints(maxWidth: 720),
+              child: Row(
+                children: [
+                  Expanded(
+                    child: Text(
+                      i18n.t('nav_settings'),
+                      maxLines: 1,
+                      overflow: TextOverflow.ellipsis,
+                      style: Theme.of(context).textTheme.headlineSmall,
+                    ),
+                  ),
+                  const LanguageQuickToggle(),
+                ],
+              ),
+            ),
+          ),
+        ),
+        Expanded(
+          child: ListView(
+            padding: const EdgeInsets.fromLTRB(16, 16, 16, 40),
+            children: [
+              Center(
+                child: ConstrainedBox(
+                  constraints: const BoxConstraints(maxWidth: 720),
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.stretch,
+                    children: [
+                      if (user != null) ...[
+                        EvaReveal(
+                          index: 0,
+                          child: EvaSurfaceCard(
+                            padding: const EdgeInsets.all(18),
+                            child: LayoutBuilder(
+                              builder: (context, constraints) {
+                                final compact = constraints.maxWidth < 380;
+                                final signOutBtn = OutlinedButton.icon(
+                                  onPressed: () {
+                                    ref
+                                        .read(canteenStoreProvider.notifier)
+                                        .logout();
+                                    context.go('/welcome');
                                   },
-                                  style: Theme.of(context).textTheme.bodySmall,
-                                ),
-                              ],
+                                  icon: const Icon(
+                                    Icons.logout_rounded,
+                                    size: 17,
+                                  ),
+                                  label: Text(
+                                    user.role == UserRole.guest
+                                        ? i18n.t('sign_in_tab')
+                                        : i18n.t('sign_out_cta'),
+                                  ),
+                                );
+
+                                final userMeta = Expanded(
+                                  child: Column(
+                                    crossAxisAlignment:
+                                        CrossAxisAlignment.start,
+                                    children: [
+                                      Text(
+                                        user.role == UserRole.guest
+                                            ? i18n.t('guest_mode_short')
+                                            : user.email,
+                                        maxLines: 1,
+                                        overflow: TextOverflow.ellipsis,
+                                        style: Theme.of(
+                                          context,
+                                        ).textTheme.titleMedium,
+                                      ),
+                                      const SizedBox(height: 4),
+                                      Text(
+                                        switch (user.role) {
+                                          UserRole.admin => i18n.t(
+                                            'admin_portal_title',
+                                          ),
+                                          UserRole.student =>
+                                            '${i18n.t('wallet_balance_label')}: ${i18n.formatPrice(user.balance)}',
+                                          UserRole.guest => i18n.t(
+                                            'browse_menu_guest',
+                                          ),
+                                        },
+                                        maxLines: 1,
+                                        overflow: TextOverflow.ellipsis,
+                                        style: Theme.of(
+                                          context,
+                                        ).textTheme.bodySmall,
+                                      ),
+                                    ],
+                                  ),
+                                );
+
+                                if (compact) {
+                                  return Column(
+                                    crossAxisAlignment:
+                                        CrossAxisAlignment.stretch,
+                                    children: [
+                                      Row(
+                                        children: [
+                                          EvaAvatar(
+                                            profilePic: user.profilePic,
+                                            radius: 24,
+                                          ),
+                                          const SizedBox(width: 12),
+                                          userMeta,
+                                        ],
+                                      ),
+                                      const SizedBox(height: 12),
+                                      signOutBtn,
+                                    ],
+                                  );
+                                }
+
+                                return Row(
+                                  children: [
+                                    EvaAvatar(
+                                      profilePic: user.profilePic,
+                                      radius: 24,
+                                    ),
+                                    const SizedBox(width: 14),
+                                    userMeta,
+                                    const SizedBox(width: 10),
+                                    signOutBtn,
+                                  ],
+                                );
+                              },
                             ),
                           ),
-                          OutlinedButton.icon(
-                            onPressed: () {
-                              ref.read(canteenStoreProvider.notifier).logout();
-                              context.go('/welcome');
-                            },
-                            icon: const Icon(Icons.logout_rounded, size: 18),
-                            label: Text(
-                              user.role == UserRole.guest
-                                  ? i18n.t('sign_in_tab')
-                                  : i18n.t('sign_out_cta'),
-                            ),
-                          ),
-                        ],
-                      ),
-                    ),
-                  ),
-                const SizedBox(height: 16),
-                Card(
-                  child: Padding(
-                    padding: const EdgeInsets.all(20),
-                    child: Column(
-                      crossAxisAlignment: CrossAxisAlignment.start,
-                      children: [
-                        Text(
-                          i18n.t('appearance_title'),
-                          style: Theme.of(context).textTheme.titleLarge,
                         ),
                         const SizedBox(height: 16),
-                        Row(
-                          children: [
-                            Expanded(
-                              child: _SurfaceModeTile(
-                                icon: Icons.wb_sunny_outlined,
-                                label: i18n.t('mode_daylight'),
-                                selected:
-                                    prefs.surfaceMode == EvaSurfaceMode.daylight,
-                                onTap: () => prefsNotifier.setSurfaceMode(
-                                  EvaSurfaceMode.daylight,
-                                ),
-                              ),
-                            ),
-                            const SizedBox(width: 12),
-                            Expanded(
-                              child: _SurfaceModeTile(
-                                icon: Icons.dark_mode_outlined,
-                                label: i18n.t('mode_night'),
-                                selected:
-                                    prefs.surfaceMode ==
-                                    EvaSurfaceMode.nightShift,
-                                onTap: () => prefsNotifier.setSurfaceMode(
-                                  EvaSurfaceMode.nightShift,
-                                ),
-                              ),
-                            ),
-                          ],
-                        ),
-                        const SizedBox(height: 20),
-                        Wrap(
-                          spacing: 10,
-                          runSpacing: 10,
-                          children: [
-                            for (final preset in EvaAccentPreset.values)
-                              _AccentSwatchChip(
-                                preset: preset,
-                                isNight: tokens.isNight,
-                                selected: prefs.accentPreset == preset,
-                                onTap: () {
-                                  HapticFeedback.selectionClick();
-                                  prefsNotifier.setAccentPreset(preset);
-                                },
-                              ),
-                          ],
-                        ),
-                        const SizedBox(height: 16),
-                        SwitchListTile.adaptive(
-                          contentPadding: EdgeInsets.zero,
-                          value: prefs.showDoodlePattern,
-                          onChanged: prefsNotifier.setShowDoodlePattern,
-                          title: Text(i18n.t('doodle_pattern_toggle')),
-                        ),
                       ],
-                    ),
-                  ),
-                ),
-                const SizedBox(height: 16),
-                Card(
-                  child: Padding(
-                    padding: const EdgeInsets.all(20),
-                    child: Column(
-                      crossAxisAlignment: CrossAxisAlignment.start,
-                      children: [
-                        Text(
-                          i18n.t('language_label'),
-                          style: Theme.of(context).textTheme.titleMedium,
-                        ),
-                        const SizedBox(height: 12),
-                        Row(
-                          children: [
-                            Expanded(
-                              child: OutlinedButton(
-                                onPressed: () =>
-                                    prefsNotifier.setLanguage('en'),
-                                style: OutlinedButton.styleFrom(
-                                  backgroundColor:
-                                      prefs.locale.languageCode == 'en'
-                                      ? tokens.brandSoftBg
-                                      : null,
-                                  side: BorderSide(
-                                    color: prefs.locale.languageCode == 'en'
-                                        ? tokens.brandPrimary
-                                        : tokens.borderSubtle,
-                                  ),
-                                ),
-                                child: const Text('English'),
-                              ),
-                            ),
-                            const SizedBox(width: 12),
-                            Expanded(
-                              child: OutlinedButton(
-                                onPressed: () =>
-                                    prefsNotifier.setLanguage('ar'),
-                                style: OutlinedButton.styleFrom(
-                                  backgroundColor:
-                                      prefs.locale.languageCode == 'ar'
-                                      ? tokens.brandSoftBg
-                                      : null,
-                                  side: BorderSide(
-                                    color: prefs.locale.languageCode == 'ar'
-                                        ? tokens.brandPrimary
-                                        : tokens.borderSubtle,
-                                  ),
-                                ),
-                                child: const Text('العربية'),
-                              ),
-                            ),
-                          ],
-                        ),
-                        const Divider(height: 28),
-                        ListTile(
-                          contentPadding: EdgeInsets.zero,
-                          leading: Icon(
-                            Icons.dns_outlined,
-                            color: tokens.brandPrimary,
-                          ),
-                          title: Text(i18n.t('server_connection_label')),
-                          subtitle: Text(socket.httpBaseUrl),
-                          trailing: OutlinedButton(
-                            onPressed: () => _showServerDialog(
-                              context,
-                              ref,
-                              prefs.customServerOrigin ?? '',
-                            ),
-                            child: Text(i18n.t('edit_button')),
-                          ),
-                        ),
-                      ],
-                    ),
-                  ),
-                ),
-                const SizedBox(height: 16),
-                Card(
-                  child: Padding(
-                    padding: const EdgeInsets.all(20),
-                    child: Column(
-                      crossAxisAlignment: CrossAxisAlignment.start,
-                      children: [
-                        Row(
-                          children: [
-                            const EvaBrandLogo(size: 38),
-                            const SizedBox(width: 12),
-                            Expanded(
-                              child: Text(
-                                i18n.t('about_project_title'),
+
+                      EvaReveal(
+                        index: 1,
+                        child: EvaSurfaceCard(
+                          padding: const EdgeInsets.all(20),
+                          child: Column(
+                            crossAxisAlignment: CrossAxisAlignment.start,
+                            children: [
+                              Text(
+                                i18n.t('appearance_title'),
                                 style: Theme.of(context).textTheme.titleLarge,
                               ),
-                            ),
-                          ],
+                              const SizedBox(height: 14),
+                              Row(
+                                children: [
+                                  Expanded(
+                                    child: _SurfaceModeTile(
+                                      icon: Icons.wb_sunny_outlined,
+                                      label: i18n.t('mode_daylight'),
+                                      selected:
+                                          prefs.surfaceMode ==
+                                          EvaSurfaceMode.daylight,
+                                      onTap: () => prefsNotifier.setSurfaceMode(
+                                        EvaSurfaceMode.daylight,
+                                      ),
+                                    ),
+                                  ),
+                                  const SizedBox(width: 12),
+                                  Expanded(
+                                    child: _SurfaceModeTile(
+                                      icon: Icons.dark_mode_outlined,
+                                      label: i18n.t('mode_night'),
+                                      selected:
+                                          prefs.surfaceMode ==
+                                          EvaSurfaceMode.nightShift,
+                                      onTap: () => prefsNotifier.setSurfaceMode(
+                                        EvaSurfaceMode.nightShift,
+                                      ),
+                                    ),
+                                  ),
+                                ],
+                              ),
+                              const SizedBox(height: 18),
+                              Wrap(
+                                spacing: 10,
+                                runSpacing: 10,
+                                children: [
+                                  for (final preset in EvaAccentPreset.values)
+                                    _AccentSwatchChip(
+                                      preset: preset,
+                                      label: i18n.t(preset.i18nKey),
+                                      isNight: tokens.isNight,
+                                      selected: prefs.accentPreset == preset,
+                                      onTap: () {
+                                        HapticFeedback.selectionClick();
+                                        prefsNotifier.setAccentPreset(preset);
+                                      },
+                                    ),
+                                ],
+                              ),
+                              if (!tokens.isLiquidGlass) ...[
+                                const SizedBox(height: 14),
+                                SwitchListTile.adaptive(
+                                  contentPadding: EdgeInsets.zero,
+                                  value: prefs.showDoodlePattern,
+                                  onChanged: prefsNotifier.setShowDoodlePattern,
+                                  title: Text(i18n.t('doodle_pattern_toggle')),
+                                ),
+                              ],
+                            ],
+                          ),
                         ),
-                        const SizedBox(height: 12),
-                        Text(
-                          i18n.t('about_project_credits'),
-                          style: Theme.of(context).textTheme.bodyMedium
-                              ?.copyWith(color: tokens.textSecondary),
+                      ),
+                      const SizedBox(height: 16),
+
+                      EvaReveal(
+                        index: 2,
+                        child: EvaSurfaceCard(
+                          padding: const EdgeInsets.all(20),
+                          child: Column(
+                            crossAxisAlignment: CrossAxisAlignment.start,
+                            children: [
+                              Text(
+                                i18n.t('language_label'),
+                                style: Theme.of(context).textTheme.titleMedium,
+                              ),
+                              const SizedBox(height: 12),
+                              Row(
+                                children: [
+                                  Expanded(
+                                    child: OutlinedButton(
+                                      onPressed: () =>
+                                          prefsNotifier.setLanguage('en'),
+                                      style: OutlinedButton.styleFrom(
+                                        backgroundColor:
+                                            prefs.locale.languageCode == 'en'
+                                            ? tokens.brandSoftBg
+                                            : null,
+                                        side: BorderSide(
+                                          color:
+                                              prefs.locale.languageCode == 'en'
+                                              ? tokens.brandPrimary
+                                              : tokens.borderSubtle,
+                                          width:
+                                              prefs.locale.languageCode == 'en'
+                                              ? 1.8
+                                              : tokens.borderWidth,
+                                        ),
+                                      ),
+                                      child: const Text('English'),
+                                    ),
+                                  ),
+                                  const SizedBox(width: 12),
+                                  Expanded(
+                                    child: OutlinedButton(
+                                      onPressed: () =>
+                                          prefsNotifier.setLanguage('ar'),
+                                      style: OutlinedButton.styleFrom(
+                                        backgroundColor:
+                                            prefs.locale.languageCode == 'ar'
+                                            ? tokens.brandSoftBg
+                                            : null,
+                                        side: BorderSide(
+                                          color:
+                                              prefs.locale.languageCode == 'ar'
+                                              ? tokens.brandPrimary
+                                              : tokens.borderSubtle,
+                                          width:
+                                              prefs.locale.languageCode == 'ar'
+                                              ? 1.8
+                                              : tokens.borderWidth,
+                                        ),
+                                      ),
+                                      child: const Text('العربية'),
+                                    ),
+                                  ),
+                                ],
+                              ),
+                              const Divider(height: 28),
+                              Row(
+                                children: [
+                                  Icon(
+                                    Icons.dns_outlined,
+                                    color: tokens.brandPrimary,
+                                  ),
+                                  const SizedBox(width: 12),
+                                  Expanded(
+                                    child: Column(
+                                      crossAxisAlignment:
+                                          CrossAxisAlignment.start,
+                                      children: [
+                                        Text(
+                                          i18n.t('server_connection_label'),
+                                          style: Theme.of(
+                                            context,
+                                          ).textTheme.titleSmall,
+                                        ),
+                                        const SizedBox(height: 2),
+                                        Text(
+                                          socket.httpBaseUrl,
+                                          maxLines: 1,
+                                          overflow: TextOverflow.ellipsis,
+                                          style: Theme.of(
+                                            context,
+                                          ).textTheme.bodySmall,
+                                        ),
+                                      ],
+                                    ),
+                                  ),
+                                  const SizedBox(width: 10),
+                                  OutlinedButton(
+                                    onPressed: () => _showServerDialog(
+                                      context,
+                                      ref,
+                                      prefs.customServerOrigin ?? '',
+                                    ),
+                                    child: Text(i18n.t('edit_button')),
+                                  ),
+                                ],
+                              ),
+                            ],
+                          ),
                         ),
-                      ],
-                    ),
+                      ),
+                      const SizedBox(height: 16),
+
+                      EvaReveal(
+                        index: 3,
+                        child: EvaSurfaceCard(
+                          padding: const EdgeInsets.all(20),
+                          child: Column(
+                            crossAxisAlignment: CrossAxisAlignment.start,
+                            children: [
+                              Row(
+                                children: [
+                                  const EvaBrandLogo(size: 36),
+                                  const SizedBox(width: 12),
+                                  Expanded(
+                                    child: Text(
+                                      i18n.t('about_project_title'),
+                                      style: Theme.of(
+                                        context,
+                                      ).textTheme.titleLarge,
+                                    ),
+                                  ),
+                                ],
+                              ),
+                              const SizedBox(height: 12),
+                              Text(
+                                i18n.t('about_project_credits'),
+                                style: Theme.of(context).textTheme.bodyMedium
+                                    ?.copyWith(color: tokens.textSecondary),
+                              ),
+                            ],
+                          ),
+                        ),
+                      ),
+                    ],
                   ),
                 ),
-              ],
-            ),
+              ),
+            ],
           ),
         ),
       ],
@@ -271,8 +396,9 @@ class SharedSettingsView extends ConsumerWidget {
         title: const Text('Server Endpoint'),
         content: TextField(
           controller: ctrl,
+          textDirection: TextDirection.ltr,
           decoration: const InputDecoration(
-            hintText: 'http://192.168.1.10:8080 (leave blank for auto)',
+            hintText: 'https://your-tunnel.trycloudflare.com',
           ),
         ),
         actions: [
@@ -315,14 +441,15 @@ class _SurfaceModeTile extends StatelessWidget {
       onTap: onTap,
       borderRadius: BorderRadius.circular(12),
       child: AnimatedContainer(
-        duration: const Duration(milliseconds: 160),
-        padding: const EdgeInsets.symmetric(vertical: 14, horizontal: 12),
+        duration: const Duration(milliseconds: 180),
+        curve: Curves.easeOutCubic,
+        padding: const EdgeInsets.symmetric(vertical: 13, horizontal: 12),
         decoration: BoxDecoration(
           color: selected ? tokens.brandSoftBg : tokens.surfaceSubtle,
           borderRadius: BorderRadius.circular(12),
           border: Border.all(
             color: selected ? tokens.brandPrimary : tokens.borderSubtle,
-            width: selected ? 1.8 : 1,
+            width: selected ? 1.8 : tokens.borderWidth,
           ),
         ),
         child: Row(
@@ -337,6 +464,7 @@ class _SurfaceModeTile extends StatelessWidget {
             Flexible(
               child: Text(
                 label,
+                maxLines: 1,
                 overflow: TextOverflow.ellipsis,
                 style: Theme.of(context).textTheme.labelLarge?.copyWith(
                   color: selected ? tokens.brandPrimary : tokens.textPrimary,
@@ -353,12 +481,14 @@ class _SurfaceModeTile extends StatelessWidget {
 class _AccentSwatchChip extends StatelessWidget {
   const _AccentSwatchChip({
     required this.preset,
+    required this.label,
     required this.isNight,
     required this.selected,
     required this.onTap,
   });
 
   final EvaAccentPreset preset;
+  final String label;
   final bool isNight;
   final bool selected;
   final VoidCallback onTap;
@@ -366,31 +496,34 @@ class _AccentSwatchChip extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final tokens = EvaTokens.of(context);
-    final swatch = isNight ? preset.nightColor : preset.daylightColor;
 
     return InkWell(
       onTap: onTap,
       borderRadius: BorderRadius.circular(999),
       child: AnimatedContainer(
-        duration: const Duration(milliseconds: 160),
+        duration: const Duration(milliseconds: 180),
+        curve: Curves.easeOutCubic,
         padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
         decoration: BoxDecoration(
-          color: selected ? tokens.brandSoftBg : tokens.surfaceSubtle,
+          color: selected ? tokens.brandSoftBg : tokens.surfaceElevated,
           borderRadius: BorderRadius.circular(999),
           border: Border.all(
             color: selected ? tokens.brandPrimary : tokens.borderSubtle,
+            width: selected ? 1.8 : tokens.borderWidth,
           ),
         ),
         child: Row(
           mainAxisSize: MainAxisSize.min,
           children: [
-            Container(
-              width: 16,
-              height: 16,
-              decoration: BoxDecoration(color: swatch, shape: BoxShape.circle),
-            ),
+            EvaThemeSwatch(preset: preset, isNight: isNight, size: 18),
             const SizedBox(width: 8),
-            Text(preset.label, style: Theme.of(context).textTheme.labelMedium),
+            Text(
+              label,
+              style: Theme.of(context).textTheme.labelMedium?.copyWith(
+                color: selected ? tokens.brandPrimary : tokens.textPrimary,
+                fontWeight: selected ? FontWeight.w700 : FontWeight.w600,
+              ),
+            ),
           ],
         ),
       ),

@@ -51,6 +51,7 @@ class _AdminAnalyticsViewState extends ConsumerState<AdminAnalyticsView> {
     final i18n = ref.watch(i18nProvider);
     final store = ref.watch(canteenStoreProvider);
     final snap = store.analytics;
+    final isCompactShell = MediaQuery.sizeOf(context).width < 840;
 
     final years = <int>{
       DateTime.now().year,
@@ -64,88 +65,122 @@ class _AdminAnalyticsViewState extends ConsumerState<AdminAnalyticsView> {
 
     return Column(
       children: [
-        // Top Header & Month/Year Selector
-        Container(
-          padding: const EdgeInsets.fromLTRB(20, 14, 20, 14),
-          decoration: BoxDecoration(
-            color: tokens.surfaceCard,
-            border: Border(bottom: BorderSide(color: tokens.borderSubtle)),
-          ),
-          child: Wrap(
-            spacing: 12,
-            runSpacing: 10,
-            alignment: WrapAlignment.spaceBetween,
-            crossAxisAlignment: WrapCrossAlignment.center,
-            children: [
-              Text(
-                i18n.t('admin_analytics_tab'),
-                style: Theme.of(context).textTheme.headlineSmall,
-              ),
-              Wrap(
-                spacing: 10,
-                runSpacing: 8,
-                crossAxisAlignment: WrapCrossAlignment.center,
-                children: [
-                  SizedBox(
-                    width: 148,
-                    child: DropdownButtonFormField<int>(
-                      initialValue: _selectedMonth,
-                      isExpanded: true,
-                      items: [
-                        for (int m = 1; m <= 12; m++)
-                          DropdownMenuItem(
-                            value: m,
-                            child: Text(
-                              DateFormat(
-                                'MMMM',
-                                i18n.langCode,
-                              ).format(DateTime(2026, m, 1)),
-                              overflow: TextOverflow.ellipsis,
-                            ),
-                          ),
-                      ],
-                      onChanged: (m) {
-                        if (m == null) return;
-                        setState(() => _selectedMonth = m);
-                        ref
-                            .read(canteenStoreProvider.notifier)
-                            .requestAnalytics(month: m, year: _selectedYear);
-                      },
+        // Top Header & Responsive Month/Year Selector
+        EvaGlassBar(
+          padding: const EdgeInsets.fromLTRB(16, 12, 16, 12),
+          child: LayoutBuilder(
+            builder: (context, constraints) {
+              final isNarrow = constraints.maxWidth < 560;
+
+              final monthDropdown = DropdownButtonFormField<int>(
+                initialValue: _selectedMonth,
+                isExpanded: true,
+                items: [
+                  for (int m = 1; m <= 12; m++)
+                    DropdownMenuItem(
+                      value: m,
+                      child: Text(
+                        DateFormat('MMMM', i18n.langCode).format(
+                          DateTime(2026, m, 1),
+                        ),
+                        overflow: TextOverflow.ellipsis,
+                      ),
                     ),
-                  ),
-                  SizedBox(
-                    width: 108,
-                    child: DropdownButtonFormField<int>(
-                      initialValue: _selectedYear,
-                      items: [
-                        for (final y in years)
-                          DropdownMenuItem(value: y, child: Text('$y')),
-                      ],
-                      onChanged: (y) {
-                        if (y == null) return;
-                        setState(() => _selectedYear = y);
-                        ref
-                            .read(canteenStoreProvider.notifier)
-                            .requestAnalytics(month: _selectedMonth, year: y);
-                      },
-                    ),
-                  ),
-                  IconButton.filledTonal(
-                    tooltip: 'Refresh',
-                    onPressed: () {
-                      HapticFeedback.lightImpact();
-                      ref
-                          .read(canteenStoreProvider.notifier)
-                          .requestAnalytics(
-                            month: _selectedMonth,
-                            year: _selectedYear,
-                          );
-                    },
-                    icon: const Icon(Icons.refresh_rounded, size: 20),
-                  ),
                 ],
-              ),
-            ],
+                onChanged: (m) {
+                  if (m == null) return;
+                  setState(() => _selectedMonth = m);
+                  ref
+                      .read(canteenStoreProvider.notifier)
+                      .requestAnalytics(month: m, year: _selectedYear);
+                },
+              );
+
+              final yearDropdown = DropdownButtonFormField<int>(
+                initialValue: _selectedYear,
+                isExpanded: true,
+                items: [
+                  for (final y in years)
+                    DropdownMenuItem(value: y, child: Text('$y')),
+                ],
+                onChanged: (y) {
+                  if (y == null) return;
+                  setState(() => _selectedYear = y);
+                  ref
+                      .read(canteenStoreProvider.notifier)
+                      .requestAnalytics(month: _selectedMonth, year: y);
+                },
+              );
+
+              final refreshBtn = IconButton.filledTonal(
+                tooltip: 'Refresh',
+                onPressed: () {
+                  HapticFeedback.lightImpact();
+                  ref
+                      .read(canteenStoreProvider.notifier)
+                      .requestAnalytics(
+                        month: _selectedMonth,
+                        year: _selectedYear,
+                      );
+                },
+                icon: const Icon(Icons.refresh_rounded, size: 20),
+              );
+
+              if (isNarrow) {
+                return Column(
+                  crossAxisAlignment: CrossAxisAlignment.stretch,
+                  children: [
+                    Row(
+                      children: [
+                        Expanded(
+                          child: Text(
+                            i18n.t('admin_analytics_tab'),
+                            maxLines: 1,
+                            overflow: TextOverflow.ellipsis,
+                            style: Theme.of(context).textTheme.headlineSmall,
+                          ),
+                        ),
+                        if (isCompactShell) ...[
+                          const LanguageQuickToggle(),
+                          const SizedBox(width: 8),
+                        ],
+                        refreshBtn,
+                      ],
+                    ),
+                    const SizedBox(height: 10),
+                    Row(
+                      children: [
+                        Expanded(flex: 3, child: monthDropdown),
+                        const SizedBox(width: 10),
+                        Expanded(flex: 2, child: yearDropdown),
+                      ],
+                    ),
+                  ],
+                );
+              }
+
+              return Row(
+                children: [
+                  Expanded(
+                    child: Text(
+                      i18n.t('admin_analytics_tab'),
+                      maxLines: 1,
+                      overflow: TextOverflow.ellipsis,
+                      style: Theme.of(context).textTheme.headlineSmall,
+                    ),
+                  ),
+                  SizedBox(width: 152, child: monthDropdown),
+                  const SizedBox(width: 10),
+                  SizedBox(width: 108, child: yearDropdown),
+                  const SizedBox(width: 10),
+                  if (isCompactShell) ...[
+                    const LanguageQuickToggle(),
+                    const SizedBox(width: 8),
+                  ],
+                  refreshBtn,
+                ],
+              );
+            },
           ),
         ),
 
@@ -169,71 +204,87 @@ class _AdminAnalyticsViewState extends ConsumerState<AdminAnalyticsView> {
                   ),
                 )
               : ListView(
-                  padding: const EdgeInsets.fromLTRB(20, 18, 20, 32),
+                  padding: const EdgeInsets.fromLTRB(16, 16, 16, 32),
                   children: [
                     // 1. KPI Summary Strip
-                    LayoutBuilder(
-                      builder: (context, constraints) {
-                        final isWide = constraints.maxWidth >= 820;
-                        final cards = [
-                          _KpiCard(
-                            title: i18n.t('kpi_revenue'),
-                            value: i18n.formatPrice(snap.totalRevenue),
-                            icon: Icons.payments_rounded,
-                            accent: tokens.statusDeliveredFg,
-                            softBg: tokens.statusDeliveredBg,
-                          ),
-                          _KpiCard(
-                            title: i18n.t('kpi_orders'),
-                            value: '${snap.totalOrders}',
-                            icon: Icons.receipt_long_rounded,
-                            accent: tokens.brandPrimary,
-                            softBg: tokens.brandSoftBg,
-                          ),
-                          _KpiCard(
-                            title: i18n.t('kpi_aov'),
-                            value: i18n.formatPrice(snap.avgOrderValue),
-                            icon: Icons.trending_up_rounded,
-                            accent: tokens.accentAppetite,
-                            softBg: tokens.statusPendingBg,
-                          ),
-                        ];
+                    EvaReveal(
+                      index: 0,
+                      child: LayoutBuilder(
+                        builder: (context, constraints) {
+                          final isWide = constraints.maxWidth >= 820;
+                          final isVeryNarrow = constraints.maxWidth < 380;
+                          final cards = [
+                            _KpiCard(
+                              title: i18n.t('kpi_revenue'),
+                              value: i18n.formatPrice(snap.totalRevenue),
+                              icon: Icons.payments_rounded,
+                              accent: tokens.statusDeliveredFg,
+                              softBg: tokens.statusDeliveredBg,
+                            ),
+                            _KpiCard(
+                              title: i18n.t('kpi_orders'),
+                              value: '${snap.totalOrders}',
+                              icon: Icons.receipt_long_rounded,
+                              accent: tokens.brandPrimary,
+                              softBg: tokens.brandSoftBg,
+                            ),
+                            _KpiCard(
+                              title: i18n.t('kpi_aov'),
+                              value: i18n.formatPrice(snap.avgOrderValue),
+                              icon: Icons.trending_up_rounded,
+                              accent: tokens.accentAppetite,
+                              softBg: tokens.statusPendingBg,
+                            ),
+                          ];
 
-                        if (isWide) {
-                          return Row(
-                            children: [
-                              Expanded(child: cards[0]),
-                              const SizedBox(width: 12),
-                              Expanded(child: cards[1]),
-                              const SizedBox(width: 12),
-                              Expanded(child: cards[2]),
-                            ],
-                          );
-                        }
-                        return Column(
-                          children: [
-                            cards[0],
-                            const SizedBox(height: 10),
-                            Row(
+                          if (isWide) {
+                            return Row(
                               children: [
+                                Expanded(child: cards[0]),
+                                const SizedBox(width: 12),
                                 Expanded(child: cards[1]),
-                                const SizedBox(width: 10),
+                                const SizedBox(width: 12),
                                 Expanded(child: cards[2]),
                               ],
-                            ),
-                          ],
-                        );
-                      },
+                            );
+                          }
+                          if (isVeryNarrow) {
+                            return Column(
+                              children: [
+                                cards[0],
+                                const SizedBox(height: 10),
+                                cards[1],
+                                const SizedBox(height: 10),
+                                cards[2],
+                              ],
+                            );
+                          }
+                          return Column(
+                            children: [
+                              cards[0],
+                              const SizedBox(height: 10),
+                              Row(
+                                children: [
+                                  Expanded(child: cards[1]),
+                                  const SizedBox(width: 10),
+                                  Expanded(child: cards[2]),
+                                ],
+                              ),
+                            ],
+                          );
+                        },
+                      ),
                     ),
 
-                    const SizedBox(height: 16),
+                    const SizedBox(height: 14),
 
                     // 2. Payment Mix & Fulfillment Summary Bar
-                    Card(
-                      child: Padding(
+                    EvaReveal(
+                      index: 1,
+                      child: EvaSurfaceCard(
                         padding: const EdgeInsets.all(16),
                         child: Wrap(
-                          spacing: 18,
+                          spacing: 12,
                           runSpacing: 10,
                           crossAxisAlignment: WrapCrossAlignment.center,
                           children: [
@@ -285,11 +336,12 @@ class _AdminAnalyticsViewState extends ConsumerState<AdminAnalyticsView> {
                       ),
                     ),
 
-                    const SizedBox(height: 16),
+                    const SizedBox(height: 14),
 
                     // 3. Interactive Daily Bar Chart (fl_chart)
-                    Card(
-                      child: Padding(
+                    EvaReveal(
+                      index: 2,
+                      child: EvaSurfaceCard(
                         padding: const EdgeInsets.all(18),
                         child: Column(
                           crossAxisAlignment: CrossAxisAlignment.start,
@@ -340,43 +392,46 @@ class _AdminAnalyticsViewState extends ConsumerState<AdminAnalyticsView> {
                       ),
                     ),
 
-                    const SizedBox(height: 16),
+                    const SizedBox(height: 14),
 
                     // 4. Sales Ranking & Low-Stock Watchlist
-                    LayoutBuilder(
-                      builder: (context, constraints) {
-                        final twoCols = constraints.maxWidth >= 900;
-                        final rankingCard = _buildSalesRankingCard(
-                          context,
-                          snap,
-                          i18n,
-                          tokens,
-                        );
-                        final lowStockCard = _buildLowStockCard(
-                          context,
-                          lowStockLive,
-                          i18n,
-                          tokens,
-                        );
+                    EvaReveal(
+                      index: 3,
+                      child: LayoutBuilder(
+                        builder: (context, constraints) {
+                          final twoCols = constraints.maxWidth >= 900;
+                          final rankingCard = _buildSalesRankingCard(
+                            context,
+                            snap,
+                            i18n,
+                            tokens,
+                          );
+                          final lowStockCard = _buildLowStockCard(
+                            context,
+                            lowStockLive,
+                            i18n,
+                            tokens,
+                          );
 
-                        if (twoCols) {
-                          return Row(
-                            crossAxisAlignment: CrossAxisAlignment.start,
+                          if (twoCols) {
+                            return Row(
+                              crossAxisAlignment: CrossAxisAlignment.start,
+                              children: [
+                                Expanded(flex: 3, child: rankingCard),
+                                const SizedBox(width: 16),
+                                Expanded(flex: 2, child: lowStockCard),
+                              ],
+                            );
+                          }
+                          return Column(
                             children: [
-                              Expanded(flex: 3, child: rankingCard),
-                              const SizedBox(width: 16),
-                              Expanded(flex: 2, child: lowStockCard),
+                              rankingCard,
+                              const SizedBox(height: 14),
+                              lowStockCard,
                             ],
                           );
-                        }
-                        return Column(
-                          children: [
-                            rankingCard,
-                            const SizedBox(height: 16),
-                            lowStockCard,
-                          ],
-                        );
-                      },
+                        },
+                      ),
                     ),
                   ],
                 ),
@@ -445,7 +500,7 @@ class _AdminAnalyticsViewState extends ConsumerState<AdminAnalyticsView> {
           leftTitles: AxisTitles(
             sideTitles: SideTitles(
               showTitles: true,
-              reservedSize: 44,
+              reservedSize: 40,
               getTitlesWidget: (value, meta) {
                 if (value == meta.max) return const SizedBox.shrink();
                 return SideTitleWidget(
@@ -491,7 +546,7 @@ class _AdminAnalyticsViewState extends ConsumerState<AdminAnalyticsView> {
                   toY: _showRevenueChart
                       ? (snap.dailyRevenue[d] ?? 0)
                       : (snap.dailyOrders[d] ?? 0).toDouble(),
-                  width: days > 28 ? 6.5 : 8,
+                  width: days > 28 ? 6.0 : 7.5,
                   color: _showRevenueChart
                       ? tokens.statusDeliveredFg
                       : tokens.brandPrimary,
@@ -503,6 +558,8 @@ class _AdminAnalyticsViewState extends ConsumerState<AdminAnalyticsView> {
             ),
         ],
       ),
+      duration: const Duration(milliseconds: 280),
+      curve: Curves.easeOutCubic,
     );
   }
 
@@ -517,33 +574,31 @@ class _AdminAnalyticsViewState extends ConsumerState<AdminAnalyticsView> {
         ? 1
         : math.max(1, items.map((e) => e.count).reduce(math.max));
 
-    return Card(
-      child: Padding(
-        padding: const EdgeInsets.all(18),
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
+    return EvaSurfaceCard(
+      padding: const EdgeInsets.all(18),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Text(
+            i18n.t('top_products_title'),
+            style: Theme.of(context).textTheme.titleLarge,
+          ),
+          const SizedBox(height: 14),
+          if (items.isEmpty)
             Text(
-              i18n.t('top_products_title'),
-              style: Theme.of(context).textTheme.titleLarge,
-            ),
-            const SizedBox(height: 14),
-            if (items.isEmpty)
-              Text(
-                i18n.t('no_orders_yet'),
-                style: Theme.of(context).textTheme.bodySmall,
-              )
-            else
-              for (int i = 0; i < items.length; i++) ...[
-                if (i > 0) const SizedBox(height: 12),
-                _RankingRow(
-                  rank: i + 1,
-                  item: items[i],
-                  ratio: items[i].count / topCount,
-                ),
-              ],
-          ],
-        ),
+              i18n.t('no_orders_yet'),
+              style: Theme.of(context).textTheme.bodySmall,
+            )
+          else
+            for (int i = 0; i < items.length; i++) ...[
+              if (i > 0) const SizedBox(height: 12),
+              _RankingRow(
+                rank: i + 1,
+                item: items[i],
+                ratio: items[i].count / topCount,
+              ),
+            ],
+        ],
       ),
     );
   }
@@ -554,120 +609,118 @@ class _AdminAnalyticsViewState extends ConsumerState<AdminAnalyticsView> {
     EvaTranslator i18n,
     EvaTokens tokens,
   ) {
-    return Card(
-      child: Padding(
-        padding: const EdgeInsets.all(18),
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
+    return EvaSurfaceCard(
+      padding: const EdgeInsets.all(18),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Row(
+            children: [
+              Icon(
+                Icons.warning_amber_rounded,
+                color: tokens.statusPendingFg,
+                size: 20,
+              ),
+              const SizedBox(width: 8),
+              Expanded(
+                child: Text(
+                  i18n.t('low_stock_watchlist'),
+                  style: Theme.of(context).textTheme.titleLarge,
+                ),
+              ),
+            ],
+          ),
+          const SizedBox(height: 14),
+          if (lowStock.isEmpty)
             Row(
               children: [
                 Icon(
-                  Icons.warning_amber_rounded,
-                  color: tokens.statusPendingFg,
-                  size: 20,
+                  Icons.check_circle_outline_rounded,
+                  color: tokens.statusDeliveredFg,
+                  size: 18,
                 ),
                 const SizedBox(width: 8),
                 Expanded(
                   child: Text(
-                    i18n.t('low_stock_watchlist'),
-                    style: Theme.of(context).textTheme.titleLarge,
+                    i18n.isRtl
+                        ? 'جميع الأصناف متوفرة بكميات جيدة.'
+                        : 'All active menu items are well stocked.',
+                    style: Theme.of(context).textTheme.bodyMedium?.copyWith(
+                      color: tokens.statusDeliveredFg,
+                    ),
                   ),
                 ),
               ],
-            ),
-            const SizedBox(height: 14),
-            if (lowStock.isEmpty)
-              Row(
-                children: [
-                  Icon(
-                    Icons.check_circle_outline_rounded,
-                    color: tokens.statusDeliveredFg,
-                    size: 18,
+            )
+          else
+            for (final prod in lowStock)
+              Padding(
+                padding: const EdgeInsets.only(bottom: 10),
+                child: Container(
+                  padding: const EdgeInsets.all(10),
+                  decoration: BoxDecoration(
+                    color: tokens.surfaceSubtle,
+                    borderRadius: BorderRadius.circular(12),
                   ),
-                  const SizedBox(width: 8),
-                  Expanded(
-                    child: Text(
-                      i18n.isRtl
-                          ? 'جميع المنتجات متوفرة بكميات جيدة.'
-                          : 'All active menu items are well stocked.',
-                      style: Theme.of(context).textTheme.bodyMedium?.copyWith(
-                        color: tokens.statusDeliveredFg,
+                  child: Row(
+                    children: [
+                      SizedBox(
+                        width: 42,
+                        height: 42,
+                        child: EvaProductImage(
+                          imageUrl: prod.image,
+                          borderRadius: 8,
+                        ),
                       ),
-                    ),
-                  ),
-                ],
-              )
-            else
-              for (final prod in lowStock)
-                Padding(
-                  padding: const EdgeInsets.only(bottom: 10),
-                  child: Container(
-                    padding: const EdgeInsets.all(10),
-                    decoration: BoxDecoration(
-                      color: tokens.surfaceSubtle,
-                      borderRadius: BorderRadius.circular(12),
-                    ),
-                    child: Row(
-                      children: [
-                        SizedBox(
-                          width: 42,
-                          height: 42,
-                          child: EvaProductImage(
-                            imageUrl: prod.image,
-                            borderRadius: 8,
-                          ),
-                        ),
-                        const SizedBox(width: 10),
-                        Expanded(
-                          child: Column(
-                            crossAxisAlignment: CrossAxisAlignment.start,
-                            children: [
-                              Text(
-                                i18n.t(prod.nameKey),
-                                maxLines: 1,
-                                overflow: TextOverflow.ellipsis,
-                                style: Theme.of(context).textTheme.titleSmall,
+                      const SizedBox(width: 10),
+                      Expanded(
+                        child: Column(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          children: [
+                            Text(
+                              i18n.t(prod.nameKey),
+                              maxLines: 1,
+                              overflow: TextOverflow.ellipsis,
+                              style: Theme.of(context).textTheme.titleSmall,
+                            ),
+                            Text(
+                              prod.isOutOfStock
+                                  ? i18n.t('out_of_stock')
+                                  : i18n.t('low_stock_left', {
+                                      'count': '${prod.quantity}',
+                                    }),
+                              style: TextStyle(
+                                fontSize: 12,
+                                fontWeight: FontWeight.w700,
+                                color: prod.isOutOfStock
+                                    ? tokens.statusClosedFg
+                                    : tokens.statusPendingFg,
                               ),
-                              Text(
-                                prod.isOutOfStock
-                                    ? i18n.t('out_of_stock')
-                                    : i18n.t('low_stock_left', {
-                                        'count': '${prod.quantity}',
-                                      }),
-                                style: TextStyle(
-                                  fontSize: 12,
-                                  fontWeight: FontWeight.w700,
-                                  color: prod.isOutOfStock
-                                      ? tokens.statusClosedFg
-                                      : tokens.statusPendingFg,
-                                ),
-                              ),
-                            ],
-                          ),
+                            ),
+                          ],
                         ),
-                        FilledButton.tonal(
-                          onPressed: () {
-                            HapticFeedback.selectionClick();
-                            ref
-                                .read(canteenStoreProvider.notifier)
-                                .quickUpdateProductStockOrCategory(
-                                  prod,
-                                  quantity: prod.quantity + 20,
-                                );
-                          },
-                          style: FilledButton.styleFrom(
-                            minimumSize: const Size(0, 34),
-                            padding: const EdgeInsets.symmetric(horizontal: 10),
-                          ),
-                          child: const Text('+20'),
+                      ),
+                      FilledButton.tonal(
+                        onPressed: () {
+                          HapticFeedback.selectionClick();
+                          ref
+                              .read(canteenStoreProvider.notifier)
+                              .quickUpdateProductStockOrCategory(
+                                prod,
+                                quantity: prod.quantity + 20,
+                              );
+                        },
+                        style: FilledButton.styleFrom(
+                          minimumSize: const Size(0, 34),
+                          padding: const EdgeInsets.symmetric(horizontal: 10),
                         ),
-                      ],
-                    ),
+                        child: const Text('+20'),
+                      ),
+                    ],
                   ),
                 ),
-          ],
-        ),
+              ),
+        ],
       ),
     );
   }
@@ -690,38 +743,43 @@ class _KpiCard extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return Card(
-      child: Padding(
-        padding: const EdgeInsets.all(16),
-        child: Row(
-          children: [
-            Container(
-              width: 46,
-              height: 46,
-              decoration: BoxDecoration(
-                color: softBg,
-                borderRadius: BorderRadius.circular(12),
-              ),
-              child: Icon(icon, color: accent, size: 22),
+    return EvaSurfaceCard(
+      padding: const EdgeInsets.all(14),
+      child: Row(
+        children: [
+          Container(
+            width: 44,
+            height: 44,
+            decoration: BoxDecoration(
+              color: softBg,
+              borderRadius: BorderRadius.circular(12),
             ),
-            const SizedBox(width: 14),
-            Expanded(
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  Text(title, style: Theme.of(context).textTheme.bodySmall),
-                  const SizedBox(height: 2),
-                  Text(
-                    value,
-                    style: Theme.of(context).textTheme.headlineSmall?.copyWith(
-                      fontFeatures: EvaThemeBuilder.tabularNums,
-                    ),
+            child: Icon(icon, color: accent, size: 22),
+          ),
+          const SizedBox(width: 12),
+          Expanded(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text(
+                  title,
+                  maxLines: 1,
+                  overflow: TextOverflow.ellipsis,
+                  style: Theme.of(context).textTheme.bodySmall,
+                ),
+                const SizedBox(height: 2),
+                Text(
+                  value,
+                  maxLines: 1,
+                  overflow: TextOverflow.ellipsis,
+                  style: Theme.of(context).textTheme.headlineSmall?.copyWith(
+                    fontFeatures: EvaThemeBuilder.tabularNums,
                   ),
-                ],
-              ),
+                ),
+              ],
             ),
-          ],
-        ),
+          ),
+        ],
       ),
     );
   }
@@ -783,10 +841,15 @@ class _RankingRow extends ConsumerWidget {
                       style: Theme.of(context).textTheme.titleSmall,
                     ),
                   ),
-                  Text(
-                    '${item.count} sold  •  ${i18n.formatPrice(item.revenue)}',
-                    style: Theme.of(context).textTheme.labelMedium?.copyWith(
-                      fontFeatures: EvaThemeBuilder.tabularNums,
+                  const SizedBox(width: 8),
+                  Flexible(
+                    child: Text(
+                      '${item.count} • ${i18n.formatPrice(item.revenue)}',
+                      maxLines: 1,
+                      overflow: TextOverflow.ellipsis,
+                      style: Theme.of(context).textTheme.labelMedium?.copyWith(
+                        fontFeatures: EvaThemeBuilder.tabularNums,
+                      ),
                     ),
                   ),
                 ],

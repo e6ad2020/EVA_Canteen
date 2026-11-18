@@ -4,8 +4,8 @@
     "start_url": ".",
     "display": "standalone",
     "background_color": "#F7F8FA",
-    "theme_color": "#1B5DE0",
-    "description": "EVA International Applied Technology School Canteen — Bilingual Ordering, Live Pickup Pass & Kitchen Display System.",
+    "theme_color": "#1652D0",
+    "description": "EVA Canteen — Bilingual Digital Ordering, Live Pickup Pass & Kitchen Display System.",
     "orientation": "any",
     "prefer_related_applications": false,
     "icons": [

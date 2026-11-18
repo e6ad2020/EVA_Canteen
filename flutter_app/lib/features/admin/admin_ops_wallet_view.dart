@@ -81,7 +81,7 @@ class _AdminOpsWalletViewState extends ConsumerState<AdminOpsWalletView> {
     final amountCtrl = TextEditingController(text: '50');
     final reasonCtrl = TextEditingController(
       text: initialMode == 'add'
-          ? 'Cash top-up at canteen counter'
+          ? 'Cash top-up at counter'
           : 'Manual balance adjustment',
     );
 
@@ -89,70 +89,79 @@ class _AdminOpsWalletViewState extends ConsumerState<AdminOpsWalletView> {
       context: context,
       builder: (ctx) => StatefulBuilder(
         builder: (ctx, setDialogState) => AlertDialog(
-          title: Text(user.email),
-          content: SizedBox(
-            width: 420,
-            child: Column(
-              mainAxisSize: MainAxisSize.min,
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                Text(
-                  '${i18n.t('wallet_balance_label')}: ${i18n.formatPrice(user.balance)}',
-                  style: Theme.of(ctx).textTheme.titleMedium,
-                ),
-                const SizedBox(height: 12),
-                SizedBox(
-                  width: double.infinity,
-                  child: SegmentedButton<String>(
-                    showSelectedIcon: false,
-                    segments: [
-                      ButtonSegment(
-                        value: 'add',
-                        label: Text(i18n.t('wallet_add')),
-                      ),
-                      ButtonSegment(
-                        value: 'deduct',
-                        label: Text(i18n.t('wallet_deduct')),
-                      ),
-                      ButtonSegment(
-                        value: 'set',
-                        label: Text(i18n.t('wallet_set')),
-                      ),
+          title: Text(
+            user.email,
+            maxLines: 1,
+            overflow: TextOverflow.ellipsis,
+          ),
+          content: ConstrainedBox(
+            constraints: const BoxConstraints(maxWidth: 420),
+            child: SingleChildScrollView(
+              child: Column(
+                mainAxisSize: MainAxisSize.min,
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Text(
+                    '${i18n.t('wallet_balance_label')}: ${i18n.formatPrice(user.balance)}',
+                    style: Theme.of(ctx).textTheme.titleMedium,
+                  ),
+                  const SizedBox(height: 12),
+                  SizedBox(
+                    width: double.infinity,
+                    child: SegmentedButton<String>(
+                      showSelectedIcon: false,
+                      segments: [
+                        ButtonSegment(
+                          value: 'add',
+                          label: Text(i18n.t('wallet_add')),
+                        ),
+                        ButtonSegment(
+                          value: 'deduct',
+                          label: Text(i18n.t('wallet_deduct')),
+                        ),
+                        ButtonSegment(
+                          value: 'set',
+                          label: Text(i18n.t('wallet_set')),
+                        ),
+                      ],
+                      selected: {mode},
+                      onSelectionChanged: (s) =>
+                          setDialogState(() => mode = s.first),
+                    ),
+                  ),
+                  const SizedBox(height: 12),
+                  Wrap(
+                    spacing: 8,
+                    runSpacing: 6,
+                    children: [
+                      for (final preset in const [20, 50, 100, 200])
+                        ActionChip(
+                          label: Text('$preset ${i18n.currencySymbol}'),
+                          onPressed: () => amountCtrl.text = '$preset',
+                        ),
                     ],
-                    selected: {mode},
-                    onSelectionChanged: (s) =>
-                        setDialogState(() => mode = s.first),
                   ),
-                ),
-                const SizedBox(height: 12),
-                Wrap(
-                  spacing: 8,
-                  children: [
-                    for (final preset in const [20, 50, 100, 200])
-                      ActionChip(
-                        label: Text('$preset ${i18n.currencySymbol}'),
-                        onPressed: () => amountCtrl.text = '$preset',
-                      ),
-                  ],
-                ),
-                const SizedBox(height: 12),
-                TextField(
-                  controller: amountCtrl,
-                  keyboardType: const TextInputType.numberWithOptions(
-                    decimal: true,
+                  const SizedBox(height: 12),
+                  TextField(
+                    controller: amountCtrl,
+                    keyboardType: const TextInputType.numberWithOptions(
+                      decimal: true,
+                    ),
+                    decoration: InputDecoration(
+                      labelText: 'Amount (${i18n.currencySymbol})',
+                    ),
                   ),
-                  decoration: InputDecoration(
-                    labelText: 'Amount (${i18n.currencySymbol})',
+                  const SizedBox(height: 12),
+                  TextField(
+                    controller: reasonCtrl,
+                    decoration: InputDecoration(
+                      labelText: i18n.isRtl
+                          ? 'ملاحظة / السبب'
+                          : 'Reason / Note',
+                    ),
                   ),
-                ),
-                const SizedBox(height: 12),
-                TextField(
-                  controller: reasonCtrl,
-                  decoration: InputDecoration(
-                    labelText: i18n.isRtl ? 'ملاحظة / السبب' : 'Reason / Note',
-                  ),
-                ),
-              ],
+                ],
+              ),
             ),
           ),
           actions: [
@@ -193,7 +202,7 @@ class _AdminOpsWalletViewState extends ConsumerState<AdminOpsWalletView> {
         title: Text(i18n.t('catalog_backup_title')),
         content: SizedBox(
           width: 560,
-          height: 340,
+          height: 320,
           child: TextField(
             controller: TextEditingController(text: jsonText),
             readOnly: true,
@@ -236,38 +245,40 @@ class _AdminOpsWalletViewState extends ConsumerState<AdminOpsWalletView> {
           title: Text(i18n.t('catalog_backup_title')),
           content: SizedBox(
             width: 560,
-            child: Column(
-              mainAxisSize: MainAxisSize.min,
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                Text(
-                  i18n.isRtl
-                      ? 'الصق ملف JSON المصدّر سابقاً لاستبدال وتحديث الفئات والمنتجات:'
-                      : 'Paste a previously exported catalog JSON payload to replace categories and products:',
-                  style: Theme.of(ctx).textTheme.bodySmall,
-                ),
-                const SizedBox(height: 10),
-                SizedBox(
-                  height: 240,
-                  child: TextField(
-                    controller: pasteCtrl,
-                    maxLines: null,
-                    expands: true,
-                    textDirection: TextDirection.ltr,
-                    style: const TextStyle(
-                      fontFamily: 'monospace',
-                      fontSize: 12,
-                    ),
-                    decoration: const InputDecoration(
-                      hintText: '{ "categories": [...], "products": [...] }',
+            child: SingleChildScrollView(
+              child: Column(
+                mainAxisSize: MainAxisSize.min,
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Text(
+                    i18n.isRtl
+                        ? 'الصق ملف JSON المصدّر سابقاً لاستبدال وتحديث الفئات والمنتجات:'
+                        : 'Paste a previously exported catalog JSON payload to replace categories and products:',
+                    style: Theme.of(ctx).textTheme.bodySmall,
+                  ),
+                  const SizedBox(height: 10),
+                  SizedBox(
+                    height: 220,
+                    child: TextField(
+                      controller: pasteCtrl,
+                      maxLines: null,
+                      expands: true,
+                      textDirection: TextDirection.ltr,
+                      style: const TextStyle(
+                        fontFamily: 'monospace',
+                        fontSize: 12,
+                      ),
+                      decoration: const InputDecoration(
+                        hintText: '{ "categories": [...], "products": [...] }',
+                      ),
                     ),
                   ),
-                ),
-                if (err != null) ...[
-                  const SizedBox(height: 8),
-                  Text(err!, style: TextStyle(color: tokens.statusClosedFg)),
+                  if (err != null) ...[
+                    const SizedBox(height: 8),
+                    Text(err!, style: TextStyle(color: tokens.statusClosedFg)),
+                  ],
                 ],
-              ],
+              ),
             ),
           ),
           actions: [
@@ -289,7 +300,9 @@ class _AdminOpsWalletViewState extends ConsumerState<AdminOpsWalletView> {
                 }
                 Navigator.of(ctx).pop();
                 ScaffoldMessenger.of(context).showSnackBar(
-                  const SnackBar(content: Text('Catalog configuration imported!')),
+                  const SnackBar(
+                    content: Text('Catalog configuration imported!'),
+                  ),
                 );
               },
               icon: const Icon(Icons.upload_file_rounded, size: 17),
@@ -298,6 +311,19 @@ class _AdminOpsWalletViewState extends ConsumerState<AdminOpsWalletView> {
           ],
         ),
       ),
+    );
+  }
+
+  void _saveCurrency(EvaTranslator i18n) {
+    HapticFeedback.selectionClick();
+    ref
+        .read(canteenStoreProvider.notifier)
+        .updateCurrency(
+          enSymbol: _currEnCtrl.text,
+          arSymbol: _currArCtrl.text,
+        );
+    ScaffoldMessenger.of(context).showSnackBar(
+      SnackBar(content: Text(i18n.t('save_cta'))),
     );
   }
 
@@ -315,22 +341,24 @@ class _AdminOpsWalletViewState extends ConsumerState<AdminOpsWalletView> {
 
     return Column(
       children: [
-        Container(
-          padding: const EdgeInsets.fromLTRB(20, 14, 20, 14),
-          decoration: BoxDecoration(
-            color: tokens.surfaceCard,
-            border: Border(bottom: BorderSide(color: tokens.borderSubtle)),
-          ),
+        EvaGlassBar(
+          padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
           child: Row(
             children: [
               Expanded(
                 child: Text(
-                  i18n.t('admin_ops_tab'),
+                  i18n.t('admin_ops_title'),
+                  maxLines: 1,
+                  overflow: TextOverflow.ellipsis,
                   style: Theme.of(context).textTheme.headlineSmall,
                 ),
               ),
+              if (MediaQuery.sizeOf(context).width < 840) ...[
+                const LanguageQuickToggle(),
+                const SizedBox(width: 8),
+              ],
               IconButton.filledTonal(
-                tooltip: 'Refresh Wallets',
+                tooltip: 'Refresh',
                 onPressed: () =>
                     ref.read(canteenStoreProvider.notifier).requestWallets(),
                 icon: const Icon(Icons.refresh_rounded, size: 20),
@@ -341,7 +369,7 @@ class _AdminOpsWalletViewState extends ConsumerState<AdminOpsWalletView> {
 
         Expanded(
           child: ListView(
-            padding: const EdgeInsets.fromLTRB(20, 18, 20, 36),
+            padding: const EdgeInsets.fromLTRB(16, 16, 16, 36),
             children: [
               Center(
                 child: ConstrainedBox(
@@ -349,47 +377,51 @@ class _AdminOpsWalletViewState extends ConsumerState<AdminOpsWalletView> {
                   child: Column(
                     crossAxisAlignment: CrossAxisAlignment.stretch,
                     children: [
-                      // 1. Storefront Open/Closed & Payment Methods
-                      LayoutBuilder(
-                        builder: (context, constraints) {
-                          final wide = constraints.maxWidth >= 760;
-                          final statusCard = _buildStorefrontCard(
-                            context,
-                            store,
-                            i18n,
-                            tokens,
-                          );
-                          final payCard = _buildPaymentMethodsCard(
-                            context,
-                            store.paymentMethods,
-                            i18n,
-                            tokens,
-                          );
-                          if (wide) {
-                            return Row(
-                              crossAxisAlignment: CrossAxisAlignment.start,
+                      // 1. Service Open/Closed & Payment Methods
+                      EvaReveal(
+                        index: 0,
+                        child: LayoutBuilder(
+                          builder: (context, constraints) {
+                            final wide = constraints.maxWidth >= 740;
+                            final statusCard = _buildStorefrontCard(
+                              context,
+                              store,
+                              i18n,
+                              tokens,
+                            );
+                            final payCard = _buildPaymentMethodsCard(
+                              context,
+                              store.paymentMethods,
+                              i18n,
+                              tokens,
+                            );
+                            if (wide) {
+                              return Row(
+                                crossAxisAlignment: CrossAxisAlignment.start,
+                                children: [
+                                  Expanded(child: statusCard),
+                                  const SizedBox(width: 16),
+                                  Expanded(child: payCard),
+                                ],
+                              );
+                            }
+                            return Column(
                               children: [
-                                Expanded(child: statusCard),
-                                const SizedBox(width: 16),
-                                Expanded(child: payCard),
+                                statusCard,
+                                const SizedBox(height: 14),
+                                payCard,
                               ],
                             );
-                          }
-                          return Column(
-                            children: [
-                              statusCard,
-                              const SizedBox(height: 16),
-                              payCard,
-                            ],
-                          );
-                        },
+                          },
+                        ),
                       ),
 
-                      const SizedBox(height: 18),
+                      const SizedBox(height: 16),
 
-                      // 2. Student Wallet Balances Desk (الرصيد)
-                      Card(
-                        child: Padding(
+                      // 2. Customer Wallet Balances Desk
+                      EvaReveal(
+                        index: 1,
+                        child: EvaSurfaceCard(
                           padding: const EdgeInsets.all(18),
                           child: Column(
                             crossAxisAlignment: CrossAxisAlignment.start,
@@ -404,13 +436,18 @@ class _AdminOpsWalletViewState extends ConsumerState<AdminOpsWalletView> {
                                   Expanded(
                                     child: Text(
                                       i18n.t('wallet_desk_title'),
+                                      maxLines: 1,
+                                      overflow: TextOverflow.ellipsis,
                                       style: Theme.of(
                                         context,
                                       ).textTheme.titleLarge,
                                     ),
                                   ),
+                                  const SizedBox(width: 8),
                                   EvaStatusBadge(
-                                    label: '${wallets.users.length} students',
+                                    label: i18n.t('wallet_accounts_count', {
+                                      'count': '${wallets.users.length}',
+                                    }),
                                     background: tokens.brandSoftBg,
                                     foreground: tokens.brandPrimary,
                                   ),
@@ -422,13 +459,23 @@ class _AdminOpsWalletViewState extends ConsumerState<AdminOpsWalletView> {
                                 onChanged: (v) =>
                                     setState(() => _walletQuery = v),
                                 decoration: InputDecoration(
-                                  hintText: i18n.isRtl
-                                      ? 'ابحث بالبريد الإلكتروني للطالب...'
-                                      : 'Search student by school email...',
+                                  hintText: i18n.t('wallet_search_hint'),
                                   prefixIcon: const Icon(
                                     Icons.search_rounded,
                                     size: 20,
                                   ),
+                                  suffixIcon: _walletQuery.isEmpty
+                                      ? null
+                                      : IconButton(
+                                          onPressed: () {
+                                            _walletSearchCtrl.clear();
+                                            setState(() => _walletQuery = '');
+                                          },
+                                          icon: const Icon(
+                                            Icons.close_rounded,
+                                            size: 18,
+                                          ),
+                                        ),
                                 ),
                               ),
                               const SizedBox(height: 14),
@@ -438,9 +485,7 @@ class _AdminOpsWalletViewState extends ConsumerState<AdminOpsWalletView> {
                                     vertical: 16,
                                   ),
                                   child: Text(
-                                    i18n.isRtl
-                                        ? 'لا يوجد طلاب مطابقون للبحث بعد.'
-                                        : 'No registered student accounts match this filter yet.',
+                                    i18n.t('wallet_empty_hint'),
                                     style: Theme.of(
                                       context,
                                     ).textTheme.bodySmall,
@@ -450,119 +495,16 @@ class _AdminOpsWalletViewState extends ConsumerState<AdminOpsWalletView> {
                                 for (final u in filteredUsers)
                                   Padding(
                                     padding: const EdgeInsets.only(bottom: 10),
-                                    child: Container(
-                                      padding: const EdgeInsets.all(12),
-                                      decoration: BoxDecoration(
-                                        color: tokens.surfaceSubtle,
-                                        borderRadius: BorderRadius.circular(14),
-                                      ),
-                                      child: Wrap(
-                                        spacing: 12,
-                                        runSpacing: 10,
-                                        alignment: WrapAlignment.spaceBetween,
-                                        crossAxisAlignment:
-                                            WrapCrossAlignment.center,
-                                        children: [
-                                          Row(
-                                            mainAxisSize: MainAxisSize.min,
-                                            children: [
-                                              EvaAvatar(
-                                                profilePic: u.profilePic,
-                                                radius: 19,
-                                              ),
-                                              const SizedBox(width: 10),
-                                              Column(
-                                                crossAxisAlignment:
-                                                    CrossAxisAlignment.start,
-                                                children: [
-                                                  Text(
-                                                    u.email,
-                                                    style: Theme.of(
-                                                      context,
-                                                    ).textTheme.titleMedium,
-                                                  ),
-                                                  Text(
-                                                    '${u.orderCount} orders • Spent ${i18n.formatPrice(u.totalSpent)}',
-                                                    style: Theme.of(
-                                                      context,
-                                                    ).textTheme.bodySmall,
-                                                  ),
-                                                ],
-                                              ),
-                                            ],
+                                    child: _CustomerWalletRow(
+                                      user: u,
+                                      i18n: i18n,
+                                      tokens: tokens,
+                                      onAdjust: (mode) =>
+                                          _openWalletAdjustDialog(
+                                            context,
+                                            user: u,
+                                            initialMode: mode,
                                           ),
-                                          Wrap(
-                                            spacing: 8,
-                                            runSpacing: 8,
-                                            crossAxisAlignment:
-                                                WrapCrossAlignment.center,
-                                            children: [
-                                              Container(
-                                                padding:
-                                                    const EdgeInsets.symmetric(
-                                                      horizontal: 12,
-                                                      vertical: 6,
-                                                    ),
-                                                decoration: BoxDecoration(
-                                                  color: tokens.surfaceCard,
-                                                  borderRadius:
-                                                      BorderRadius.circular(10),
-                                                  border: Border.all(
-                                                    color: tokens.borderSubtle,
-                                                  ),
-                                                ),
-                                                child: Text(
-                                                  i18n.formatPrice(u.balance),
-                                                  style: Theme.of(context)
-                                                      .textTheme
-                                                      .titleMedium
-                                                      ?.copyWith(
-                                                        color: tokens
-                                                            .statusDeliveredFg,
-                                                        fontFeatures:
-                                                            EvaThemeBuilder
-                                                                .tabularNums,
-                                                      ),
-                                                ),
-                                              ),
-                                              FilledButton.tonal(
-                                                onPressed: () =>
-                                                    _openWalletAdjustDialog(
-                                                      context,
-                                                      user: u,
-                                                      initialMode: 'add',
-                                                    ),
-                                                style: FilledButton.styleFrom(
-                                                  minimumSize: const Size(
-                                                    0,
-                                                    38,
-                                                  ),
-                                                ),
-                                                child: Text(
-                                                  i18n.t('wallet_add'),
-                                                ),
-                                              ),
-                                              OutlinedButton(
-                                                onPressed: () =>
-                                                    _openWalletAdjustDialog(
-                                                      context,
-                                                      user: u,
-                                                      initialMode: 'deduct',
-                                                    ),
-                                                style: OutlinedButton.styleFrom(
-                                                  minimumSize: const Size(
-                                                    0,
-                                                    38,
-                                                  ),
-                                                ),
-                                                child: Text(
-                                                  i18n.t('wallet_deduct'),
-                                                ),
-                                              ),
-                                            ],
-                                          ),
-                                        ],
-                                      ),
                                     ),
                                   ),
 
@@ -573,7 +515,7 @@ class _AdminOpsWalletViewState extends ConsumerState<AdminOpsWalletView> {
                                 Text(
                                   i18n.isRtl
                                       ? 'آخر حركات المحفظة'
-                                      : 'Recent Wallet Ledger',
+                                      : 'Recent Wallet Activity',
                                   style: Theme.of(context).textTheme.titleSmall,
                                 ),
                                 const SizedBox(height: 8),
@@ -603,6 +545,7 @@ class _AdminOpsWalletViewState extends ConsumerState<AdminOpsWalletView> {
                                             ).textTheme.bodySmall,
                                           ),
                                         ),
+                                        const SizedBox(width: 8),
                                         Text(
                                           DateFormat(
                                             'MM/dd HH:mm',
@@ -634,11 +577,12 @@ class _AdminOpsWalletViewState extends ConsumerState<AdminOpsWalletView> {
                         ),
                       ),
 
-                      const SizedBox(height: 18),
+                      const SizedBox(height: 16),
 
-                      // 3. Bilingual Currency & Catalog Backup
-                      Card(
-                        child: Padding(
+                      // 3. Bilingual Currency & Catalog Backup (Responsive!)
+                      EvaReveal(
+                        index: 2,
+                        child: EvaSurfaceCard(
                           padding: const EdgeInsets.all(18),
                           child: Column(
                             crossAxisAlignment: CrossAxisAlignment.start,
@@ -648,48 +592,69 @@ class _AdminOpsWalletViewState extends ConsumerState<AdminOpsWalletView> {
                                 style: Theme.of(context).textTheme.titleLarge,
                               ),
                               const SizedBox(height: 12),
-                              Row(
-                                children: [
-                                  Expanded(
-                                    child: TextField(
-                                      controller: _currEnCtrl,
-                                      textDirection: TextDirection.ltr,
-                                      decoration: const InputDecoration(
-                                        labelText: 'English Symbol (e.g. L.E)',
-                                      ),
+                              LayoutBuilder(
+                                builder: (context, constraints) {
+                                  final enField = TextField(
+                                    controller: _currEnCtrl,
+                                    textDirection: TextDirection.ltr,
+                                    decoration: const InputDecoration(
+                                      labelText: 'English (L.E)',
                                     ),
-                                  ),
-                                  const SizedBox(width: 12),
-                                  Expanded(
-                                    child: TextField(
-                                      controller: _currArCtrl,
-                                      textDirection: TextDirection.rtl,
-                                      decoration: const InputDecoration(
-                                        labelText: 'الرمز بالعربية (مثال: ج.م)',
-                                      ),
+                                  );
+                                  final arField = TextField(
+                                    controller: _currArCtrl,
+                                    textDirection: TextDirection.rtl,
+                                    decoration: const InputDecoration(
+                                      labelText: 'العربية (ج.م)',
                                     ),
-                                  ),
-                                  const SizedBox(width: 12),
-                                  FilledButton(
-                                    onPressed: () {
-                                      HapticFeedback.selectionClick();
-                                      ref
-                                          .read(canteenStoreProvider.notifier)
-                                          .updateCurrency(
-                                            enSymbol: _currEnCtrl.text,
-                                            arSymbol: _currArCtrl.text,
-                                          );
-                                      ScaffoldMessenger.of(
-                                        context,
-                                      ).showSnackBar(
-                                        SnackBar(
-                                          content: Text(i18n.t('save_cta')),
-                                        ),
-                                      );
-                                    },
+                                  );
+                                  final saveBtn = FilledButton(
+                                    onPressed: () => _saveCurrency(i18n),
                                     child: Text(i18n.t('save_cta')),
-                                  ),
-                                ],
+                                  );
+
+                                  if (constraints.maxWidth >= 540) {
+                                    return Row(
+                                      children: [
+                                        Expanded(child: enField),
+                                        const SizedBox(width: 12),
+                                        Expanded(child: arField),
+                                        const SizedBox(width: 12),
+                                        saveBtn,
+                                      ],
+                                    );
+                                  }
+
+                                  if (constraints.maxWidth < 320) {
+                                    return Column(
+                                      crossAxisAlignment:
+                                          CrossAxisAlignment.stretch,
+                                      children: [
+                                        enField,
+                                        const SizedBox(height: 10),
+                                        arField,
+                                        const SizedBox(height: 12),
+                                        saveBtn,
+                                      ],
+                                    );
+                                  }
+
+                                  return Column(
+                                    crossAxisAlignment:
+                                        CrossAxisAlignment.stretch,
+                                    children: [
+                                      Row(
+                                        children: [
+                                          Expanded(child: enField),
+                                          const SizedBox(width: 12),
+                                          Expanded(child: arField),
+                                        ],
+                                      ),
+                                      const SizedBox(height: 12),
+                                      saveBtn,
+                                    ],
+                                  );
+                                },
                               ),
                               const SizedBox(height: 20),
                               Divider(color: tokens.borderSubtle),
@@ -709,7 +674,11 @@ class _AdminOpsWalletViewState extends ConsumerState<AdminOpsWalletView> {
                                       Icons.download_rounded,
                                       size: 18,
                                     ),
-                                    label: const Text('Export Catalog JSON'),
+                                    label: Text(
+                                      i18n.isRtl
+                                          ? 'تصدير ملف JSON'
+                                          : 'Export JSON',
+                                    ),
                                   ),
                                   OutlinedButton.icon(
                                     onPressed: () => _showImportDialog(context),
@@ -717,7 +686,11 @@ class _AdminOpsWalletViewState extends ConsumerState<AdminOpsWalletView> {
                                       Icons.upload_file_rounded,
                                       size: 18,
                                     ),
-                                    label: const Text('Import Catalog JSON'),
+                                    label: Text(
+                                      i18n.isRtl
+                                          ? 'استيراد ملف JSON'
+                                          : 'Import JSON',
+                                    ),
                                   ),
                                 ],
                               ),
@@ -742,51 +715,49 @@ class _AdminOpsWalletViewState extends ConsumerState<AdminOpsWalletView> {
     EvaTranslator i18n,
     EvaTokens tokens,
   ) {
-    return Card(
-      child: Padding(
-        padding: const EdgeInsets.all(18),
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            Row(
-              children: [
-                Expanded(
-                  child: Text(
-                    i18n.t('storefront_status_card'),
-                    style: Theme.of(context).textTheme.titleLarge,
-                  ),
+    return EvaSurfaceCard(
+      padding: const EdgeInsets.all(18),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Row(
+            children: [
+              Expanded(
+                child: Text(
+                  i18n.t('storefront_status_card'),
+                  style: Theme.of(context).textTheme.titleLarge,
                 ),
-                Switch(
-                  value: store.isCanteenOpen,
-                  onChanged: (val) {
-                    HapticFeedback.mediumImpact();
-                    ref.read(canteenStoreProvider.notifier).setCanteenOpen(val);
-                  },
-                ),
-              ],
-            ),
-            const SizedBox(height: 8),
-            EvaStatusBadge(
-              label: store.isCanteenOpen
-                  ? i18n.t('canteen_open_badge')
-                  : i18n.t('canteen_closed_badge'),
-              background: store.isCanteenOpen
-                  ? tokens.statusDeliveredBg
-                  : tokens.statusClosedBg,
-              foreground: store.isCanteenOpen
-                  ? tokens.statusDeliveredFg
-                  : tokens.statusClosedFg,
-              pulsing: store.isCanteenOpen,
-            ),
-            const SizedBox(height: 10),
-            Text(
-              i18n.isRtl
-                  ? 'عند الإغلاق، يمكن للطلاب تصفح القائمة والأسعار دون إرسال طلبات جديدة.'
-                  : 'When closed, students can still browse the menu and prices while checkout stays paused.',
-              style: Theme.of(context).textTheme.bodySmall,
-            ),
-          ],
-        ),
+              ),
+              Switch(
+                value: store.isCanteenOpen,
+                onChanged: (val) {
+                  HapticFeedback.mediumImpact();
+                  ref.read(canteenStoreProvider.notifier).setCanteenOpen(val);
+                },
+              ),
+            ],
+          ),
+          const SizedBox(height: 8),
+          EvaStatusBadge(
+            label: store.isCanteenOpen
+                ? i18n.t('canteen_open_badge')
+                : i18n.t('canteen_closed_badge'),
+            background: store.isCanteenOpen
+                ? tokens.statusDeliveredBg
+                : tokens.statusClosedBg,
+            foreground: store.isCanteenOpen
+                ? tokens.statusDeliveredFg
+                : tokens.statusClosedFg,
+            pulsing: store.isCanteenOpen,
+          ),
+          const SizedBox(height: 10),
+          Text(
+            i18n.isRtl
+                ? 'عند الإغلاق، يظل بإمكان الزوار تصفح القائمة والأسعار مع إيقاف إرسال طلبات جديدة مؤقتاً.'
+                : 'When closed, guests can still browse the menu and prices while checkout stays paused.',
+            style: Theme.of(context).textTheme.bodySmall,
+          ),
+        ],
       ),
     );
   }
@@ -797,52 +768,223 @@ class _AdminOpsWalletViewState extends ConsumerState<AdminOpsWalletView> {
     EvaTranslator i18n,
     EvaTokens tokens,
   ) {
-    return Card(
-      child: Padding(
-        padding: const EdgeInsets.all(18),
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            Text(
-              i18n.t('payment_controls_title'),
-              style: Theme.of(context).textTheme.titleLarge,
+    return EvaSurfaceCard(
+      padding: const EdgeInsets.all(18),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Text(
+            i18n.t('payment_controls_title'),
+            style: Theme.of(context).textTheme.titleLarge,
+          ),
+          const SizedBox(height: 8),
+          SwitchListTile(
+            contentPadding: EdgeInsets.zero,
+            dense: true,
+            secondary: Icon(
+              Icons.payments_outlined,
+              color: tokens.brandPrimary,
             ),
-            const SizedBox(height: 8),
-            SwitchListTile(
-              contentPadding: EdgeInsets.zero,
-              dense: true,
-              secondary: Icon(
-                Icons.payments_outlined,
-                color: tokens.brandPrimary,
-              ),
-              title: Text(i18n.t('payment_cash')),
-              value: methods.cash,
-              onChanged: (v) => _togglePaymentMethod(methods, cash: v),
+            title: Text(i18n.t('payment_cash')),
+            value: methods.cash,
+            onChanged: (v) => _togglePaymentMethod(methods, cash: v),
+          ),
+          SwitchListTile(
+            contentPadding: EdgeInsets.zero,
+            dense: true,
+            secondary: Icon(
+              Icons.credit_card_rounded,
+              color: tokens.brandPrimary,
             ),
-            SwitchListTile(
-              contentPadding: EdgeInsets.zero,
-              dense: true,
-              secondary: Icon(
-                Icons.credit_card_rounded,
-                color: tokens.brandPrimary,
-              ),
-              title: Text(i18n.t('payment_card')),
-              value: methods.card,
-              onChanged: (v) => _togglePaymentMethod(methods, card: v),
+            title: Text(i18n.t('payment_card')),
+            value: methods.card,
+            onChanged: (v) => _togglePaymentMethod(methods, card: v),
+          ),
+          SwitchListTile(
+            contentPadding: EdgeInsets.zero,
+            dense: true,
+            secondary: Icon(
+              Icons.account_balance_wallet_rounded,
+              color: tokens.brandPrimary,
             ),
-            SwitchListTile(
-              contentPadding: EdgeInsets.zero,
-              dense: true,
-              secondary: Icon(
-                Icons.account_balance_wallet_rounded,
-                color: tokens.brandPrimary,
-              ),
-              title: Text(i18n.t('payment_wallet')),
-              value: methods.wallet,
-              onChanged: (v) => _togglePaymentMethod(methods, wallet: v),
-            ),
-          ],
+            title: Text(i18n.t('payment_wallet')),
+            value: methods.wallet,
+            onChanged: (v) => _togglePaymentMethod(methods, wallet: v),
+          ),
+        ],
+      ),
+    );
+  }
+}
+
+class _CustomerWalletRow extends StatelessWidget {
+  const _CustomerWalletRow({
+    required this.user,
+    required this.i18n,
+    required this.tokens,
+    required this.onAdjust,
+  });
+
+  final WalletUserSummary user;
+  final EvaTranslator i18n;
+  final EvaTokens tokens;
+  final void Function(String mode) onAdjust;
+
+  @override
+  Widget build(BuildContext context) {
+    final balancePill = Container(
+      padding: const EdgeInsets.symmetric(horizontal: 11, vertical: 6),
+      decoration: BoxDecoration(
+        color: tokens.surfaceElevated,
+        borderRadius: BorderRadius.circular(10),
+        border: Border.all(color: tokens.borderSubtle),
+      ),
+      child: Text(
+        i18n.formatPrice(user.balance),
+        style: Theme.of(context).textTheme.titleMedium?.copyWith(
+          color: tokens.statusDeliveredFg,
+          fontFeatures: EvaThemeBuilder.tabularNums,
         ),
+      ),
+    );
+
+    final identityInfo = Expanded(
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Text(
+            user.email,
+            maxLines: 1,
+            overflow: TextOverflow.ellipsis,
+            style: Theme.of(context).textTheme.titleMedium,
+          ),
+          const SizedBox(height: 2),
+          Text(
+            i18n.isRtl
+                ? '${user.orderCount} طلبات • إجمالي ${i18n.formatPrice(user.totalSpent)}'
+                : '${user.orderCount} orders • Spent ${i18n.formatPrice(user.totalSpent)}',
+            maxLines: 1,
+            overflow: TextOverflow.ellipsis,
+            style: Theme.of(context).textTheme.bodySmall?.copyWith(
+              fontFeatures: EvaThemeBuilder.tabularNums,
+            ),
+          ),
+        ],
+      ),
+    );
+
+    return Container(
+      padding: const EdgeInsets.all(12),
+      decoration: BoxDecoration(
+        color: tokens.surfaceSubtle,
+        borderRadius: BorderRadius.circular(14),
+        border: Border.all(color: tokens.borderSubtle.withValues(alpha: 0.65)),
+      ),
+      child: LayoutBuilder(
+        builder: (context, constraints) {
+          final isWide = constraints.maxWidth >= 560;
+
+          if (isWide) {
+            return Row(
+              children: [
+                EvaAvatar(profilePic: user.profilePic, radius: 19),
+                const SizedBox(width: 10),
+                identityInfo,
+                const SizedBox(width: 12),
+                balancePill,
+                const SizedBox(width: 8),
+                FilledButton.tonal(
+                  onPressed: () => onAdjust('add'),
+                  style: FilledButton.styleFrom(
+                    minimumSize: const Size(0, 38),
+                    padding: const EdgeInsets.symmetric(horizontal: 14),
+                  ),
+                  child: Text(i18n.t('wallet_add')),
+                ),
+                const SizedBox(width: 8),
+                OutlinedButton(
+                  onPressed: () => onAdjust('deduct'),
+                  style: OutlinedButton.styleFrom(
+                    minimumSize: const Size(0, 38),
+                    padding: const EdgeInsets.symmetric(horizontal: 12),
+                  ),
+                  child: Text(i18n.t('wallet_deduct')),
+                ),
+                const SizedBox(width: 6),
+                OutlinedButton(
+                  onPressed: () => onAdjust('set'),
+                  style: OutlinedButton.styleFrom(
+                    minimumSize: const Size(0, 38),
+                    padding: const EdgeInsets.symmetric(horizontal: 12),
+                  ),
+                  child: Text(i18n.t('wallet_set')),
+                ),
+              ],
+            );
+          }
+
+          return Column(
+            crossAxisAlignment: CrossAxisAlignment.stretch,
+            children: [
+              Row(
+                children: [
+                  EvaAvatar(profilePic: user.profilePic, radius: 18),
+                  const SizedBox(width: 10),
+                  identityInfo,
+                  const SizedBox(width: 8),
+                  balancePill,
+                ],
+              ),
+              const SizedBox(height: 10),
+              Row(
+                children: [
+                  Expanded(
+                    child: FilledButton.tonal(
+                      onPressed: () => onAdjust('add'),
+                      style: FilledButton.styleFrom(
+                        minimumSize: const Size(0, 38),
+                        padding: const EdgeInsets.symmetric(horizontal: 10),
+                      ),
+                      child: Text(
+                        i18n.t('wallet_add'),
+                        maxLines: 1,
+                        overflow: TextOverflow.ellipsis,
+                      ),
+                    ),
+                  ),
+                  const SizedBox(width: 8),
+                  Expanded(
+                    child: OutlinedButton(
+                      onPressed: () => onAdjust('deduct'),
+                      style: OutlinedButton.styleFrom(
+                        minimumSize: const Size(0, 38),
+                        padding: const EdgeInsets.symmetric(horizontal: 10),
+                      ),
+                      child: Text(
+                        i18n.t('wallet_deduct'),
+                        maxLines: 1,
+                        overflow: TextOverflow.ellipsis,
+                      ),
+                    ),
+                  ),
+                  const SizedBox(width: 8),
+                  OutlinedButton(
+                    onPressed: () => onAdjust('set'),
+                    style: OutlinedButton.styleFrom(
+                      minimumSize: const Size(0, 38),
+                      padding: const EdgeInsets.symmetric(horizontal: 12),
+                    ),
+                    child: Text(
+                      i18n.t('wallet_set'),
+                      maxLines: 1,
+                      overflow: TextOverflow.ellipsis,
+                    ),
+                  ),
+                ],
+              ),
+            ],
+          );
+        },
       ),
     );
   }

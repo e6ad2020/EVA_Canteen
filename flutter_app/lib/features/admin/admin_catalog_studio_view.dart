@@ -37,66 +37,75 @@ class _AdminCatalogStudioViewState
     final tokens = EvaTokens.of(context);
     final i18n = ref.watch(i18nProvider);
     final store = ref.watch(canteenStoreProvider);
+    final isCompactShell = MediaQuery.sizeOf(context).width < 840;
 
     return Column(
       children: [
         // Studio Header
-        Container(
-          padding: const EdgeInsets.fromLTRB(20, 14, 20, 14),
-          decoration: BoxDecoration(
-            color: tokens.surfaceCard,
-            border: Border(bottom: BorderSide(color: tokens.borderSubtle)),
-          ),
+        EvaGlassBar(
+          padding: const EdgeInsets.fromLTRB(16, 12, 16, 12),
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
-              Wrap(
-                spacing: 12,
-                runSpacing: 10,
-                alignment: WrapAlignment.spaceBetween,
-                crossAxisAlignment: WrapCrossAlignment.center,
+              Row(
                 children: [
-                  Text(
-                    i18n.t('admin_catalog_tab'),
-                    style: Theme.of(context).textTheme.headlineSmall,
+                  Expanded(
+                    child: Text(
+                      i18n.t('admin_catalog_title'),
+                      maxLines: 1,
+                      overflow: TextOverflow.ellipsis,
+                      style: Theme.of(context).textTheme.headlineSmall,
+                    ),
                   ),
-                  Row(
-                    mainAxisSize: MainAxisSize.min,
-                    children: [
-                      if (_section == _StudioSection.products)
-                        FilledButton.icon(
-                          onPressed: () => _openProductEditor(
-                            context,
-                            existing: null,
-                            defaultCategoryKey:
-                                (_selectedCategoryKey != null &&
-                                    _selectedCategoryKey != 'archive')
-                                ? _selectedCategoryKey!
-                                : (store.studentCategories.firstOrNull?.key ??
-                                      'sandwiches'),
-                          ),
-                          icon: const Icon(Icons.add_rounded, size: 18),
-                          label: Text(i18n.t('new_product_cta')),
-                        )
-                      else if (_section == _StudioSection.categories)
-                        FilledButton.icon(
-                          onPressed: () =>
-                              _openCategoryDialog(context, existing: null),
-                          icon: const Icon(Icons.add_rounded, size: 18),
-                          label: Text(i18n.t('new_category_cta')),
-                        )
-                      else
-                        FilledButton.icon(
-                          onPressed: () =>
-                              _openBundleEditor(context, existing: null),
-                          icon: const Icon(Icons.add_rounded, size: 18),
-                          label: Text(i18n.t('new_bundle_cta')),
-                        ),
-                    ],
-                  ),
+                  if (isCompactShell) ...[
+                    const SizedBox(width: 8),
+                    const LanguageQuickToggle(),
+                  ],
+                  const SizedBox(width: 8),
+                  if (_section == _StudioSection.products)
+                    FilledButton.icon(
+                      style: FilledButton.styleFrom(
+                        minimumSize: const Size(0, 38),
+                        padding: const EdgeInsets.symmetric(horizontal: 12),
+                      ),
+                      onPressed: () => _openProductEditor(
+                        context,
+                        existing: null,
+                        defaultCategoryKey:
+                            (_selectedCategoryKey != null &&
+                                _selectedCategoryKey != 'archive')
+                            ? _selectedCategoryKey!
+                            : (store.studentCategories.firstOrNull?.key ??
+                                  'sandwiches'),
+                      ),
+                      icon: const Icon(Icons.add_rounded, size: 18),
+                      label: Text(i18n.t('new_product_cta')),
+                    )
+                  else if (_section == _StudioSection.categories)
+                    FilledButton.icon(
+                      style: FilledButton.styleFrom(
+                        minimumSize: const Size(0, 38),
+                        padding: const EdgeInsets.symmetric(horizontal: 12),
+                      ),
+                      onPressed: () =>
+                          _openCategoryDialog(context, existing: null),
+                      icon: const Icon(Icons.add_rounded, size: 18),
+                      label: Text(i18n.t('new_category_cta')),
+                    )
+                  else
+                    FilledButton.icon(
+                      style: FilledButton.styleFrom(
+                        minimumSize: const Size(0, 38),
+                        padding: const EdgeInsets.symmetric(horizontal: 12),
+                      ),
+                      onPressed: () =>
+                          _openBundleEditor(context, existing: null),
+                      icon: const Icon(Icons.add_rounded, size: 18),
+                      label: Text(i18n.t('new_bundle_cta')),
+                    ),
                 ],
               ),
-              const SizedBox(height: 12),
+              const SizedBox(height: 10),
               SizedBox(
                 width: double.infinity,
                 child: SegmentedButton<_StudioSection>(
@@ -104,18 +113,30 @@ class _AdminCatalogStudioViewState
                   segments: [
                     ButtonSegment(
                       value: _StudioSection.products,
-                      icon: const Icon(Icons.lunch_dining_rounded, size: 17),
-                      label: Text(i18n.t('studio_products_tab')),
+                      icon: const Icon(Icons.lunch_dining_rounded, size: 16),
+                      label: Text(
+                        i18n.t('studio_products_tab'),
+                        maxLines: 1,
+                        overflow: TextOverflow.ellipsis,
+                      ),
                     ),
                     ButtonSegment(
                       value: _StudioSection.categories,
-                      icon: const Icon(Icons.category_rounded, size: 17),
-                      label: Text(i18n.t('studio_categories_tab')),
+                      icon: const Icon(Icons.category_rounded, size: 16),
+                      label: Text(
+                        i18n.t('studio_categories_tab'),
+                        maxLines: 1,
+                        overflow: TextOverflow.ellipsis,
+                      ),
                     ),
                     ButtonSegment(
                       value: _StudioSection.bundles,
-                      icon: const Icon(Icons.local_offer_rounded, size: 17),
-                      label: Text(i18n.t('studio_bundles_tab')),
+                      icon: const Icon(Icons.local_offer_rounded, size: 16),
+                      label: Text(
+                        i18n.t('studio_bundles_tab'),
+                        maxLines: 1,
+                        overflow: TextOverflow.ellipsis,
+                      ),
                     ),
                   ],
                   selected: {_section},
@@ -130,26 +151,33 @@ class _AdminCatalogStudioViewState
 
         // Active Sub-View
         Expanded(
-          child: switch (_section) {
-            _StudioSection.products => _buildProductsSection(
-              context,
-              store,
-              i18n,
-              tokens,
+          child: AnimatedSwitcher(
+            duration: const Duration(milliseconds: 200),
+            switchInCurve: Curves.easeOutCubic,
+            child: KeyedSubtree(
+              key: ValueKey(_section),
+              child: switch (_section) {
+                _StudioSection.products => _buildProductsSection(
+                  context,
+                  store,
+                  i18n,
+                  tokens,
+                ),
+                _StudioSection.categories => _buildCategoriesSection(
+                  context,
+                  store,
+                  i18n,
+                  tokens,
+                ),
+                _StudioSection.bundles => _buildBundlesSection(
+                  context,
+                  store,
+                  i18n,
+                  tokens,
+                ),
+              },
             ),
-            _StudioSection.categories => _buildCategoriesSection(
-              context,
-              store,
-              i18n,
-              tokens,
-            ),
-            _StudioSection.bundles => _buildBundlesSection(
-              context,
-              store,
-              i18n,
-              tokens,
-            ),
-          },
+          ),
         ),
       ],
     );
@@ -187,7 +215,7 @@ class _AdminCatalogStudioViewState
     return Column(
       children: [
         Padding(
-          padding: const EdgeInsets.fromLTRB(20, 14, 20, 8),
+          padding: const EdgeInsets.fromLTRB(16, 12, 16, 8),
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
@@ -261,8 +289,8 @@ class _AdminCatalogStudioViewState
                       Expanded(
                         child: Text(
                           i18n.isRtl
-                              ? 'اسحب مقبض الترتيب لتغيير ظهور المنتجات داخل هذه الفئة.'
-                              : 'Drag the handle on any row to reorder products inside this category.',
+                              ? 'اسحب مقبض الترتيب لتغيير ظهور الأصناف داخل هذه الفئة.'
+                              : 'Drag the handle on any row to reorder items inside this category.',
                           style: Theme.of(context).textTheme.bodySmall
                               ?.copyWith(color: tokens.brandPrimary),
                         ),
@@ -278,8 +306,8 @@ class _AdminCatalogStudioViewState
               ? Center(
                   child: Text(
                     i18n.isRtl
-                        ? 'لا توجد منتجات في هذا القسم.'
-                        : 'No products in this shelf.',
+                        ? 'لا توجد أصناف في هذا القسم.'
+                        : 'No items in this section.',
                     style: Theme.of(context).textTheme.titleMedium?.copyWith(
                       color: tokens.textSecondary,
                     ),
@@ -287,7 +315,7 @@ class _AdminCatalogStudioViewState
                 )
               : canReorderIntraCategory
               ? ReorderableListView.builder(
-                  padding: const EdgeInsets.fromLTRB(20, 8, 20, 28),
+                  padding: const EdgeInsets.fromLTRB(16, 8, 16, 28),
                   buildDefaultDragHandles: false,
                   itemCount: filtered.length,
                   onReorderItem: (oldIndex, newIndex) {
@@ -334,12 +362,42 @@ class _AdminCatalogStudioViewState
                         : (constraints.maxWidth >= 700 ? 2 : 1);
                     if (cols == 1) {
                       return ListView.separated(
-                        padding: const EdgeInsets.fromLTRB(20, 8, 20, 28),
+                        padding: const EdgeInsets.fromLTRB(16, 8, 16, 28),
                         itemCount: filtered.length,
                         separatorBuilder: (_, _) => const SizedBox(height: 10),
                         itemBuilder: (context, idx) {
                           final prod = filtered[idx];
-                          return _AdminProductStudioCard(
+                          return EvaReveal(
+                            index: idx,
+                            child: _AdminProductStudioCard(
+                              product: prod,
+                              defaultRestoreCategoryKey:
+                                  store.studentCategories.firstOrNull?.key ??
+                                  'sandwiches',
+                              onEdit: () => _openProductEditor(
+                                context,
+                                existing: prod,
+                                defaultCategoryKey: prod.categoryKey,
+                              ),
+                            ),
+                          );
+                        },
+                      );
+                    }
+                    return GridView.builder(
+                      padding: const EdgeInsets.fromLTRB(16, 8, 16, 28),
+                      gridDelegate: SliverGridDelegateWithFixedCrossAxisCount(
+                        crossAxisCount: cols,
+                        crossAxisSpacing: 12,
+                        mainAxisSpacing: 12,
+                        mainAxisExtent: 204,
+                      ),
+                      itemCount: filtered.length,
+                      itemBuilder: (context, idx) {
+                        final prod = filtered[idx];
+                        return EvaReveal(
+                          index: idx,
+                          child: _AdminProductStudioCard(
                             product: prod,
                             defaultRestoreCategoryKey:
                                 store.studentCategories.firstOrNull?.key ??
@@ -349,30 +407,6 @@ class _AdminCatalogStudioViewState
                               existing: prod,
                               defaultCategoryKey: prod.categoryKey,
                             ),
-                          );
-                        },
-                      );
-                    }
-                    return GridView.builder(
-                      padding: const EdgeInsets.fromLTRB(20, 8, 20, 28),
-                      gridDelegate: SliverGridDelegateWithFixedCrossAxisCount(
-                        crossAxisCount: cols,
-                        crossAxisSpacing: 12,
-                        mainAxisSpacing: 12,
-                        mainAxisExtent: 196,
-                      ),
-                      itemCount: filtered.length,
-                      itemBuilder: (context, idx) {
-                        final prod = filtered[idx];
-                        return _AdminProductStudioCard(
-                          product: prod,
-                          defaultRestoreCategoryKey:
-                              store.studentCategories.firstOrNull?.key ??
-                              'sandwiches',
-                          onEdit: () => _openProductEditor(
-                            context,
-                            existing: prod,
-                            defaultCategoryKey: prod.categoryKey,
                           ),
                         );
                       },
@@ -399,17 +433,17 @@ class _AdminCatalogStudioViewState
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
         Padding(
-          padding: const EdgeInsets.fromLTRB(20, 14, 20, 6),
+          padding: const EdgeInsets.fromLTRB(16, 14, 16, 6),
           child: Text(
             i18n.isRtl
-                ? 'اسحب الفئات لإعادة ترتيب ظهورها في شاشة الطلاب. يجب إفراغ الفئة من المنتجات قبل حذفها.'
-                : 'Drag categories to reorder the student menu tabs. Empty a category before deleting it.',
+                ? 'اسحب الفئات لإعادة ترتيب أقسام القائمة. يجب إفراغ الفئة من الأصناف قبل حذفها.'
+                : 'Drag categories to reorder menu sections. Empty a category before deleting it.',
             style: Theme.of(context).textTheme.bodySmall,
           ),
         ),
         Expanded(
           child: ReorderableListView.builder(
-            padding: const EdgeInsets.fromLTRB(20, 8, 20, 28),
+            padding: const EdgeInsets.fromLTRB(16, 8, 16, 28),
             buildDefaultDragHandles: false,
             itemCount: activeCats.length,
             onReorderItem: (oldIndex, newIndex) {
@@ -436,7 +470,7 @@ class _AdminCatalogStudioViewState
               return Padding(
                 key: ValueKey('cat_row_${cat.key}'),
                 padding: const EdgeInsets.only(bottom: 10),
-                child: Card(
+                child: EvaSurfaceCard(
                   child: ListTile(
                     contentPadding: const EdgeInsets.symmetric(
                       horizontal: 14,
@@ -461,10 +495,14 @@ class _AdminCatalogStudioViewState
                       enName.isNotEmpty && arName.isNotEmpty
                           ? '$enName  •  $arName'
                           : i18n.t(cat.nameKey),
+                      maxLines: 1,
+                      overflow: TextOverflow.ellipsis,
                       style: Theme.of(context).textTheme.titleMedium,
                     ),
                     subtitle: Text(
                       'Key: ${cat.key}  •  $prodCount items',
+                      maxLines: 1,
+                      overflow: TextOverflow.ellipsis,
                       style: Theme.of(context).textTheme.bodySmall,
                     ),
                     trailing: Row(
@@ -472,6 +510,7 @@ class _AdminCatalogStudioViewState
                       children: [
                         IconButton(
                           tooltip: i18n.t('edit_button'),
+                          visualDensity: VisualDensity.compact,
                           onPressed: () =>
                               _openCategoryDialog(context, existing: cat),
                           icon: const Icon(Icons.edit_outlined),
@@ -479,10 +518,11 @@ class _AdminCatalogStudioViewState
                         Tooltip(
                           message: prodCount > 0
                               ? (i18n.isRtl
-                                    ? 'انقل المنتجات للأرشيف أولاً قبل حذف الفئة'
-                                    : 'Move or archive $prodCount products before deleting')
+                                    ? 'انقل الأصناف للأرشيف أولاً قبل حذف الفئة'
+                                    : 'Move or archive $prodCount items before deleting')
                               : i18n.t('delete_cta'),
                           child: IconButton(
+                            visualDensity: VisualDensity.compact,
                             onPressed: prodCount > 0
                                 ? null
                                 : () => ref
@@ -534,7 +574,7 @@ class _AdminCatalogStudioViewState
     }
 
     return ListView.separated(
-      padding: const EdgeInsets.fromLTRB(20, 14, 20, 28),
+      padding: const EdgeInsets.fromLTRB(16, 14, 16, 28),
       itemCount: allBundles.length,
       separatorBuilder: (_, _) => const SizedBox(height: 12),
       itemBuilder: (context, idx) {
@@ -553,40 +593,35 @@ class _AdminCatalogStudioViewState
         return Center(
           child: ConstrainedBox(
             constraints: const BoxConstraints(maxWidth: 880),
-            child: Card(
-              child: Padding(
+            child: EvaReveal(
+              index: idx,
+              child: EvaSurfaceCard(
                 padding: const EdgeInsets.all(16),
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
                     Row(
                       children: [
-                        EvaStatusBadge(
-                          label: bundle.isSuggestion
-                              ? i18n.t('meal_ideas_badge')
-                              : i18n.t('discount_badge', {
-                                  'percent': bundle.discountPercent
-                                      .toStringAsFixed(0),
-                                }),
-                          background: bundle.isSuggestion
-                              ? tokens.brandSoftBg
-                              : tokens.statusDeliveredBg,
-                          foreground: bundle.isSuggestion
-                              ? tokens.brandPrimary
-                              : tokens.statusDeliveredFg,
-                          icon: bundle.isSuggestion
-                              ? Icons.auto_awesome_rounded
-                              : Icons.local_offer_rounded,
-                        ),
-                        const SizedBox(width: 10),
-                        Expanded(
-                          child: Text(
-                            enTitle.isNotEmpty && arTitle.isNotEmpty
-                                ? '$enTitle  •  $arTitle'
-                                : i18n.t(bundle.nameKey),
-                            style: Theme.of(context).textTheme.titleMedium,
+                        Flexible(
+                          child: EvaStatusBadge(
+                            label: bundle.isSuggestion
+                                ? i18n.t('meal_ideas_badge')
+                                : i18n.t('discount_badge', {
+                                    'percent': bundle.discountPercent
+                                        .toStringAsFixed(0),
+                                  }),
+                            background: bundle.isSuggestion
+                                ? tokens.brandSoftBg
+                                : tokens.statusDeliveredBg,
+                            foreground: bundle.isSuggestion
+                                ? tokens.brandPrimary
+                                : tokens.statusDeliveredFg,
+                            icon: bundle.isSuggestion
+                                ? Icons.auto_awesome_rounded
+                                : Icons.local_offer_rounded,
                           ),
                         ),
+                        const Spacer(),
                         Switch(
                           value: bundle.active,
                           onChanged: (val) {
@@ -611,12 +646,14 @@ class _AdminCatalogStudioViewState
                         ),
                         IconButton(
                           tooltip: i18n.t('edit_button'),
+                          visualDensity: VisualDensity.compact,
                           onPressed: () =>
                               _openBundleEditor(context, existing: bundle),
                           icon: const Icon(Icons.edit_outlined),
                         ),
                         IconButton(
                           tooltip: i18n.t('delete_cta'),
+                          visualDensity: VisualDensity.compact,
                           onPressed: () => ref
                               .read(canteenStoreProvider.notifier)
                               .deleteBundle(bundle.id),
@@ -627,7 +664,14 @@ class _AdminCatalogStudioViewState
                         ),
                       ],
                     ),
-                    const SizedBox(height: 6),
+                    const SizedBox(height: 8),
+                    Text(
+                      enTitle.isNotEmpty && arTitle.isNotEmpty
+                          ? '$enTitle  •  $arTitle'
+                          : i18n.t(bundle.nameKey),
+                      style: Theme.of(context).textTheme.titleMedium,
+                    ),
+                    const SizedBox(height: 4),
                     Text(
                       i18n.t(bundle.descriptionKey),
                       style: Theme.of(context).textTheme.bodySmall,
@@ -863,199 +907,197 @@ class _AdminProductStudioCard extends ConsumerWidget {
     final enName = i18n.rawForLang(product.nameKey, 'en');
     final arName = i18n.rawForLang(product.nameKey, 'ar');
 
-    return Card(
-      child: Padding(
-        padding: const EdgeInsets.all(12),
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            Row(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                if (dragIndex != null)
-                  ReorderableDragStartListener(
-                    index: dragIndex!,
-                    child: Padding(
-                      padding: const EdgeInsetsDirectional.only(
-                        end: 8,
-                        top: 18,
-                      ),
-                      child: Icon(
-                        Icons.drag_indicator_rounded,
-                        color: tokens.textSecondary,
-                      ),
+    return EvaSurfaceCard(
+      padding: const EdgeInsets.all(12),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Row(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              if (dragIndex != null)
+                ReorderableDragStartListener(
+                  index: dragIndex!,
+                  child: Padding(
+                    padding: const EdgeInsetsDirectional.only(
+                      end: 8,
+                      top: 18,
+                    ),
+                    child: Icon(
+                      Icons.drag_indicator_rounded,
+                      color: tokens.textSecondary,
                     ),
                   ),
-                SizedBox(
-                  width: 66,
-                  height: 66,
-                  child: EvaProductImage(
-                    imageUrl: product.image,
-                    borderRadius: 12,
-                  ),
                 ),
-                const SizedBox(width: 12),
-                Expanded(
-                  child: Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
-                      Text(
-                        enName.isNotEmpty && arName.isNotEmpty
-                            ? '$enName • $arName'
-                            : i18n.t(product.nameKey),
-                        maxLines: 1,
-                        overflow: TextOverflow.ellipsis,
-                        style: Theme.of(context).textTheme.titleMedium,
+              SizedBox(
+                width: 66,
+                height: 66,
+                child: EvaProductImage(
+                  imageUrl: product.image,
+                  borderRadius: 12,
+                ),
+              ),
+              const SizedBox(width: 12),
+              Expanded(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Text(
+                      enName.isNotEmpty && arName.isNotEmpty
+                          ? '$enName • $arName'
+                          : i18n.t(product.nameKey),
+                      maxLines: 1,
+                      overflow: TextOverflow.ellipsis,
+                      style: Theme.of(context).textTheme.titleMedium,
+                    ),
+                    const SizedBox(height: 2),
+                    Text(
+                      i18n.formatPrice(product.price),
+                      style: Theme.of(context).textTheme.labelLarge?.copyWith(
+                        color: tokens.brandPrimary,
+                        fontFeatures: EvaThemeBuilder.tabularNums,
                       ),
-                      const SizedBox(height: 2),
-                      Text(
-                        i18n.formatPrice(product.price),
-                        style: Theme.of(context).textTheme.labelLarge?.copyWith(
-                          color: tokens.brandPrimary,
-                          fontFeatures: EvaThemeBuilder.tabularNums,
+                    ),
+                    const SizedBox(height: 4),
+                    Text(
+                      product.isArchived
+                          ? i18n.t('archive_shelf_label')
+                          : i18n.t('category_${product.categoryKey}') !=
+                                'category_${product.categoryKey}'
+                          ? i18n.t('category_${product.categoryKey}')
+                          : product.categoryKey,
+                      maxLines: 1,
+                      overflow: TextOverflow.ellipsis,
+                      style: Theme.of(context).textTheme.bodySmall,
+                    ),
+                  ],
+                ),
+              ),
+              IconButton(
+                tooltip: i18n.t('edit_button'),
+                visualDensity: VisualDensity.compact,
+                onPressed: onEdit,
+                icon: const Icon(Icons.edit_outlined, size: 19),
+              ),
+              IconButton(
+                tooltip: product.isArchived
+                    ? i18n.t('restore_button')
+                    : i18n.t('move_to_archive'),
+                visualDensity: VisualDensity.compact,
+                onPressed: () {
+                  HapticFeedback.selectionClick();
+                  notifier.quickUpdateProductStockOrCategory(
+                    product,
+                    categoryKey: product.isArchived
+                        ? defaultRestoreCategoryKey
+                        : 'archive',
+                  );
+                },
+                icon: Icon(
+                  product.isArchived
+                      ? Icons.unarchive_outlined
+                      : Icons.archive_outlined,
+                  size: 19,
+                ),
+              ),
+              IconButton(
+                tooltip: i18n.t('delete_cta'),
+                visualDensity: VisualDensity.compact,
+                onPressed: () async {
+                  final ok = await showDialog<bool>(
+                    context: context,
+                    builder: (ctx) => AlertDialog(
+                      title: Text(i18n.t('delete_cta')),
+                      content: Text(i18n.t(product.nameKey)),
+                      actions: [
+                        TextButton(
+                          onPressed: () => Navigator.of(ctx).pop(false),
+                          child: Text(i18n.t('cancel_cta')),
                         ),
-                      ),
-                      const SizedBox(height: 4),
-                      Text(
-                        product.isArchived
-                            ? i18n.t('archive_shelf_label')
-                            : i18n.t('category_${product.categoryKey}') !=
-                                  'category_${product.categoryKey}'
-                            ? i18n.t('category_${product.categoryKey}')
-                            : product.categoryKey,
-                        maxLines: 1,
-                        overflow: TextOverflow.ellipsis,
-                        style: Theme.of(context).textTheme.bodySmall,
-                      ),
-                    ],
-                  ),
-                ),
-                IconButton(
-                  tooltip: i18n.t('edit_button'),
-                  visualDensity: VisualDensity.compact,
-                  onPressed: onEdit,
-                  icon: const Icon(Icons.edit_outlined, size: 19),
-                ),
-                IconButton(
-                  tooltip: product.isArchived
-                      ? i18n.t('restore_button')
-                      : i18n.t('move_to_archive'),
-                  visualDensity: VisualDensity.compact,
-                  onPressed: () {
-                    HapticFeedback.selectionClick();
-                    notifier.quickUpdateProductStockOrCategory(
-                      product,
-                      categoryKey: product.isArchived
-                          ? defaultRestoreCategoryKey
-                          : 'archive',
-                    );
-                  },
-                  icon: Icon(
-                    product.isArchived
-                        ? Icons.unarchive_outlined
-                        : Icons.archive_outlined,
-                    size: 19,
-                  ),
-                ),
-                IconButton(
-                  tooltip: i18n.t('delete_cta'),
-                  visualDensity: VisualDensity.compact,
-                  onPressed: () async {
-                    final ok = await showDialog<bool>(
-                      context: context,
-                      builder: (ctx) => AlertDialog(
-                        title: Text(i18n.t('delete_cta')),
-                        content: Text(i18n.t(product.nameKey)),
-                        actions: [
-                          TextButton(
-                            onPressed: () => Navigator.of(ctx).pop(false),
-                            child: Text(i18n.t('cancel_cta')),
+                        FilledButton(
+                          style: FilledButton.styleFrom(
+                            backgroundColor: tokens.statusClosedFg,
                           ),
-                          FilledButton(
-                            style: FilledButton.styleFrom(
-                              backgroundColor: tokens.statusClosedFg,
-                            ),
-                            onPressed: () => Navigator.of(ctx).pop(true),
-                            child: Text(i18n.t('delete_cta')),
-                          ),
-                        ],
-                      ),
-                    );
-                    if (ok == true) {
-                      notifier.deleteProduct(product.id);
-                    }
-                  },
-                  icon: Icon(
-                    Icons.delete_outline_rounded,
-                    size: 19,
-                    color: tokens.statusClosedFg,
-                  ),
-                ),
-              ],
-            ),
-            const SizedBox(height: 10),
-            // 1-Tap Quick Stock Pills
-            Wrap(
-              spacing: 8,
-              runSpacing: 6,
-              children: [
-                ChoiceChip(
-                  visualDensity: VisualDensity.compact,
-                  selected: product.isOutOfStock,
-                  selectedColor: tokens.statusClosedBg,
-                  label: Text(
-                    i18n.t('out_of_stock'),
-                    style: TextStyle(
-                      color: product.isOutOfStock
-                          ? tokens.statusClosedFg
-                          : tokens.textSecondary,
-                      fontWeight: FontWeight.w600,
+                          onPressed: () => Navigator.of(ctx).pop(true),
+                          child: Text(i18n.t('delete_cta')),
+                        ),
+                      ],
                     ),
-                  ),
-                  onSelected: (_) {
-                    HapticFeedback.selectionClick();
-                    notifier.quickUpdateProductStockOrCategory(
-                      product,
-                      quantity: 0,
-                    );
-                  },
+                  );
+                  if (ok == true) {
+                    notifier.deleteProduct(product.id);
+                  }
+                },
+                icon: Icon(
+                  Icons.delete_outline_rounded,
+                  size: 19,
+                  color: tokens.statusClosedFg,
                 ),
-                ChoiceChip(
-                  visualDensity: VisualDensity.compact,
-                  selected: !product.isOutOfStock && !product.isUnlimited,
-                  selectedColor: tokens.brandSoftBg,
-                  label: Text(
-                    !product.isOutOfStock && !product.isUnlimited
-                        ? 'Qty: ${product.quantity}'
-                        : (i18n.isRtl ? 'كمية محددة' : 'Set Qty'),
+              ),
+            ],
+          ),
+          const SizedBox(height: 10),
+          // 1-Tap Quick Stock Pills
+          Wrap(
+            spacing: 8,
+            runSpacing: 6,
+            children: [
+              ChoiceChip(
+                visualDensity: VisualDensity.compact,
+                selected: product.isOutOfStock,
+                selectedColor: tokens.statusClosedBg,
+                label: Text(
+                  i18n.t('out_of_stock'),
+                  style: TextStyle(
+                    color: product.isOutOfStock
+                        ? tokens.statusClosedFg
+                        : tokens.textSecondary,
+                    fontWeight: FontWeight.w600,
                   ),
-                  onSelected: (_) => _promptCustomStock(context, ref, i18n),
                 ),
-                ChoiceChip(
-                  visualDensity: VisualDensity.compact,
-                  selected: product.isUnlimited,
-                  selectedColor: tokens.statusDeliveredBg,
-                  label: Text(
-                    '∞ ${i18n.t('unlimited_stock')}',
-                    style: TextStyle(
-                      color: product.isUnlimited
-                          ? tokens.statusDeliveredFg
-                          : tokens.textSecondary,
-                      fontWeight: FontWeight.w600,
-                    ),
+                onSelected: (_) {
+                  HapticFeedback.selectionClick();
+                  notifier.quickUpdateProductStockOrCategory(
+                    product,
+                    quantity: 0,
+                  );
+                },
+              ),
+              ChoiceChip(
+                visualDensity: VisualDensity.compact,
+                selected: !product.isOutOfStock && !product.isUnlimited,
+                selectedColor: tokens.brandSoftBg,
+                label: Text(
+                  !product.isOutOfStock && !product.isUnlimited
+                      ? 'Qty: ${product.quantity}'
+                      : (i18n.isRtl ? 'كمية محددة' : 'Set Qty'),
+                ),
+                onSelected: (_) => _promptCustomStock(context, ref, i18n),
+              ),
+              ChoiceChip(
+                visualDensity: VisualDensity.compact,
+                selected: product.isUnlimited,
+                selectedColor: tokens.statusDeliveredBg,
+                label: Text(
+                  '∞ ${i18n.t('unlimited_stock')}',
+                  style: TextStyle(
+                    color: product.isUnlimited
+                        ? tokens.statusDeliveredFg
+                        : tokens.textSecondary,
+                    fontWeight: FontWeight.w600,
                   ),
-                  onSelected: (_) {
-                    HapticFeedback.selectionClick();
-                    notifier.quickUpdateProductStockOrCategory(
-                      product,
-                      quantity: 999,
-                    );
-                  },
                 ),
-              ],
-            ),
-          ],
-        ),
+                onSelected: (_) {
+                  HapticFeedback.selectionClick();
+                  notifier.quickUpdateProductStockOrCategory(
+                    product,
+                    quantity: 999,
+                  );
+                },
+              ),
+            ],
+          ),
+        ],
       ),
     );
   }
@@ -1298,95 +1340,76 @@ class _ProductEditorSheetState extends ConsumerState<_ProductEditorSheet> {
                   ],
                 ),
                 const SizedBox(height: 14),
-                Row(
-                  children: [
-                    Expanded(
-                      child: TextField(
-                        controller: _nameEnCtrl,
-                        textDirection: TextDirection.ltr,
-                        decoration: const InputDecoration(
-                          labelText: 'Name (English)',
-                        ),
-                      ),
+                _ResponsivePair(
+                  first: TextField(
+                    controller: _nameEnCtrl,
+                    textDirection: TextDirection.ltr,
+                    decoration: const InputDecoration(
+                      labelText: 'Name (English)',
                     ),
-                    const SizedBox(width: 12),
-                    Expanded(
-                      child: TextField(
-                        controller: _nameArCtrl,
-                        textDirection: TextDirection.rtl,
-                        decoration: const InputDecoration(
-                          labelText: 'الاسم (عربي)',
-                        ),
-                      ),
+                  ),
+                  second: TextField(
+                    controller: _nameArCtrl,
+                    textDirection: TextDirection.rtl,
+                    decoration: const InputDecoration(
+                      labelText: 'الاسم (عربي)',
                     ),
-                  ],
+                  ),
                 ),
                 const SizedBox(height: 12),
-                Row(
-                  children: [
-                    Expanded(
-                      child: TextField(
-                        controller: _descEnCtrl,
-                        maxLines: 2,
-                        textDirection: TextDirection.ltr,
-                        decoration: const InputDecoration(
-                          labelText: 'Description (English)',
-                        ),
-                      ),
+                _ResponsivePair(
+                  first: TextField(
+                    controller: _descEnCtrl,
+                    maxLines: 2,
+                    textDirection: TextDirection.ltr,
+                    decoration: const InputDecoration(
+                      labelText: 'Description (English)',
                     ),
-                    const SizedBox(width: 12),
-                    Expanded(
-                      child: TextField(
-                        controller: _descArCtrl,
-                        maxLines: 2,
-                        textDirection: TextDirection.rtl,
-                        decoration: const InputDecoration(
-                          labelText: 'الوصف (عربي)',
-                        ),
-                      ),
+                  ),
+                  second: TextField(
+                    controller: _descArCtrl,
+                    maxLines: 2,
+                    textDirection: TextDirection.rtl,
+                    decoration: const InputDecoration(
+                      labelText: 'الوصف (عربي)',
                     ),
-                  ],
+                  ),
                 ),
                 const SizedBox(height: 12),
-                Row(
-                  children: [
-                    Expanded(
-                      child: TextField(
-                        controller: _priceCtrl,
-                        keyboardType: const TextInputType.numberWithOptions(
-                          decimal: true,
-                        ),
-                        decoration: InputDecoration(
-                          labelText: 'Price (${i18n.currencySymbol})',
-                        ),
-                      ),
+                _ResponsivePair(
+                  first: TextField(
+                    controller: _priceCtrl,
+                    keyboardType: const TextInputType.numberWithOptions(
+                      decimal: true,
                     ),
-                    const SizedBox(width: 12),
-                    Expanded(
-                      child: DropdownButtonFormField<String>(
-                        initialValue: categories.any((c) => c.key == _categoryKey)
-                            ? _categoryKey
-                            : (categories.firstOrNull?.key ?? 'sandwiches'),
-                        decoration: InputDecoration(
-                          labelText: i18n.t('studio_categories_tab'),
-                        ),
-                        items: [
-                          for (final c in categories)
-                            DropdownMenuItem(
-                              value: c.key,
-                              child: Text(
-                                c.isArchive
-                                    ? i18n.t('archive_shelf_label')
-                                    : i18n.t(c.nameKey),
-                              ),
-                            ),
-                        ],
-                        onChanged: (val) {
-                          if (val != null) setState(() => _categoryKey = val);
-                        },
-                      ),
+                    decoration: InputDecoration(
+                      labelText: 'Price (${i18n.currencySymbol})',
                     ),
-                  ],
+                  ),
+                  second: DropdownButtonFormField<String>(
+                    initialValue: categories.any((c) => c.key == _categoryKey)
+                        ? _categoryKey
+                        : (categories.firstOrNull?.key ?? 'sandwiches'),
+                    isExpanded: true,
+                    decoration: InputDecoration(
+                      labelText: i18n.t('studio_categories_tab'),
+                    ),
+                    items: [
+                      for (final c in categories)
+                        DropdownMenuItem(
+                          value: c.key,
+                          child: Text(
+                            c.isArchive
+                                ? i18n.t('archive_shelf_label')
+                                : i18n.t(c.nameKey),
+                            overflow: TextOverflow.ellipsis,
+                          ),
+                        ),
+                    ],
+                    onChanged: (val) {
+                      if (val != null) setState(() => _categoryKey = val);
+                    },
+                  ),
                 ),
                 const SizedBox(height: 12),
                 Row(
@@ -1404,7 +1427,7 @@ class _ProductEditorSheetState extends ConsumerState<_ProductEditorSheet> {
                     ),
                     if (!_isUnlimited)
                       SizedBox(
-                        width: 140,
+                        width: 128,
                         child: TextField(
                           controller: _qtyCtrl,
                           keyboardType: TextInputType.number,
@@ -1553,7 +1576,7 @@ class _BundleEditorSheetState extends ConsumerState<_BundleEditorSheet> {
         bottom: MediaQuery.viewInsetsOf(context).bottom,
       ),
       child: SingleChildScrollView(
-        padding: const EdgeInsets.fromLTRB(24, 20, 24, 28),
+        padding: const EdgeInsets.fromLTRB(20, 20, 20, 28),
         child: Center(
           child: ConstrainedBox(
             constraints: const BoxConstraints(maxWidth: 680),
@@ -1590,12 +1613,18 @@ class _BundleEditorSheetState extends ConsumerState<_BundleEditorSheet> {
                           i18n.isRtl
                               ? 'حزمة خصم (% توفير)'
                               : 'Discount Deal (% OFF)',
+                          maxLines: 1,
+                          overflow: TextOverflow.ellipsis,
                         ),
                       ),
                       ButtonSegment(
                         value: true,
                         icon: const Icon(Icons.auto_awesome_rounded, size: 17),
-                        label: Text(i18n.t('meal_ideas_badge')),
+                        label: Text(
+                          i18n.t('meal_ideas_badge'),
+                          maxLines: 1,
+                          overflow: TextOverflow.ellipsis,
+                        ),
                       ),
                     ],
                     selected: {_isSuggestion},
@@ -1604,52 +1633,38 @@ class _BundleEditorSheetState extends ConsumerState<_BundleEditorSheet> {
                   ),
                 ),
                 const SizedBox(height: 14),
-                Row(
-                  children: [
-                    Expanded(
-                      child: TextField(
-                        controller: _nameEnCtrl,
-                        textDirection: TextDirection.ltr,
-                        decoration: const InputDecoration(
-                          labelText: 'Title (English)',
-                        ),
-                      ),
+                _ResponsivePair(
+                  first: TextField(
+                    controller: _nameEnCtrl,
+                    textDirection: TextDirection.ltr,
+                    decoration: const InputDecoration(
+                      labelText: 'Title (English)',
                     ),
-                    const SizedBox(width: 12),
-                    Expanded(
-                      child: TextField(
-                        controller: _nameArCtrl,
-                        textDirection: TextDirection.rtl,
-                        decoration: const InputDecoration(
-                          labelText: 'العنوان (عربي)',
-                        ),
-                      ),
+                  ),
+                  second: TextField(
+                    controller: _nameArCtrl,
+                    textDirection: TextDirection.rtl,
+                    decoration: const InputDecoration(
+                      labelText: 'العنوان (عربي)',
                     ),
-                  ],
+                  ),
                 ),
                 const SizedBox(height: 12),
-                Row(
-                  children: [
-                    Expanded(
-                      child: TextField(
-                        controller: _descEnCtrl,
-                        textDirection: TextDirection.ltr,
-                        decoration: const InputDecoration(
-                          labelText: 'Subtitle (English)',
-                        ),
-                      ),
+                _ResponsivePair(
+                  first: TextField(
+                    controller: _descEnCtrl,
+                    textDirection: TextDirection.ltr,
+                    decoration: const InputDecoration(
+                      labelText: 'Subtitle (English)',
                     ),
-                    const SizedBox(width: 12),
-                    Expanded(
-                      child: TextField(
-                        controller: _descArCtrl,
-                        textDirection: TextDirection.rtl,
-                        decoration: const InputDecoration(
-                          labelText: 'الوصف (عربي)',
-                        ),
-                      ),
+                  ),
+                  second: TextField(
+                    controller: _descArCtrl,
+                    textDirection: TextDirection.rtl,
+                    decoration: const InputDecoration(
+                      labelText: 'الوصف (عربي)',
                     ),
-                  ],
+                  ),
                 ),
                 if (!_isSuggestion) ...[
                   const SizedBox(height: 14),
@@ -1678,8 +1693,8 @@ class _BundleEditorSheetState extends ConsumerState<_BundleEditorSheet> {
                 const SizedBox(height: 12),
                 Text(
                   i18n.isRtl
-                      ? 'اختر المنتجات المشمولة في العرض (${_selectedIds.length}):'
-                      : 'Select Included Products (${_selectedIds.length}):',
+                      ? 'اختر الأصناف المشمولة في العرض (${_selectedIds.length}):'
+                      : 'Select Included Items (${_selectedIds.length}):',
                   style: Theme.of(context).textTheme.titleSmall,
                 ),
                 const SizedBox(height: 8),
@@ -1729,6 +1744,39 @@ class _BundleEditorSheetState extends ConsumerState<_BundleEditorSheet> {
           ),
         ),
       ),
+    );
+  }
+}
+
+class _ResponsivePair extends StatelessWidget {
+  const _ResponsivePair({required this.first, required this.second});
+
+  final Widget first;
+  final Widget second;
+
+  @override
+  Widget build(BuildContext context) {
+    return LayoutBuilder(
+      builder: (context, constraints) {
+        if (constraints.maxWidth < 460) {
+          return Column(
+            crossAxisAlignment: CrossAxisAlignment.stretch,
+            children: [
+              first,
+              const SizedBox(height: 12),
+              second,
+            ],
+          );
+        }
+        return Row(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Expanded(child: first),
+            const SizedBox(width: 12),
+            Expanded(child: second),
+          ],
+        );
+      },
     );
   }
 }

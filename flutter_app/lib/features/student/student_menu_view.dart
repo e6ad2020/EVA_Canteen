@@ -1,3 +1,5 @@
+import 'dart:math' as math;
+
 import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
@@ -51,420 +53,582 @@ class _StudentMenuViewState extends ConsumerState<StudentMenuView> {
         .where((b) => b.active)
         .toList(growable: false);
     final activeOrder = store.activeStudentOrder;
+    final isGuest = user == null || user.role == UserRole.guest;
 
-    return Stack(
+    return Column(
       children: [
-        CustomScrollView(
-          slivers: [
-            SliverToBoxAdapter(
-              child: Padding(
-                padding: const EdgeInsets.fromLTRB(16, 14, 16, 8),
-                child: Center(
-                  child: ConstrainedBox(
-                    constraints: const BoxConstraints(maxWidth: 1180),
-                    child: Column(
-                      crossAxisAlignment: CrossAxisAlignment.stretch,
-                      children: [
-                        Row(
-                          children: [
-                            EvaAvatar(
-                              profilePic: user?.profilePic ?? 'pic2',
-                              radius: 20,
-                            ),
-                            const SizedBox(width: 10),
-                            Expanded(
-                              child: Column(
-                                crossAxisAlignment: CrossAxisAlignment.start,
-                                children: [
-                                  Text(
-                                    i18n.t('canteen_name'),
-                                    style: Theme.of(
-                                      context,
-                                    ).textTheme.titleLarge,
-                                  ),
-                                  Text(
-                                    user?.email ?? i18n.t('browse_menu_guest'),
-                                    maxLines: 1,
-                                    overflow: TextOverflow.ellipsis,
-                                    style: Theme.of(
-                                      context,
-                                    ).textTheme.bodySmall,
-                                  ),
-                                ],
-                              ),
-                            ),
-                            if (user != null &&
-                                user.role == UserRole.student &&
-                                store.paymentMethods.wallet) ...[
-                              Container(
+        // Clean, non-wrapping Top Brand & Status Bar
+        EvaGlassBar(
+          padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 10),
+          child: Center(
+            child: ConstrainedBox(
+              constraints: const BoxConstraints(maxWidth: 1180),
+              child: Row(
+                children: [
+                  const EvaBrandLogo(size: 34),
+                  const SizedBox(width: 10),
+                  Expanded(
+                    child: Text(
+                      i18n.t('canteen_name'),
+                      maxLines: 1,
+                      overflow: TextOverflow.ellipsis,
+                      style: Theme.of(context).textTheme.titleLarge,
+                    ),
+                  ),
+                  const SizedBox(width: 8),
+                  EvaStatusBadge(
+                    label: store.isCanteenOpen
+                        ? i18n.t('canteen_open_badge')
+                        : i18n.t('canteen_closed_badge'),
+                    background: store.isCanteenOpen
+                        ? tokens.statusDeliveredBg
+                        : tokens.statusClosedBg,
+                    foreground: store.isCanteenOpen
+                        ? tokens.statusDeliveredFg
+                        : tokens.statusClosedFg,
+                    pulsing: store.isCanteenOpen,
+                  ),
+                  const SizedBox(width: 8),
+                  const LanguageQuickToggle(),
+                ],
+              ),
+            ),
+          ),
+        ),
+
+        Expanded(
+          child: Stack(
+            children: [
+              CustomScrollView(
+                slivers: [
+                  SliverToBoxAdapter(
+                    child: Padding(
+                      padding: const EdgeInsets.fromLTRB(16, 12, 16, 6),
+                      child: Center(
+                        child: ConstrainedBox(
+                          constraints: const BoxConstraints(maxWidth: 1180),
+                          child: Column(
+                            crossAxisAlignment: CrossAxisAlignment.stretch,
+                            children: [
+                              // Dedicated Account & Wallet Strip (prevents header crowding)
+                              EvaSurfaceCard(
                                 padding: const EdgeInsets.symmetric(
-                                  horizontal: 10,
-                                  vertical: 6,
+                                  horizontal: 12,
+                                  vertical: 9,
                                 ),
-                                decoration: BoxDecoration(
-                                  color: tokens.brandSoftBg,
-                                  borderRadius: BorderRadius.circular(999),
+                                borderRadius: 14,
+                                child: Row(
+                                  children: [
+                                    EvaAvatar(
+                                      profilePic: user?.profilePic ?? 'pic2',
+                                      radius: 15,
+                                    ),
+                                    const SizedBox(width: 10),
+                                    Expanded(
+                                      child: Text(
+                                        isGuest
+                                            ? i18n.t('guest_mode_short')
+                                            : user.email,
+                                        maxLines: 1,
+                                        overflow: TextOverflow.ellipsis,
+                                        style: Theme.of(context)
+                                            .textTheme
+                                            .labelLarge
+                                            ?.copyWith(
+                                              color: tokens.textPrimary,
+                                            ),
+                                      ),
+                                    ),
+                                    const SizedBox(width: 8),
+                                    if (!isGuest &&
+                                        user.role == UserRole.student &&
+                                        store.paymentMethods.wallet)
+                                      Container(
+                                        padding: const EdgeInsets.symmetric(
+                                          horizontal: 10,
+                                          vertical: 5,
+                                        ),
+                                        decoration: BoxDecoration(
+                                          color: tokens.brandSoftBg,
+                                          borderRadius: BorderRadius.circular(
+                                            999,
+                                          ),
+                                          border: Border.all(
+                                            color: tokens.brandPrimary
+                                                .withValues(alpha: 0.24),
+                                          ),
+                                        ),
+                                        child: Row(
+                                          mainAxisSize: MainAxisSize.min,
+                                          children: [
+                                            Icon(
+                                              Icons
+                                                  .account_balance_wallet_outlined,
+                                              size: 14,
+                                              color: tokens.brandPrimary,
+                                            ),
+                                            const SizedBox(width: 5),
+                                            Text(
+                                              i18n.formatPrice(user.balance),
+                                              style: Theme.of(context)
+                                                  .textTheme
+                                                  .labelMedium
+                                                  ?.copyWith(
+                                                    color: tokens.brandPrimary,
+                                                    fontWeight: FontWeight.w700,
+                                                    fontFeatures:
+                                                        EvaThemeBuilder
+                                                            .tabularNums,
+                                                  ),
+                                            ),
+                                          ],
+                                        ),
+                                      )
+                                    else if (isGuest)
+                                      TextButton.icon(
+                                        onPressed: () => context.go('/welcome'),
+                                        style: TextButton.styleFrom(
+                                          minimumSize: const Size(0, 32),
+                                          tapTargetSize:
+                                              MaterialTapTargetSize.shrinkWrap,
+                                          padding: const EdgeInsets.symmetric(
+                                            horizontal: 10,
+                                            vertical: 4,
+                                          ),
+                                        ),
+                                        icon: const Icon(
+                                          Icons.login_rounded,
+                                          size: 15,
+                                        ),
+                                        label: Text(i18n.t('sign_in_tab')),
+                                      ),
+                                  ],
+                                ),
+                              ),
+
+                              if (!store.isCanteenOpen) ...[
+                                const SizedBox(height: 10),
+                                Container(
+                                  padding: const EdgeInsets.all(12),
+                                  decoration: BoxDecoration(
+                                    color: tokens.statusClosedBg,
+                                    borderRadius: BorderRadius.circular(12),
+                                    border: Border.all(
+                                      color: tokens.statusClosedFg.withValues(
+                                        alpha: 0.25,
+                                      ),
+                                    ),
+                                  ),
+                                  child: Row(
+                                    children: [
+                                      Icon(
+                                        Icons.storefront_outlined,
+                                        color: tokens.statusClosedFg,
+                                        size: 20,
+                                      ),
+                                      const SizedBox(width: 10),
+                                      Expanded(
+                                        child: Text(
+                                          i18n.t(
+                                            'canteen_closed_browse_banner',
+                                          ),
+                                          style: Theme.of(context)
+                                              .textTheme
+                                              .bodySmall
+                                              ?.copyWith(
+                                                color: tokens.statusClosedFg,
+                                                fontWeight: FontWeight.w600,
+                                              ),
+                                        ),
+                                      ),
+                                    ],
+                                  ),
+                                ),
+                              ],
+
+                              if (activeOrder != null) ...[
+                                const SizedBox(height: 10),
+                                EvaSurfaceCard(
+                                  onTap: () => context.go('/orders'),
+                                  backgroundColor: tokens.brandSoftBg,
+                                  borderColor: tokens.brandPrimary.withValues(
+                                    alpha: 0.35,
+                                  ),
+                                  borderRadius: 14,
+                                  padding: const EdgeInsets.symmetric(
+                                    horizontal: 14,
+                                    vertical: 11,
+                                  ),
+                                  child: Row(
+                                    children: [
+                                      Icon(
+                                        Icons.confirmation_number_outlined,
+                                        color: tokens.brandPrimary,
+                                        size: 20,
+                                      ),
+                                      const SizedBox(width: 10),
+                                      Expanded(
+                                        child: Text(
+                                          i18n.t('active_order_pill', {
+                                            'num': activeOrder.pickupNumber,
+                                            'status': i18n.t(
+                                              'status_${activeOrder.status.name}',
+                                            ),
+                                          }),
+                                          maxLines: 1,
+                                          overflow: TextOverflow.ellipsis,
+                                          style: Theme.of(context)
+                                              .textTheme
+                                              .titleMedium
+                                              ?.copyWith(
+                                                color: tokens.brandPrimary,
+                                              ),
+                                        ),
+                                      ),
+                                      Icon(
+                                        Icons.chevron_right_rounded,
+                                        size: 20,
+                                        color: tokens.brandPrimary,
+                                      ),
+                                    ],
+                                  ),
+                                ),
+                              ],
+
+                              const SizedBox(height: 12),
+                              TextField(
+                                controller: _searchCtrl,
+                                onChanged: (v) =>
+                                    setState(() => _searchQuery = v),
+                                decoration: InputDecoration(
+                                  hintText: i18n.t('search_hint'),
+                                  prefixIcon: const Icon(
+                                    Icons.search_rounded,
+                                    size: 20,
+                                  ),
+                                  suffixIcon: _searchQuery.isEmpty
+                                      ? null
+                                      : IconButton(
+                                          onPressed: () {
+                                            _searchCtrl.clear();
+                                            setState(() => _searchQuery = '');
+                                          },
+                                          icon: const Icon(
+                                            Icons.close_rounded,
+                                            size: 18,
+                                          ),
+                                        ),
+                                ),
+                              ),
+                            ],
+                          ),
+                        ),
+                      ),
+                    ),
+                  ),
+
+                  // Featured Combos & Deals Carousel
+                  if (_searchQuery.trim().isEmpty &&
+                      _selectedCategoryKey == null &&
+                      activeBundles.isNotEmpty)
+                    SliverToBoxAdapter(
+                      child: Center(
+                        child: ConstrainedBox(
+                          constraints: const BoxConstraints(maxWidth: 1180),
+                          child: Column(
+                            crossAxisAlignment: CrossAxisAlignment.start,
+                            children: [
+                              Padding(
+                                padding: const EdgeInsets.fromLTRB(
+                                  16,
+                                  10,
+                                  16,
+                                  10,
                                 ),
                                 child: Row(
-                                  mainAxisSize: MainAxisSize.min,
                                   children: [
                                     Icon(
-                                      Icons.account_balance_wallet_outlined,
-                                      size: 15,
-                                      color: tokens.brandPrimary,
+                                      Icons.local_fire_department_rounded,
+                                      size: 20,
+                                      color: tokens.accentAppetite,
                                     ),
-                                    const SizedBox(width: 5),
-                                    Text(
-                                      i18n.formatPrice(user.balance),
-                                      style: Theme.of(context)
-                                          .textTheme
-                                          .labelMedium
-                                          ?.copyWith(
-                                            color: tokens.brandPrimary,
-                                            fontWeight: FontWeight.w700,
-                                            fontFeatures:
-                                                EvaThemeBuilder.tabularNums,
-                                          ),
+                                    const SizedBox(width: 6),
+                                    Expanded(
+                                      child: Text(
+                                        i18n.t('smart_combos_title'),
+                                        maxLines: 1,
+                                        overflow: TextOverflow.ellipsis,
+                                        style: Theme.of(
+                                          context,
+                                        ).textTheme.titleLarge,
+                                      ),
                                     ),
                                   ],
                                 ),
                               ),
-                              const SizedBox(width: 8),
-                            ],
-                            EvaStatusBadge(
-                              label: store.isCanteenOpen
-                                  ? i18n.t('canteen_open_badge')
-                                  : i18n.t('canteen_closed_badge'),
-                              background: store.isCanteenOpen
-                                  ? tokens.statusDeliveredBg
-                                  : tokens.statusClosedBg,
-                              foreground: store.isCanteenOpen
-                                  ? tokens.statusDeliveredFg
-                                  : tokens.statusClosedFg,
-                              pulsing: store.isCanteenOpen,
-                            ),
-                            const SizedBox(width: 8),
-                            const LanguageQuickToggle(),
-                          ],
-                        ),
-                        if (!store.isCanteenOpen) ...[
-                          const SizedBox(height: 12),
-                          Container(
-                            padding: const EdgeInsets.all(12),
-                            decoration: BoxDecoration(
-                              color: tokens.statusClosedBg,
-                              borderRadius: BorderRadius.circular(12),
-                            ),
-                            child: Row(
-                              children: [
-                                Icon(
-                                  Icons.storefront_outlined,
-                                  color: tokens.statusClosedFg,
-                                  size: 20,
+                              SizedBox(
+                                height: 170,
+                                child: ListView.separated(
+                                  padding: const EdgeInsets.symmetric(
+                                    horizontal: 16,
+                                  ),
+                                  scrollDirection: Axis.horizontal,
+                                  itemCount: activeBundles.length,
+                                  separatorBuilder: (_, _) =>
+                                      const SizedBox(width: 12),
+                                  itemBuilder: (context, idx) {
+                                    return EvaReveal(
+                                      index: idx,
+                                      child: _SmartBundleCard(
+                                        bundle: activeBundles[idx],
+                                      ),
+                                    );
+                                  },
                                 ),
-                                const SizedBox(width: 10),
-                                Expanded(
-                                  child: Text(
-                                    i18n.t('canteen_closed_browse_banner'),
-                                    style: Theme.of(context).textTheme.bodySmall
-                                        ?.copyWith(
-                                          color: tokens.statusClosedFg,
-                                          fontWeight: FontWeight.w600,
-                                        ),
+                              ),
+                            ],
+                          ),
+                        ),
+                      ),
+                    ),
+
+                  // Category Filter Chips
+                  SliverToBoxAdapter(
+                    child: Center(
+                      child: ConstrainedBox(
+                        constraints: const BoxConstraints(maxWidth: 1180),
+                        child: SizedBox(
+                          height: 52,
+                          child: ListView(
+                            padding: const EdgeInsets.fromLTRB(16, 8, 16, 6),
+                            scrollDirection: Axis.horizontal,
+                            children: [
+                              _CategoryFilterChip(
+                                label: i18n.t('all_categories'),
+                                selected: _selectedCategoryKey == null,
+                                onTap: () => setState(
+                                  () => _selectedCategoryKey = null,
+                                ),
+                              ),
+                              for (final cat in visibleCategories) ...[
+                                const SizedBox(width: 8),
+                                _CategoryFilterChip(
+                                  label: i18n.t(cat.nameKey),
+                                  selected: _selectedCategoryKey == cat.key,
+                                  onTap: () => setState(
+                                    () => _selectedCategoryKey = cat.key,
                                   ),
                                 ),
                               ],
-                            ),
-                          ),
-                        ],
-                        if (activeOrder != null) ...[
-                          const SizedBox(height: 12),
-                          InkWell(
-                            onTap: () => context.go('/orders'),
-                            borderRadius: BorderRadius.circular(14),
-                            child: Container(
-                              padding: const EdgeInsets.symmetric(
-                                horizontal: 16,
-                                vertical: 12,
-                              ),
-                              decoration: BoxDecoration(
-                                color: tokens.brandSoftBg,
-                                borderRadius: BorderRadius.circular(14),
-                                border: Border.all(
-                                  color: tokens.brandPrimary.withValues(
-                                    alpha: 0.35,
-                                  ),
-                                ),
-                              ),
-                              child: Row(
-                                children: [
-                                  Icon(
-                                    Icons.confirmation_number_outlined,
-                                    color: tokens.brandPrimary,
-                                  ),
-                                  const SizedBox(width: 10),
-                                  Expanded(
-                                    child: Text(
-                                      i18n.t('active_order_pill', {
-                                        'num': activeOrder.pickupNumber,
-                                        'status': i18n.t(
-                                          'status_${activeOrder.status.name}',
-                                        ),
-                                      }),
-                                      style: Theme.of(context)
-                                          .textTheme
-                                          .titleMedium
-                                          ?.copyWith(
-                                            color: tokens.brandPrimary,
-                                          ),
-                                    ),
-                                  ),
-                                  Icon(
-                                    Icons.arrow_forward_rounded,
-                                    size: 18,
-                                    color: tokens.brandPrimary,
-                                  ),
-                                ],
-                              ),
-                            ),
-                          ),
-                        ],
-                        const SizedBox(height: 14),
-                        TextField(
-                          controller: _searchCtrl,
-                          onChanged: (v) => setState(() => _searchQuery = v),
-                          decoration: InputDecoration(
-                            hintText: i18n.t('search_hint'),
-                            prefixIcon: const Icon(
-                              Icons.search_rounded,
-                              size: 20,
-                            ),
-                            suffixIcon: _searchQuery.isEmpty
-                                ? null
-                                : IconButton(
-                                    onPressed: () {
-                                      _searchCtrl.clear();
-                                      setState(() => _searchQuery = '');
-                                    },
-                                    icon: const Icon(
-                                      Icons.close_rounded,
-                                      size: 18,
-                                    ),
-                                  ),
-                          ),
-                        ),
-                      ],
-                    ),
-                  ),
-                ),
-              ),
-            ),
-
-            // Smart Combos & Deals Carousel
-            if (_searchQuery.trim().isEmpty &&
-                _selectedCategoryKey == null &&
-                activeBundles.isNotEmpty)
-              SliverToBoxAdapter(
-                child: Center(
-                  child: ConstrainedBox(
-                    constraints: const BoxConstraints(maxWidth: 1180),
-                    child: Column(
-                      crossAxisAlignment: CrossAxisAlignment.start,
-                      children: [
-                        Padding(
-                          padding: const EdgeInsets.fromLTRB(16, 10, 16, 10),
-                          child: Row(
-                            children: [
-                              Icon(
-                                Icons.local_fire_department_rounded,
-                                size: 20,
-                                color: tokens.accentAppetite,
-                              ),
-                              const SizedBox(width: 6),
-                              Text(
-                                i18n.t('smart_combos_title'),
-                                style: Theme.of(context).textTheme.titleLarge,
-                              ),
                             ],
                           ),
                         ),
-                        SizedBox(
-                          height: 168,
-                          child: ListView.separated(
-                            padding: const EdgeInsets.symmetric(horizontal: 16),
-                            scrollDirection: Axis.horizontal,
-                            itemCount: activeBundles.length,
-                            separatorBuilder: (_, _) =>
-                                const SizedBox(width: 12),
-                            itemBuilder: (context, idx) {
-                              return _SmartBundleCard(
-                                bundle: activeBundles[idx],
+                      ),
+                    ),
+                  ),
+
+                  // Responsive Product Grid aligned to 1180dp container
+                  SliverLayoutBuilder(
+                    builder: (context, constraints) {
+                      final totalW = constraints.crossAxisExtent;
+                      final sidePad = math.max(16.0, (totalW - 1180) / 2);
+                      final gridW = math.max(240.0, totalW - sidePad * 2);
+
+                      final int cols = gridW < 340
+                          ? 1
+                          : (gridW < 620 ? 2 : (gridW < 920 ? 3 : 4));
+                      final double spacing = cols <= 2 ? 12 : 14;
+                      final double cardHeight = cols == 1
+                          ? 254
+                          : (cols == 2 ? 266 : 276);
+
+                      return SliverPadding(
+                        padding: EdgeInsets.fromLTRB(
+                          sidePad,
+                          8,
+                          sidePad,
+                          cartSummary.isEmpty ? 28 : 104,
+                        ),
+                        sliver: SliverGrid(
+                          gridDelegate:
+                              SliverGridDelegateWithFixedCrossAxisCount(
+                                crossAxisCount: cols,
+                                mainAxisSpacing: spacing,
+                                crossAxisSpacing: spacing,
+                                mainAxisExtent: cardHeight,
+                              ),
+                          delegate: SliverChildBuilderDelegate(
+                            (context, index) {
+                              final product = filteredProducts[index];
+                              return EvaReveal(
+                                index: index,
+                                child: _MenuProductCard(
+                                  product: product,
+                                  onOpenDetails: () =>
+                                      _showItemDetailSheet(context, product),
+                                ),
                               );
                             },
+                            childCount: filteredProducts.length,
                           ),
                         ),
-                      ],
-                    ),
-                  ),
-                ),
-              ),
-
-            // Category Filter Chips
-            SliverToBoxAdapter(
-              child: Center(
-                child: ConstrainedBox(
-                  constraints: const BoxConstraints(maxWidth: 1180),
-                  child: SizedBox(
-                    height: 54,
-                    child: ListView(
-                      padding: const EdgeInsets.fromLTRB(16, 10, 16, 6),
-                      scrollDirection: Axis.horizontal,
-                      children: [
-                        _CategoryFilterChip(
-                          label: i18n.t('all_categories'),
-                          selected: _selectedCategoryKey == null,
-                          onTap: () =>
-                              setState(() => _selectedCategoryKey = null),
-                        ),
-                        for (final cat in visibleCategories) ...[
-                          const SizedBox(width: 8),
-                          _CategoryFilterChip(
-                            label: i18n.t(cat.nameKey),
-                            selected: _selectedCategoryKey == cat.key,
-                            onTap: () =>
-                                setState(() => _selectedCategoryKey = cat.key),
-                          ),
-                        ],
-                      ],
-                    ),
-                  ),
-                ),
-              ),
-            ),
-
-            // Product Grid
-            SliverPadding(
-              padding: EdgeInsets.fromLTRB(
-                16,
-                8,
-                16,
-                cartSummary.isEmpty ? 28 : 104,
-              ),
-              sliver: SliverLayoutBuilder(
-                builder: (context, constraints) {
-                  return SliverGrid(
-                    gridDelegate:
-                        const SliverGridDelegateWithMaxCrossAxisExtent(
-                          maxCrossAxisExtent: 268,
-                          mainAxisSpacing: 14,
-                          crossAxisSpacing: 14,
-                          mainAxisExtent: 264,
-                        ),
-                    delegate: SliverChildBuilderDelegate((context, index) {
-                      final product = filteredProducts[index];
-                      return _StudentProductCard(
-                        product: product,
-                        onOpenDetails: () =>
-                            _showItemDetailSheet(context, product),
                       );
-                    }, childCount: filteredProducts.length),
-                  );
-                },
-              ),
-            ),
-          ],
-        ),
-
-        // Persistent Floating Checkout Bar
-        if (!cartSummary.isEmpty)
-          Positioned(
-            left: 16,
-            right: 16,
-            bottom: 14,
-            child: Center(
-              child: ConstrainedBox(
-                constraints: const BoxConstraints(maxWidth: 560),
-                child: Material(
-                  color: tokens.brandPrimary,
-                  elevation: 6,
-                  borderRadius: BorderRadius.circular(18),
-                  child: InkWell(
-                    borderRadius: BorderRadius.circular(18),
-                    onTap: () => showCartCheckoutSheet(context),
-                    child: Padding(
-                      padding: const EdgeInsets.symmetric(
-                        horizontal: 18,
-                        vertical: 14,
-                      ),
-                      child: Row(
-                        children: [
-                          Container(
-                            padding: const EdgeInsets.symmetric(
-                              horizontal: 10,
-                              vertical: 4,
-                            ),
-                            decoration: BoxDecoration(
-                              color: tokens.brandOnPrimary.withValues(
-                                alpha: 0.18,
-                              ),
-                              borderRadius: BorderRadius.circular(999),
-                            ),
-                            child: Text(
-                              '${cartSummary.totalItemCount}',
-                              style: Theme.of(context).textTheme.labelLarge
-                                  ?.copyWith(
-                                    color: tokens.brandOnPrimary,
-                                    fontFeatures: EvaThemeBuilder.tabularNums,
-                                  ),
-                            ),
-                          ),
-                          const SizedBox(width: 12),
-                          Expanded(
-                            child: Column(
-                              crossAxisAlignment: CrossAxisAlignment.start,
-                              mainAxisSize: MainAxisSize.min,
-                              children: [
-                                Text(
-                                  i18n.t('review_order_cta'),
-                                  style: Theme.of(context).textTheme.labelLarge
-                                      ?.copyWith(color: tokens.brandOnPrimary),
-                                ),
-                                if (cartSummary.totalDiscount > 0)
-                                  Text(
-                                    '-${i18n.formatPrice(cartSummary.totalDiscount)} ${i18n.t('bundle_savings_label')}',
-                                    style: Theme.of(context)
-                                        .textTheme
-                                        .labelSmall
-                                        ?.copyWith(
-                                          color: tokens.brandOnPrimary
-                                              .withValues(alpha: 0.85),
-                                        ),
-                                  ),
-                              ],
-                            ),
-                          ),
-                          Text(
-                            i18n.formatPrice(cartSummary.finalTotal),
-                            style: Theme.of(context).textTheme.titleMedium
-                                ?.copyWith(
-                                  color: tokens.brandOnPrimary,
-                                  fontFeatures: EvaThemeBuilder.tabularNums,
-                                ),
-                          ),
-                          const SizedBox(width: 6),
-                          Icon(
-                            Icons.arrow_forward_ios_rounded,
-                            size: 15,
-                            color: tokens.brandOnPrimary,
-                          ),
-                        ],
-                      ),
-                    ),
+                    },
                   ),
+                ],
+              ),
+
+              // Animated Floating Checkout Dock
+              Positioned(
+                left: 16,
+                right: 16,
+                bottom: 14,
+                child: AnimatedSwitcher(
+                  duration: const Duration(milliseconds: 220),
+                  switchInCurve: Curves.easeOutCubic,
+                  switchOutCurve: Curves.easeInCubic,
+                  transitionBuilder: (child, anim) {
+                    return FadeTransition(
+                      opacity: anim,
+                      child: SlideTransition(
+                        position: Tween<Offset>(
+                          begin: const Offset(0, 0.35),
+                          end: Offset.zero,
+                        ).animate(anim),
+                        child: child,
+                      ),
+                    );
+                  },
+                  child: cartSummary.isEmpty
+                      ? const SizedBox.shrink()
+                      : Center(
+                          key: const ValueKey('checkout_dock_visible'),
+                          child: ConstrainedBox(
+                            constraints: const BoxConstraints(maxWidth: 560),
+                            child: EvaPressable(
+                              child: Material(
+                                color: tokens.brandPrimary,
+                                elevation: 8,
+                                shadowColor: Colors.black.withValues(
+                                  alpha: 0.25,
+                                ),
+                                borderRadius: BorderRadius.circular(18),
+                                child: InkWell(
+                                  borderRadius: BorderRadius.circular(18),
+                                  onTap: () => showCartCheckoutSheet(context),
+                                  child: Padding(
+                                    padding: const EdgeInsets.symmetric(
+                                      horizontal: 16,
+                                      vertical: 13,
+                                    ),
+                                    child: Row(
+                                      children: [
+                                        Container(
+                                          padding: const EdgeInsets.symmetric(
+                                            horizontal: 10,
+                                            vertical: 4,
+                                          ),
+                                          decoration: BoxDecoration(
+                                            color: tokens.brandOnPrimary
+                                                .withValues(alpha: 0.18),
+                                            borderRadius: BorderRadius.circular(
+                                              999,
+                                            ),
+                                          ),
+                                          child: AnimatedSwitcher(
+                                            duration: const Duration(
+                                              milliseconds: 160,
+                                            ),
+                                            child: Text(
+                                              '${cartSummary.totalItemCount}',
+                                              key: ValueKey<int>(
+                                                cartSummary.totalItemCount,
+                                              ),
+                                              style: Theme.of(context)
+                                                  .textTheme
+                                                  .labelLarge
+                                                  ?.copyWith(
+                                                    color:
+                                                        tokens.brandOnPrimary,
+                                                    fontFeatures:
+                                                        EvaThemeBuilder
+                                                            .tabularNums,
+                                                  ),
+                                            ),
+                                          ),
+                                        ),
+                                        const SizedBox(width: 12),
+                                        Expanded(
+                                          child: Column(
+                                            crossAxisAlignment:
+                                                CrossAxisAlignment.start,
+                                            mainAxisSize: MainAxisSize.min,
+                                            children: [
+                                              Text(
+                                                i18n.t('review_order_cta'),
+                                                maxLines: 1,
+                                                overflow: TextOverflow.ellipsis,
+                                                style: Theme.of(context)
+                                                    .textTheme
+                                                    .labelLarge
+                                                    ?.copyWith(
+                                                      color:
+                                                          tokens.brandOnPrimary,
+                                                    ),
+                                              ),
+                                              if (cartSummary.totalDiscount > 0)
+                                                Text(
+                                                  '-${i18n.formatPrice(cartSummary.totalDiscount)} ${i18n.t('bundle_savings_label')}',
+                                                  maxLines: 1,
+                                                  overflow:
+                                                      TextOverflow.ellipsis,
+                                                  style: Theme.of(context)
+                                                      .textTheme
+                                                      .labelSmall
+                                                      ?.copyWith(
+                                                        color: tokens
+                                                            .brandOnPrimary
+                                                            .withValues(
+                                                              alpha: 0.85,
+                                                            ),
+                                                      ),
+                                                ),
+                                            ],
+                                          ),
+                                        ),
+                                        const SizedBox(width: 8),
+                                        Text(
+                                          i18n.formatPrice(
+                                            cartSummary.finalTotal,
+                                          ),
+                                          style: Theme.of(context)
+                                              .textTheme
+                                              .titleMedium
+                                              ?.copyWith(
+                                                color: tokens.brandOnPrimary,
+                                                fontFeatures:
+                                                    EvaThemeBuilder.tabularNums,
+                                              ),
+                                        ),
+                                        const SizedBox(width: 4),
+                                        Icon(
+                                          Icons.chevron_right_rounded,
+                                          size: 20,
+                                          color: tokens.brandOnPrimary,
+                                        ),
+                                      ],
+                                    ),
+                                  ),
+                                ),
+                              ),
+                            ),
+                          ),
+                        ),
                 ),
               ),
-            ),
+            ],
           ),
+        ),
       ],
     );
   }
@@ -513,118 +677,145 @@ class _SmartBundleCard extends ConsumerWidget {
         ? originalSum
         : (originalSum * ((100 - bundle.discountPercent) / 100))
               .roundToDouble();
+    final screenW = MediaQuery.sizeOf(context).width;
+    final cardW = math.max(250.0, math.min(304.0, screenW - 44));
 
-    return Container(
-      width: 312,
-      padding: const EdgeInsets.all(14),
-      decoration: BoxDecoration(
-        color: tokens.surfaceCard,
-        borderRadius: BorderRadius.circular(16),
-        border: Border.all(color: tokens.borderSubtle),
-      ),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          Row(
-            children: [
-              EvaStatusBadge(
-                label: bundle.isSuggestion
-                    ? i18n.t('meal_ideas_badge')
-                    : i18n.t('discount_badge', {
-                        'percent': bundle.discountPercent.toInt().toString(),
-                      }),
-                background: bundle.isSuggestion
-                    ? tokens.brandSoftBg
-                    : tokens.accentAppetite.withValues(alpha: 0.14),
-                foreground: bundle.isSuggestion
-                    ? tokens.brandPrimary
-                    : tokens.accentAppetite,
-              ),
-              const Spacer(),
-              SizedBox(
-                height: 28,
-                child: Row(
-                  children: [
-                    for (final item in resolvedItems.take(3))
-                      Padding(
-                        padding: const EdgeInsets.only(left: 4),
-                        child: SizedBox(
-                          width: 28,
-                          height: 28,
-                          child: EvaProductImage(
-                            imageUrl: item.image,
-                            borderRadius: 8,
+    return SizedBox(
+      width: cardW,
+      child: EvaSurfaceCard(
+        padding: const EdgeInsets.all(14),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Row(
+              children: [
+                Flexible(
+                  child: EvaStatusBadge(
+                    label: bundle.isSuggestion
+                        ? i18n.t('meal_ideas_badge')
+                        : i18n.t('discount_badge', {
+                            'percent': bundle.discountPercent
+                                .toInt()
+                                .toString(),
+                          }),
+                    background: bundle.isSuggestion
+                        ? tokens.brandSoftBg
+                        : tokens.accentAppetite.withValues(alpha: 0.14),
+                    foreground: bundle.isSuggestion
+                        ? tokens.brandPrimary
+                        : tokens.accentAppetite,
+                  ),
+                ),
+                const SizedBox(width: 8),
+                SizedBox(
+                  height: 28,
+                  child: Row(
+                    mainAxisSize: MainAxisSize.min,
+                    children: [
+                      for (final item in resolvedItems.take(3))
+                        Padding(
+                          padding: const EdgeInsetsDirectional.only(start: 4),
+                          child: SizedBox(
+                            width: 28,
+                            height: 28,
+                            child: EvaProductImage(
+                              imageUrl: item.image,
+                              borderRadius: 8,
+                            ),
                           ),
                         ),
-                      ),
-                  ],
-                ),
-              ),
-            ],
-          ),
-          const SizedBox(height: 10),
-          Text(
-            i18n.t(bundle.nameKey),
-            maxLines: 1,
-            overflow: TextOverflow.ellipsis,
-            style: Theme.of(context).textTheme.titleMedium,
-          ),
-          const SizedBox(height: 2),
-          Text(
-            resolvedItems.map((e) => i18n.t(e.nameKey)).join(' + '),
-            maxLines: 1,
-            overflow: TextOverflow.ellipsis,
-            style: Theme.of(context).textTheme.bodySmall,
-          ),
-          const Spacer(),
-          Row(
-            children: [
-              if (!bundle.isSuggestion && finalPrice < originalSum) ...[
-                Text(
-                  i18n.formatPrice(originalSum),
-                  style: Theme.of(context).textTheme.bodySmall?.copyWith(
-                    decoration: TextDecoration.lineThrough,
-                    fontFeatures: EvaThemeBuilder.tabularNums,
+                    ],
                   ),
                 ),
-                const SizedBox(width: 6),
               ],
-              Text(
-                i18n.formatPrice(finalPrice),
-                style: Theme.of(context).textTheme.titleMedium?.copyWith(
-                  color: tokens.brandPrimary,
-                  fontFeatures: EvaThemeBuilder.tabularNums,
-                ),
-              ),
-              const Spacer(),
-              FilledButton.tonal(
-                onPressed: !allAvailable
-                    ? null
-                    : () {
-                        HapticFeedback.lightImpact();
-                        final ok = ref
-                            .read(cartProvider.notifier)
-                            .addBundleOrCombo(bundle, productsById);
-                        if (!ok) {
-                          ScaffoldMessenger.of(context).showSnackBar(
-                            SnackBar(content: Text(i18n.t('out_of_stock'))),
-                          );
-                        }
-                      },
-                style: FilledButton.styleFrom(
-                  backgroundColor: tokens.brandSoftBg,
-                  foregroundColor: tokens.brandPrimary,
-                  minimumSize: const Size(84, 36),
-                  padding: const EdgeInsets.symmetric(horizontal: 14),
-                  shape: RoundedRectangleBorder(
-                    borderRadius: BorderRadius.circular(999),
+            ),
+            const SizedBox(height: 10),
+            Text(
+              i18n.t(bundle.nameKey),
+              maxLines: 1,
+              overflow: TextOverflow.ellipsis,
+              style: Theme.of(context).textTheme.titleMedium,
+            ),
+            const SizedBox(height: 2),
+            Text(
+              resolvedItems.map((e) => i18n.t(e.nameKey)).join(' + '),
+              maxLines: 1,
+              overflow: TextOverflow.ellipsis,
+              style: Theme.of(context).textTheme.bodySmall,
+            ),
+            const Spacer(),
+            Row(
+              children: [
+                Expanded(
+                  child: Row(
+                    children: [
+                      if (!bundle.isSuggestion && finalPrice < originalSum) ...[
+                        Flexible(
+                          child: Text(
+                            i18n.formatPrice(originalSum),
+                            maxLines: 1,
+                            overflow: TextOverflow.ellipsis,
+                            style: Theme.of(context).textTheme.bodySmall
+                                ?.copyWith(
+                                  decoration: TextDecoration.lineThrough,
+                                  fontFeatures: EvaThemeBuilder.tabularNums,
+                                ),
+                          ),
+                        ),
+                        const SizedBox(width: 6),
+                      ],
+                      Flexible(
+                        child: Text(
+                          i18n.formatPrice(finalPrice),
+                          maxLines: 1,
+                          overflow: TextOverflow.ellipsis,
+                          style: Theme.of(context).textTheme.titleMedium
+                              ?.copyWith(
+                                color: tokens.brandPrimary,
+                                fontFeatures: EvaThemeBuilder.tabularNums,
+                              ),
+                        ),
+                      ),
+                    ],
                   ),
                 ),
-                child: Text(i18n.t('add_combo_button')),
-              ),
-            ],
-          ),
-        ],
+                const SizedBox(width: 8),
+                FilledButton.tonal(
+                  onPressed: !allAvailable
+                      ? null
+                      : () {
+                          HapticFeedback.lightImpact();
+                          final ok = ref
+                              .read(cartProvider.notifier)
+                              .addBundleOrCombo(bundle, productsById);
+                          if (!ok) {
+                            ScaffoldMessenger.of(context).showSnackBar(
+                              SnackBar(content: Text(i18n.t('out_of_stock'))),
+                            );
+                          }
+                        },
+                  style: FilledButton.styleFrom(
+                    backgroundColor: tokens.brandSoftBg,
+                    foregroundColor: tokens.brandPrimary,
+                    minimumSize: const Size(0, 34),
+                    padding: const EdgeInsets.symmetric(horizontal: 12),
+                    shape: RoundedRectangleBorder(
+                      borderRadius: BorderRadius.circular(999),
+                      side: BorderSide(
+                        color: tokens.brandPrimary.withValues(alpha: 0.24),
+                      ),
+                    ),
+                  ),
+                  child: Text(
+                    i18n.t('add_combo_button'),
+                    maxLines: 1,
+                    overflow: TextOverflow.ellipsis,
+                  ),
+                ),
+              ],
+            ),
+          ],
+        ),
       ),
     );
   }
@@ -651,13 +842,15 @@ class _CategoryFilterChip extends StatelessWidget {
       },
       borderRadius: BorderRadius.circular(999),
       child: AnimatedContainer(
-        duration: const Duration(milliseconds: 160),
-        padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+        duration: const Duration(milliseconds: 180),
+        curve: Curves.easeOutCubic,
+        padding: const EdgeInsets.symmetric(horizontal: 15, vertical: 7),
         decoration: BoxDecoration(
-          color: selected ? tokens.brandPrimary : tokens.surfaceCard,
+          color: selected ? tokens.brandPrimary : tokens.surfaceElevated,
           borderRadius: BorderRadius.circular(999),
           border: Border.all(
             color: selected ? tokens.brandPrimary : tokens.borderSubtle,
+            width: tokens.borderWidth,
           ),
         ),
         alignment: Alignment.center,
@@ -672,8 +865,8 @@ class _CategoryFilterChip extends StatelessWidget {
   }
 }
 
-class _StudentProductCard extends ConsumerWidget {
-  const _StudentProductCard({
+class _MenuProductCard extends ConsumerWidget {
+  const _MenuProductCard({
     required this.product,
     required this.onOpenDetails,
   });
@@ -688,94 +881,95 @@ class _StudentProductCard extends ConsumerWidget {
     final qtyInCart = ref.watch(cartProvider.select((m) => m[product.id] ?? 0));
     final cartNotifier = ref.read(cartProvider.notifier);
 
-    return Card(
-      clipBehavior: Clip.antiAlias,
-      child: InkWell(
-        onTap: onOpenDetails,
-        child: Padding(
-          padding: const EdgeInsets.all(11),
-          child: Column(
-            crossAxisAlignment: CrossAxisAlignment.start,
+    return EvaSurfaceCard(
+      onTap: onOpenDetails,
+      padding: const EdgeInsets.all(10),
+      borderColor: qtyInCart > 0
+          ? tokens.brandPrimary.withValues(alpha: 0.65)
+          : null,
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Stack(
             children: [
-              Stack(
-                children: [
-                  SizedBox(
-                    height: 128,
-                    width: double.infinity,
-                    child: EvaProductImage(
-                      imageUrl: product.image,
-                      borderRadius: 12,
+              SizedBox(
+                height: 122,
+                width: double.infinity,
+                child: EvaProductImage(
+                  imageUrl: product.image,
+                  borderRadius: 12,
+                ),
+              ),
+              if (product.isOutOfStock)
+                Positioned.fill(
+                  child: Container(
+                    decoration: BoxDecoration(
+                      color: Colors.black.withValues(alpha: 0.48),
+                      borderRadius: BorderRadius.circular(12),
+                    ),
+                    alignment: Alignment.center,
+                    child: EvaStatusBadge(
+                      label: i18n.t('out_of_stock'),
+                      background: tokens.statusClosedBg,
+                      foreground: tokens.statusClosedFg,
                     ),
                   ),
-                  if (product.isOutOfStock)
-                    Positioned.fill(
-                      child: Container(
-                        decoration: BoxDecoration(
-                          color: Colors.black.withValues(alpha: 0.48),
-                          borderRadius: BorderRadius.circular(12),
-                        ),
-                        alignment: Alignment.center,
-                        child: EvaStatusBadge(
-                          label: i18n.t('out_of_stock'),
-                          background: tokens.statusClosedBg,
-                          foreground: tokens.statusClosedFg,
-                        ),
-                      ),
-                    )
-                  else if (product.isLowStock)
-                    PositionedDirectional(
-                      top: 8,
-                      start: 8,
-                      child: EvaStatusBadge(
-                        label: i18n.t('low_stock_left', {
-                          'count': '${product.quantity}',
-                        }),
-                        background: tokens.statusPendingBg,
-                        foreground: tokens.statusPendingFg,
-                      ),
-                    ),
-                ],
-              ),
-              const SizedBox(height: 10),
-              Text(
-                i18n.t(product.nameKey),
-                maxLines: 1,
-                overflow: TextOverflow.ellipsis,
-                style: Theme.of(context).textTheme.titleMedium,
-              ),
-              const SizedBox(height: 2),
-              Text(
-                i18n.t(product.descriptionKey),
-                maxLines: 1,
-                overflow: TextOverflow.ellipsis,
-                style: Theme.of(context).textTheme.bodySmall,
-              ),
-              const Spacer(),
-              Row(
-                children: [
-                  Expanded(
-                    child: Text(
-                      i18n.formatPrice(product.price),
-                      style: Theme.of(context).textTheme.titleMedium?.copyWith(
-                        fontFeatures: EvaThemeBuilder.tabularNums,
-                      ),
-                    ),
+                )
+              else if (product.isLowStock)
+                PositionedDirectional(
+                  top: 8,
+                  start: 8,
+                  child: EvaStatusBadge(
+                    label: i18n.t('low_stock_left', {
+                      'count': '${product.quantity}',
+                    }),
+                    background: tokens.statusPendingBg,
+                    foreground: tokens.statusPendingFg,
                   ),
-                  EvaQuantityStepper(
-                    quantity: qtyInCart,
-                    addLabel: i18n.t('add_button'),
-                    compact: true,
-                    disabled: product.isOutOfStock,
-                    maxReached:
-                        !product.isUnlimited && qtyInCart >= product.quantity,
-                    onIncrement: () => cartNotifier.increment(product),
-                    onDecrement: () => cartNotifier.decrement(product.id),
+                ),
+            ],
+          ),
+          const SizedBox(height: 10),
+          Text(
+            i18n.t(product.nameKey),
+            maxLines: 1,
+            overflow: TextOverflow.ellipsis,
+            style: Theme.of(context).textTheme.titleMedium,
+          ),
+          const SizedBox(height: 2),
+          Text(
+            i18n.t(product.descriptionKey),
+            maxLines: 1,
+            overflow: TextOverflow.ellipsis,
+            style: Theme.of(context).textTheme.bodySmall,
+          ),
+          const Spacer(),
+          Row(
+            children: [
+              Expanded(
+                child: Text(
+                  i18n.formatPrice(product.price),
+                  maxLines: 1,
+                  overflow: TextOverflow.ellipsis,
+                  style: Theme.of(context).textTheme.titleMedium?.copyWith(
+                    fontFeatures: EvaThemeBuilder.tabularNums,
                   ),
-                ],
+                ),
+              ),
+              const SizedBox(width: 6),
+              EvaQuantityStepper(
+                quantity: qtyInCart,
+                addLabel: i18n.t('add_button'),
+                compact: true,
+                disabled: product.isOutOfStock,
+                maxReached:
+                    !product.isUnlimited && qtyInCart >= product.quantity,
+                onIncrement: () => cartNotifier.increment(product),
+                onDecrement: () => cartNotifier.decrement(product.id),
               ),
             ],
           ),
-        ),
+        ],
       ),
     );
   }
@@ -798,7 +992,7 @@ class _ItemDetailBottomSheet extends ConsumerWidget {
 
     if (product == null) return const SizedBox.shrink();
 
-    return Padding(
+    return SingleChildScrollView(
       padding: const EdgeInsets.fromLTRB(20, 12, 20, 24),
       child: Column(
         mainAxisSize: MainAxisSize.min,
@@ -821,6 +1015,7 @@ class _ItemDetailBottomSheet extends ConsumerWidget {
           ),
           const SizedBox(height: 16),
           Row(
+            crossAxisAlignment: CrossAxisAlignment.start,
             children: [
               Expanded(
                 child: Text(
@@ -828,6 +1023,7 @@ class _ItemDetailBottomSheet extends ConsumerWidget {
                   style: Theme.of(context).textTheme.headlineSmall,
                 ),
               ),
+              const SizedBox(width: 12),
               Text(
                 i18n.formatPrice(product.price),
                 style: Theme.of(context).textTheme.headlineSmall?.copyWith(
@@ -847,20 +1043,22 @@ class _ItemDetailBottomSheet extends ConsumerWidget {
           const SizedBox(height: 16),
           Row(
             children: [
-              EvaStatusBadge(
-                label: product.isOutOfStock
-                    ? i18n.t('out_of_stock')
-                    : (product.isUnlimited
-                          ? i18n.t('unlimited_stock')
-                          : i18n.t('low_stock_left', {
-                              'count': '${product.quantity}',
-                            })),
-                background: product.isOutOfStock
-                    ? tokens.statusClosedBg
-                    : tokens.statusDeliveredBg,
-                foreground: product.isOutOfStock
-                    ? tokens.statusClosedFg
-                    : tokens.statusDeliveredFg,
+              Flexible(
+                child: EvaStatusBadge(
+                  label: product.isOutOfStock
+                      ? i18n.t('out_of_stock')
+                      : (product.isUnlimited
+                            ? i18n.t('unlimited_stock')
+                            : i18n.t('low_stock_left', {
+                                'count': '${product.quantity}',
+                              })),
+                  background: product.isOutOfStock
+                      ? tokens.statusClosedBg
+                      : tokens.statusDeliveredBg,
+                  foreground: product.isOutOfStock
+                      ? tokens.statusClosedFg
+                      : tokens.statusDeliveredFg,
+                ),
               ),
               const Spacer(),
               EvaQuantityStepper(
@@ -875,17 +1073,19 @@ class _ItemDetailBottomSheet extends ConsumerWidget {
             ],
           ),
           const SizedBox(height: 20),
-          FilledButton(
-            onPressed: () {
-              if (qtyInCart == 0 && !product.isOutOfStock) {
-                cartNotifier.increment(product);
-              }
-              Navigator.pop(context);
-            },
-            child: Text(
-              qtyInCart > 0
-                  ? '${i18n.t('review_order_cta')} ($qtyInCart)'
-                  : '${i18n.t('add_button')} • ${i18n.formatPrice(product.price)}',
+          EvaPressable(
+            child: FilledButton(
+              onPressed: () {
+                if (qtyInCart == 0 && !product.isOutOfStock) {
+                  cartNotifier.increment(product);
+                }
+                Navigator.pop(context);
+              },
+              child: Text(
+                qtyInCart > 0
+                    ? '${i18n.t('review_order_cta')} ($qtyInCart)'
+                    : '${i18n.t('add_button')} • ${i18n.formatPrice(product.price)}',
+              ),
             ),
           ),
         ],

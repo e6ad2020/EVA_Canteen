@@ -109,171 +109,190 @@ class _AdminKdsViewState extends ConsumerState<AdminKdsView> {
     return LayoutBuilder(
       builder: (context, constraints) {
         final isKanbanWide = constraints.maxWidth >= 960;
-        final isMobileHeader = constraints.maxWidth < 720;
+        final isCompactHeader = constraints.maxWidth < 680;
+
+        final modeToggle = SegmentedButton<bool>(
+          showSelectedIcon: false,
+          segments: [
+            ButtonSegment<bool>(
+              value: false,
+              icon: const Icon(Icons.bolt_rounded, size: 16),
+              label: Text(
+                i18n.t('kds_today_toggle'),
+                maxLines: 1,
+                overflow: TextOverflow.ellipsis,
+              ),
+            ),
+            ButtonSegment<bool>(
+              value: true,
+              icon: const Icon(Icons.history_rounded, size: 16),
+              label: Text(
+                i18n.t('kds_archive_toggle'),
+                maxLines: 1,
+                overflow: TextOverflow.ellipsis,
+              ),
+            ),
+          ],
+          selected: {_archiveMode},
+          onSelectionChanged: (sel) {
+            setState(() => _archiveMode = sel.first);
+          },
+        );
+
+        final searchField = TextField(
+          controller: _searchCtrl,
+          onChanged: (val) => setState(() => _searchQuery = val),
+          decoration: InputDecoration(
+            hintText: i18n.t('kds_search_hint'),
+            prefixIcon: const Icon(Icons.search_rounded, size: 20),
+            suffixIcon: _searchQuery.isNotEmpty
+                ? IconButton(
+                    onPressed: () {
+                      _searchCtrl.clear();
+                      setState(() => _searchQuery = '');
+                    },
+                    icon: const Icon(Icons.close_rounded, size: 18),
+                  )
+                : null,
+          ),
+        );
 
         return Column(
           children: [
-            // Top KDS Control Bar
-            Container(
-              padding: const EdgeInsets.fromLTRB(20, 14, 20, 14),
-              decoration: BoxDecoration(
-                color: tokens.surfaceCard,
-                border: Border(bottom: BorderSide(color: tokens.borderSubtle)),
-              ),
+            // Top KDS Control Bar (Responsive across 320dp phones to 1440dp desktops)
+            EvaGlassBar(
+              padding: const EdgeInsets.fromLTRB(16, 12, 16, 12),
               child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
+                crossAxisAlignment: CrossAxisAlignment.stretch,
                 children: [
                   Row(
                     children: [
                       Expanded(
-                        child: Row(
-                          children: [
-                            Text(
-                              i18n.t('admin_kds_tab'),
-                              style: Theme.of(context).textTheme.headlineSmall,
-                            ),
-                            const SizedBox(width: 12),
-                            InkWell(
-                              borderRadius: BorderRadius.circular(999),
-                              onTap: () {
-                                HapticFeedback.mediumImpact();
-                                ref
-                                    .read(canteenStoreProvider.notifier)
-                                    .setCanteenOpen(!store.isCanteenOpen);
-                              },
-                              child: EvaStatusBadge(
-                                label: store.isCanteenOpen
-                                    ? i18n.t('canteen_open_badge')
-                                    : i18n.t('canteen_closed_badge'),
-                                background: store.isCanteenOpen
-                                    ? tokens.statusDeliveredBg
-                                    : tokens.statusClosedBg,
-                                foreground: store.isCanteenOpen
-                                    ? tokens.statusDeliveredFg
-                                    : tokens.statusClosedFg,
-                                pulsing: store.isCanteenOpen,
+                        child: Text(
+                          i18n.t('admin_kds_title'),
+                          maxLines: 1,
+                          overflow: TextOverflow.ellipsis,
+                          style: Theme.of(context).textTheme.headlineSmall,
+                        ),
+                      ),
+                      const SizedBox(width: 8),
+                      InkWell(
+                        borderRadius: BorderRadius.circular(999),
+                        onTap: () {
+                          HapticFeedback.mediumImpact();
+                          ref
+                              .read(canteenStoreProvider.notifier)
+                              .setCanteenOpen(!store.isCanteenOpen);
+                        },
+                        child: EvaStatusBadge(
+                          label: store.isCanteenOpen
+                              ? i18n.t('canteen_open_badge')
+                              : i18n.t('canteen_closed_badge'),
+                          background: store.isCanteenOpen
+                              ? tokens.statusDeliveredBg
+                              : tokens.statusClosedBg,
+                          foreground: store.isCanteenOpen
+                              ? tokens.statusDeliveredFg
+                              : tokens.statusClosedFg,
+                          pulsing: store.isCanteenOpen,
+                        ),
+                      ),
+                      if (constraints.maxWidth < 840) ...[
+                        const SizedBox(width: 8),
+                        const LanguageQuickToggle(),
+                      ],
+                    ],
+                  ),
+                  const SizedBox(height: 10),
+                  if (isCompactHeader) ...[
+                    SizedBox(width: double.infinity, child: modeToggle),
+                    const SizedBox(height: 10),
+                    searchField,
+                  ] else
+                    Row(
+                      children: [
+                        Expanded(child: searchField),
+                        const SizedBox(width: 12),
+                        modeToggle,
+                      ],
+                    ),
+                  if (_archiveMode) ...[
+                    const SizedBox(height: 10),
+                    SingleChildScrollView(
+                      scrollDirection: Axis.horizontal,
+                      child: Row(
+                        children: [
+                          OutlinedButton.icon(
+                            onPressed: _pickArchiveDate,
+                            style: OutlinedButton.styleFrom(
+                              minimumSize: const Size(0, 36),
+                              padding: const EdgeInsets.symmetric(
+                                horizontal: 12,
                               ),
                             ),
-                          ],
-                        ),
-                      ),
-                      if (constraints.maxWidth < 900) ...[
-                        const LanguageQuickToggle(),
-                        const SizedBox(width: 8),
-                      ],
-                      SegmentedButton<bool>(
-                        showSelectedIcon: false,
-                        segments: [
-                          ButtonSegment<bool>(
-                            value: false,
-                            icon: const Icon(Icons.bolt_rounded, size: 17),
-                            label: Text(i18n.t('kds_today_toggle')),
+                            icon: const Icon(
+                              Icons.calendar_today_rounded,
+                              size: 15,
+                            ),
+                            label: Text(
+                              _archiveDateFilter == null
+                                  ? (i18n.isRtl ? 'كل التواريخ' : 'All Dates')
+                                  : DateFormat(
+                                      'yyyy-MM-dd',
+                                    ).format(_archiveDateFilter!),
+                            ),
                           ),
-                          ButtonSegment<bool>(
-                            value: true,
-                            icon: const Icon(Icons.history_rounded, size: 17),
-                            label: Text(i18n.t('kds_archive_toggle')),
+                          if (_archiveDateFilter != null)
+                            IconButton(
+                              tooltip: i18n.isRtl
+                                  ? 'مسح التاريخ'
+                                  : 'Clear date',
+                              onPressed: () =>
+                                  setState(() => _archiveDateFilter = null),
+                              icon: const Icon(Icons.filter_alt_off_rounded),
+                            ),
+                          const SizedBox(width: 8),
+                          FilterChip(
+                            selected: _archiveStatusFilter == null,
+                            label: Text(i18n.t('all_categories')),
+                            onSelected: (_) =>
+                                setState(() => _archiveStatusFilter = null),
+                          ),
+                          const SizedBox(width: 6),
+                          FilterChip(
+                            selected:
+                                _archiveStatusFilter == OrderStatus.pending,
+                            label: Text(i18n.t('status_pending')),
+                            onSelected: (_) => setState(
+                              () => _archiveStatusFilter = OrderStatus.pending,
+                            ),
+                          ),
+                          const SizedBox(width: 6),
+                          FilterChip(
+                            selected:
+                                _archiveStatusFilter == OrderStatus.preparing,
+                            label: Text(i18n.t('status_preparing')),
+                            onSelected: (_) => setState(
+                              () =>
+                                  _archiveStatusFilter = OrderStatus.preparing,
+                            ),
+                          ),
+                          const SizedBox(width: 6),
+                          FilterChip(
+                            selected:
+                                _archiveStatusFilter == OrderStatus.delivered,
+                            label: Text(i18n.t('status_delivered')),
+                            onSelected: (_) => setState(
+                              () =>
+                                  _archiveStatusFilter = OrderStatus.delivered,
+                            ),
                           ),
                         ],
-                        selected: {_archiveMode},
-                        onSelectionChanged: (sel) {
-                          setState(() => _archiveMode = sel.first);
-                        },
                       ),
-                    ],
-                  ),
-                  const SizedBox(height: 12),
-                  Wrap(
-                    spacing: 12,
-                    runSpacing: 10,
-                    crossAxisAlignment: WrapCrossAlignment.center,
-                    children: [
-                      SizedBox(
-                        width: isMobileHeader
-                            ? constraints.maxWidth - 40
-                            : 340,
-                        child: TextField(
-                          controller: _searchCtrl,
-                          onChanged: (val) =>
-                              setState(() => _searchQuery = val),
-                          decoration: InputDecoration(
-                            hintText: i18n.t('kds_search_hint'),
-                            prefixIcon: const Icon(
-                              Icons.search_rounded,
-                              size: 20,
-                            ),
-                            suffixIcon: _searchQuery.isNotEmpty
-                                ? IconButton(
-                                    onPressed: () {
-                                      _searchCtrl.clear();
-                                      setState(() => _searchQuery = '');
-                                    },
-                                    icon: const Icon(
-                                      Icons.close_rounded,
-                                      size: 18,
-                                    ),
-                                  )
-                                : null,
-                          ),
-                        ),
-                      ),
-                      if (_archiveMode) ...[
-                        OutlinedButton.icon(
-                          onPressed: _pickArchiveDate,
-                          icon: const Icon(
-                            Icons.calendar_today_rounded,
-                            size: 16,
-                          ),
-                          label: Text(
-                            _archiveDateFilter == null
-                                ? (i18n.isRtl ? 'كل التواريخ' : 'All Dates')
-                                : DateFormat(
-                                    'yyyy-MM-dd',
-                                  ).format(_archiveDateFilter!),
-                          ),
-                        ),
-                        if (_archiveDateFilter != null)
-                          IconButton(
-                            tooltip: i18n.isRtl ? 'مسح التاريخ' : 'Clear date',
-                            onPressed: () =>
-                                setState(() => _archiveDateFilter = null),
-                            icon: const Icon(Icons.filter_alt_off_rounded),
-                          ),
-                        FilterChip(
-                          selected: _archiveStatusFilter == null,
-                          label: Text(i18n.t('all_categories')),
-                          onSelected: (_) =>
-                              setState(() => _archiveStatusFilter = null),
-                        ),
-                        FilterChip(
-                          selected:
-                              _archiveStatusFilter == OrderStatus.pending,
-                          label: Text(i18n.t('status_pending')),
-                          onSelected: (_) => setState(
-                            () => _archiveStatusFilter = OrderStatus.pending,
-                          ),
-                        ),
-                        FilterChip(
-                          selected:
-                              _archiveStatusFilter == OrderStatus.preparing,
-                          label: Text(i18n.t('status_preparing')),
-                          onSelected: (_) => setState(
-                            () => _archiveStatusFilter = OrderStatus.preparing,
-                          ),
-                        ),
-                        FilterChip(
-                          selected:
-                              _archiveStatusFilter == OrderStatus.delivered,
-                          label: Text(i18n.t('status_delivered')),
-                          onSelected: (_) => setState(
-                            () => _archiveStatusFilter = OrderStatus.delivered,
-                          ),
-                        ),
-                      ],
-                    ],
-                  ),
+                    ),
+                  ],
                   if (!_archiveMode && !isKanbanWide) ...[
-                    const SizedBox(height: 12),
+                    const SizedBox(height: 10),
                     SizedBox(
                       width: double.infinity,
                       child: SegmentedButton<OrderStatus>(
@@ -283,18 +302,24 @@ class _AdminKdsViewState extends ConsumerState<AdminKdsView> {
                             value: OrderStatus.pending,
                             label: Text(
                               '${i18n.t('status_pending')} (${pendingToday.length})',
+                              maxLines: 1,
+                              overflow: TextOverflow.ellipsis,
                             ),
                           ),
                           ButtonSegment(
                             value: OrderStatus.preparing,
                             label: Text(
                               '${i18n.t('status_preparing')} (${preparingToday.length})',
+                              maxLines: 1,
+                              overflow: TextOverflow.ellipsis,
                             ),
                           ),
                           ButtonSegment(
                             value: OrderStatus.delivered,
                             label: Text(
                               '${i18n.t('status_delivered')} (${deliveredToday.length})',
+                              maxLines: 1,
+                              overflow: TextOverflow.ellipsis,
                             ),
                           ),
                         ],
@@ -603,19 +628,14 @@ class _KdsTicketCard extends ConsumerWidget {
         ? DateFormat('yyyy-MM-dd • HH:mm').format(order.timestamp.toLocal())
         : DateFormat('HH:mm').format(order.timestamp.toLocal());
 
-    return Card(
-      shape: RoundedRectangleBorder(
-        borderRadius: BorderRadius.circular(14),
-        side: BorderSide(
-          color: isOverdue ? tokens.accentAppetite : tokens.borderSubtle,
-          width: isOverdue ? 1.6 : 1,
-        ),
-      ),
-      child: Padding(
-        padding: const EdgeInsets.all(14),
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
+    return EvaSurfaceCard(
+      borderRadius: 14,
+      borderColor: isOverdue ? tokens.accentAppetite : tokens.borderSubtle,
+      borderWidth: isOverdue ? 1.8 : tokens.borderWidth,
+      padding: const EdgeInsets.all(14),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
             // Ticket Header: #PickupNumber + Time + Live Elapsed Clock + Overflow
             Row(
               children: [
@@ -724,7 +744,7 @@ class _KdsTicketCard extends ConsumerWidget {
 
             const SizedBox(height: 10),
 
-            // Student Identity & Payment Method
+            // Customer Identity & Payment Method
             Row(
               children: [
                 EvaAvatar(profilePic: order.userProfilePic, radius: 14),
@@ -938,7 +958,6 @@ class _KdsTicketCard extends ConsumerWidget {
             ),
           ],
         ),
-      ),
     );
   }
 }

@@ -1,7 +1,7 @@
 name: eva_canteen
-description: "EVA Canteen — Modern Bilingual School Canteen Ordering, Live Pickup & Kitchen Display System."
+description: "EVA Canteen — Modern Bilingual Digital Ordering, Live Pickup Pass & Kitchen Display System."
 publish_to: 'none'
-version: 2.0.0+1
+version: 2.0.0+2
 
 environment:
   sdk: ^3.14.0
@@ -34,6 +34,8 @@ flutter:
 
   assets:
     - assets/images/
+    - assets/images/wallpapers/light_blue/
+    - assets/images/wallpapers/light_red/
 
   fonts:
     - family: Nunito

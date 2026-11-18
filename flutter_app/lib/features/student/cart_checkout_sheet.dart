@@ -339,6 +339,8 @@ class _CartProductRow extends ConsumerWidget {
                   const SizedBox(height: 4),
                   Text(
                     '${i18n.formatPrice(product.price)} × $quantity = ${i18n.formatPrice(product.price * quantity)}',
+                    maxLines: 1,
+                    overflow: TextOverflow.ellipsis,
                     style: Theme.of(context).textTheme.bodySmall?.copyWith(
                       fontFeatures: EvaThemeBuilder.tabularNums,
                     ),

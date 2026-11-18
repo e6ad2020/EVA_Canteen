@@ -80,10 +80,7 @@ class AppPreferencesNotifier extends Notifier<AppPreferencesState> {
       (e) => e.name == modeName,
       orElse: () => EvaSurfaceMode.daylight,
     );
-    final accent = EvaAccentPreset.values.firstWhere(
-      (e) => e.name == accentName,
-      orElse: () => EvaAccentPreset.cobalt,
-    );
+    final accent = EvaAccentPreset.fromStorageName(accentName);
 
     return AppPreferencesState(
       locale: Locale(lang == 'ar' ? 'ar' : 'en'),
@@ -111,7 +108,17 @@ class AppPreferencesNotifier extends Notifier<AppPreferencesState> {
   }
 
   void setAccentPreset(EvaAccentPreset accent) {
-    ref.read(sharedPrefsProvider).setString(_kAccent, accent.name);
+    final prefs = ref.read(sharedPrefsProvider);
+    prefs.setString(_kAccent, accent.name);
+    if (accent.isWallpaperLightTheme &&
+        state.surfaceMode != EvaSurfaceMode.daylight) {
+      prefs.setString(_kMode, EvaSurfaceMode.daylight.name);
+      state = state.copyWith(
+        accentPreset: accent,
+        surfaceMode: EvaSurfaceMode.daylight,
+      );
+      return;
+    }
     state = state.copyWith(accentPreset: accent);
   }
 

@@ -1,3 +1,5 @@
+import 'dart:ui' show ImageFilter;
+
 import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
@@ -41,13 +43,76 @@ class StudentShellScreen extends ConsumerWidget {
       }
     });
 
+    final animatedBody = EvaShellTransition(
+      currentIndex: navigationShell.currentIndex,
+      child: navigationShell,
+    );
+
     return LayoutBuilder(
       builder: (context, constraints) {
-        final isWide = constraints.maxWidth >= 860;
+        final isWide = constraints.maxWidth >= 840;
+
+        Widget? bottomBar;
+        if (!isWide) {
+          final nav = Container(
+            decoration: BoxDecoration(
+              border: Border(
+                top: BorderSide(
+                  color: tokens.borderSubtle,
+                  width: tokens.borderWidth,
+                ),
+              ),
+            ),
+            child: NavigationBar(
+              backgroundColor: tokens.isLiquidGlass
+                  ? const Color(0xD9FFFFFF)
+                  : tokens.surfaceElevated,
+              selectedIndex: navigationShell.currentIndex,
+              onDestinationSelected: (idx) {
+                HapticFeedback.selectionClick();
+                navigationShell.goBranch(idx);
+              },
+              destinations: [
+                NavigationDestination(
+                  icon: const Icon(Icons.restaurant_menu_outlined),
+                  selectedIcon: const Icon(Icons.restaurant_menu_rounded),
+                  label: i18n.t('nav_menu'),
+                ),
+                NavigationDestination(
+                  icon: Badge(
+                    isLabelVisible: hasLiveInFlight,
+                    child: const Icon(Icons.confirmation_number_outlined),
+                  ),
+                  selectedIcon: Badge(
+                    isLabelVisible: hasLiveInFlight,
+                    child: const Icon(Icons.confirmation_number_rounded),
+                  ),
+                  label: i18n.t('nav_orders'),
+                ),
+                NavigationDestination(
+                  icon: const Icon(Icons.tune_outlined),
+                  selectedIcon: const Icon(Icons.tune_rounded),
+                  label: i18n.t('nav_settings'),
+                ),
+              ],
+            ),
+          );
+
+          bottomBar = tokens.isLiquidGlass
+              ? ClipRect(
+                  child: BackdropFilter(
+                    filter: ImageFilter.blur(sigmaX: 12, sigmaY: 12),
+                    child: nav,
+                  ),
+                )
+              : nav;
+        }
 
         return Scaffold(
+          extendBody: tokens.isLiquidGlass,
           body: EvaScaffoldBackground(
             child: SafeArea(
+              bottom: !tokens.isLiquidGlass || isWide,
               child: Column(
                 children: [
                   const ConnectionStatusBanner(),
@@ -56,14 +121,16 @@ class StudentShellScreen extends ConsumerWidget {
                         ? Row(
                             children: [
                               NavigationRail(
-                                backgroundColor: tokens.surfaceCard,
                                 selectedIndex: navigationShell.currentIndex,
-                                onDestinationSelected: (idx) =>
-                                    navigationShell.goBranch(idx),
+                                onDestinationSelected: (idx) {
+                                  HapticFeedback.selectionClick();
+                                  navigationShell.goBranch(idx);
+                                },
                                 labelType: NavigationRailLabelType.all,
+                                minWidth: 88,
                                 leading: const Padding(
                                   padding: EdgeInsets.symmetric(vertical: 14),
-                                  child: EvaBrandLogo(size: 42),
+                                  child: EvaBrandLogo(size: 40),
                                 ),
                                 destinations: [
                                   NavigationRailDestination(
@@ -103,56 +170,21 @@ class StudentShellScreen extends ConsumerWidget {
                                 width: 1,
                                 color: tokens.borderSubtle,
                               ),
-                              Expanded(child: navigationShell),
+                              Expanded(child: animatedBody),
                             ],
                           )
-                        : navigationShell,
+                        : Padding(
+                            padding: EdgeInsets.only(
+                              bottom: tokens.isLiquidGlass ? 66 : 0,
+                            ),
+                            child: animatedBody,
+                          ),
                   ),
                 ],
               ),
             ),
           ),
-          bottomNavigationBar: isWide
-              ? null
-              : NavigationBar(
-                  backgroundColor: tokens.surfaceCard,
-                  surfaceTintColor: Colors.transparent,
-                  indicatorColor: tokens.brandSoftBg,
-                  selectedIndex: navigationShell.currentIndex,
-                  onDestinationSelected: (idx) => navigationShell.goBranch(idx),
-                  destinations: [
-                    NavigationDestination(
-                      icon: const Icon(Icons.restaurant_menu_outlined),
-                      selectedIcon: Icon(
-                        Icons.restaurant_menu_rounded,
-                        color: tokens.brandPrimary,
-                      ),
-                      label: i18n.t('nav_menu'),
-                    ),
-                    NavigationDestination(
-                      icon: Badge(
-                        isLabelVisible: hasLiveInFlight,
-                        child: const Icon(Icons.confirmation_number_outlined),
-                      ),
-                      selectedIcon: Badge(
-                        isLabelVisible: hasLiveInFlight,
-                        child: Icon(
-                          Icons.confirmation_number_rounded,
-                          color: tokens.brandPrimary,
-                        ),
-                      ),
-                      label: i18n.t('nav_orders'),
-                    ),
-                    NavigationDestination(
-                      icon: const Icon(Icons.tune_outlined),
-                      selectedIcon: Icon(
-                        Icons.tune_rounded,
-                        color: tokens.brandPrimary,
-                      ),
-                      label: i18n.t('nav_settings'),
-                    ),
-                  ],
-                ),
+          bottomNavigationBar: bottomBar,
         );
       },
     );

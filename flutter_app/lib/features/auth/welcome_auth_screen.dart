@@ -94,7 +94,9 @@ class _WelcomeAuthScreenState extends ConsumerState<WelcomeAuthScreen> {
   Widget build(BuildContext context) {
     final tokens = EvaTokens.of(context);
     final i18n = ref.watch(i18nProvider);
-    final isOpen = ref.watch(canteenStoreProvider.select((s) => s.isCanteenOpen));
+    final isOpen = ref.watch(
+      canteenStoreProvider.select((s) => s.isCanteenOpen),
+    );
     final busy = ref.watch(canteenStoreProvider.select((s) => s.authBusy));
 
     return Scaffold(
@@ -103,57 +105,80 @@ class _WelcomeAuthScreenState extends ConsumerState<WelcomeAuthScreen> {
           child: Column(
             children: [
               const ConnectionStatusBanner(),
-              Padding(
-                padding: const EdgeInsets.fromLTRB(20, 14, 20, 6),
-                child: Row(
-                  children: [
-                    const EvaBrandLogo(size: 40),
-                    const SizedBox(width: 12),
-                    Expanded(
-                      child: Text(
-                        i18n.t('canteen_name'),
-                        style: Theme.of(context).textTheme.titleLarge?.copyWith(
-                          fontWeight: FontWeight.w700,
+              EvaGlassBar(
+                padding: const EdgeInsets.symmetric(
+                  horizontal: 16,
+                  vertical: 10,
+                ),
+                child: Center(
+                  child: ConstrainedBox(
+                    constraints: const BoxConstraints(maxWidth: 1040),
+                    child: Row(
+                      children: [
+                        const EvaBrandLogo(size: 36),
+                        const SizedBox(width: 10),
+                        Expanded(
+                          child: Text(
+                            i18n.t('canteen_name'),
+                            maxLines: 1,
+                            overflow: TextOverflow.ellipsis,
+                            style: Theme.of(context).textTheme.titleLarge,
+                          ),
                         ),
-                      ),
+                        const SizedBox(width: 8),
+                        EvaStatusBadge(
+                          label: isOpen
+                              ? i18n.t('canteen_open_badge')
+                              : i18n.t('canteen_closed_badge'),
+                          background: isOpen
+                              ? tokens.statusDeliveredBg
+                              : tokens.statusClosedBg,
+                          foreground: isOpen
+                              ? tokens.statusDeliveredFg
+                              : tokens.statusClosedFg,
+                          pulsing: isOpen,
+                        ),
+                        const SizedBox(width: 8),
+                        const LanguageQuickToggle(),
+                      ],
                     ),
-                    EvaStatusBadge(
-                      label: isOpen
-                          ? i18n.t('canteen_open_badge')
-                          : i18n.t('canteen_closed_badge'),
-                      background: isOpen
-                          ? tokens.statusDeliveredBg
-                          : tokens.statusClosedBg,
-                      foreground: isOpen
-                          ? tokens.statusDeliveredFg
-                          : tokens.statusClosedFg,
-                      pulsing: isOpen,
-                    ),
-                    const SizedBox(width: 10),
-                    const LanguageQuickToggle(),
-                  ],
+                  ),
                 ),
               ),
               Expanded(
                 child: Center(
                   child: SingleChildScrollView(
-                    padding: const EdgeInsets.all(20),
+                    padding: const EdgeInsets.symmetric(
+                      horizontal: 18,
+                      vertical: 22,
+                    ),
                     child: ConstrainedBox(
-                      constraints: const BoxConstraints(maxWidth: 960),
+                      constraints: const BoxConstraints(maxWidth: 980),
                       child: LayoutBuilder(
                         builder: (context, constraints) {
                           final isWide = constraints.maxWidth >= 760;
-                          final formCard = _buildAuthCard(
-                            context,
-                            tokens,
-                            i18n.t,
-                            busy,
+                          final formCard = EvaReveal(
+                            index: 1,
+                            child: _buildAuthCard(
+                              context,
+                              tokens,
+                              i18n.t,
+                              busy,
+                            ),
                           );
                           if (!isWide) {
                             return Column(
                               crossAxisAlignment: CrossAxisAlignment.stretch,
                               children: [
-                                _buildHeroPitch(context, tokens, i18n.t),
+                                EvaReveal(
+                                  index: 0,
+                                  child: _buildHeroPitch(
+                                    context,
+                                    tokens,
+                                    i18n.t,
+                                    isWide: false,
+                                  ),
+                                ),
                                 const SizedBox(height: 20),
                                 formCard,
                               ],
@@ -168,10 +193,14 @@ class _WelcomeAuthScreenState extends ConsumerState<WelcomeAuthScreen> {
                                   padding: const EdgeInsetsDirectional.only(
                                     end: 36,
                                   ),
-                                  child: _buildHeroPitch(
-                                    context,
-                                    tokens,
-                                    i18n.t,
+                                  child: EvaReveal(
+                                    index: 0,
+                                    child: _buildHeroPitch(
+                                      context,
+                                      tokens,
+                                      i18n.t,
+                                      isWide: true,
+                                    ),
                                   ),
                                 ),
                               ),
@@ -194,9 +223,10 @@ class _WelcomeAuthScreenState extends ConsumerState<WelcomeAuthScreen> {
   Widget _buildHeroPitch(
     BuildContext context,
     EvaTokens tokens,
-    String Function(String, [Map<String, String>?]) t,
-  ) {
-    return Column(
+    String Function(String, [Map<String, String>?]) t, {
+    required bool isWide,
+  }) {
+    final content = Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
         Container(
@@ -204,19 +234,24 @@ class _WelcomeAuthScreenState extends ConsumerState<WelcomeAuthScreen> {
           decoration: BoxDecoration(
             color: tokens.brandSoftBg,
             borderRadius: BorderRadius.circular(999),
+            border: Border.all(
+              color: tokens.brandPrimary.withValues(alpha: 0.24),
+            ),
           ),
           child: Row(
             mainAxisSize: MainAxisSize.min,
             children: [
               Icon(
-                Icons.bolt_rounded,
-                size: 16,
+                Icons.restaurant_rounded,
+                size: 15,
                 color: tokens.brandPrimary,
               ),
               const SizedBox(width: 6),
               Flexible(
                 child: Text(
-                  'EVA International Applied Technology School',
+                  t('welcome_eyebrow'),
+                  maxLines: 1,
+                  overflow: TextOverflow.ellipsis,
                   style: Theme.of(context).textTheme.labelMedium?.copyWith(
                     color: tokens.brandPrimary,
                     fontWeight: FontWeight.w700,
@@ -226,12 +261,12 @@ class _WelcomeAuthScreenState extends ConsumerState<WelcomeAuthScreen> {
             ],
           ),
         ),
-        const SizedBox(height: 16),
+        const SizedBox(height: 14),
         Text(
           t('welcome_headline'),
           style: Theme.of(context).textTheme.headlineMedium?.copyWith(
-            fontSize: 30,
-            height: 1.2,
+            fontSize: isWide ? 34 : 26,
+            height: 1.18,
           ),
         ),
         const SizedBox(height: 10),
@@ -243,6 +278,14 @@ class _WelcomeAuthScreenState extends ConsumerState<WelcomeAuthScreen> {
         ),
       ],
     );
+
+    if (tokens.isLiquidGlass) {
+      return EvaSurfaceCard(
+        padding: const EdgeInsets.all(18),
+        child: content,
+      );
+    }
+    return content;
   }
 
   Widget _buildAuthCard(
@@ -251,9 +294,12 @@ class _WelcomeAuthScreenState extends ConsumerState<WelcomeAuthScreen> {
     String Function(String, [Map<String, String>?]) t,
     bool busy,
   ) {
-    return Card(
-      child: Padding(
-        padding: const EdgeInsets.all(24),
+    return EvaSurfaceCard(
+      padding: const EdgeInsets.all(22),
+      child: AnimatedSize(
+        duration: const Duration(milliseconds: 220),
+        curve: Curves.easeOutCubic,
+        alignment: Alignment.topCenter,
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.stretch,
           children: [
@@ -267,7 +313,7 @@ class _WelcomeAuthScreenState extends ConsumerState<WelcomeAuthScreen> {
                       borderRadius: BorderRadius.circular(12),
                     ),
                     child: Icon(
-                      Icons.shield_outlined,
+                      Icons.storefront_rounded,
                       color: tokens.brandPrimary,
                     ),
                   ),
@@ -296,6 +342,9 @@ class _WelcomeAuthScreenState extends ConsumerState<WelcomeAuthScreen> {
                 decoration: BoxDecoration(
                   color: tokens.surfaceSubtle,
                   borderRadius: BorderRadius.circular(12),
+                  border: Border.all(
+                    color: tokens.borderSubtle.withValues(alpha: 0.6),
+                  ),
                 ),
                 child: Row(
                   children: [
@@ -323,7 +372,7 @@ class _WelcomeAuthScreenState extends ConsumerState<WelcomeAuthScreen> {
                 ),
               ),
             ],
-            const SizedBox(height: 20),
+            const SizedBox(height: 18),
             if (!_isAdminMode && _isRegister) ...[
               Text(
                 t('choose_avatar_label'),
@@ -343,13 +392,13 @@ class _WelcomeAuthScreenState extends ConsumerState<WelcomeAuthScreen> {
                       },
                       child: EvaAvatar(
                         profilePic: pic,
-                        radius: 28,
+                        radius: 26,
                         isSelected: _selectedPic == pic,
                       ),
                     ),
                 ],
               ),
-              const SizedBox(height: 18),
+              const SizedBox(height: 16),
             ],
             Text(
               t('email_label'),
@@ -416,6 +465,9 @@ class _WelcomeAuthScreenState extends ConsumerState<WelcomeAuthScreen> {
                 decoration: BoxDecoration(
                   color: tokens.statusClosedBg,
                   borderRadius: BorderRadius.circular(10),
+                  border: Border.all(
+                    color: tokens.statusClosedFg.withValues(alpha: 0.3),
+                  ),
                 ),
                 child: Row(
                   children: [
@@ -438,25 +490,27 @@ class _WelcomeAuthScreenState extends ConsumerState<WelcomeAuthScreen> {
                 ),
               ),
             ],
-            const SizedBox(height: 20),
-            FilledButton(
-              onPressed: busy ? null : _submit,
-              child: busy
-                  ? const SizedBox(
-                      width: 20,
-                      height: 20,
-                      child: CircularProgressIndicator(
-                        strokeWidth: 2.2,
-                        color: Colors.white,
+            const SizedBox(height: 18),
+            EvaPressable(
+              child: FilledButton(
+                onPressed: busy ? null : _submit,
+                child: busy
+                    ? const SizedBox(
+                        width: 20,
+                        height: 20,
+                        child: CircularProgressIndicator(
+                          strokeWidth: 2.2,
+                          color: Colors.white,
+                        ),
+                      )
+                    : Text(
+                        _isAdminMode
+                            ? t('sign_in_tab')
+                            : (_isRegister ? t('register_cta') : t('login_cta')),
                       ),
-                    )
-                  : Text(
-                      _isAdminMode
-                          ? t('sign_in_tab')
-                          : (_isRegister ? t('register_cta') : t('login_cta')),
-                    ),
+              ),
             ),
-            const SizedBox(height: 12),
+            const SizedBox(height: 10),
             if (!_isAdminMode)
               OutlinedButton.icon(
                 onPressed: () {
@@ -464,9 +518,13 @@ class _WelcomeAuthScreenState extends ConsumerState<WelcomeAuthScreen> {
                   context.go('/menu');
                 },
                 icon: const Icon(Icons.restaurant_menu_rounded, size: 18),
-                label: Text(t('browse_menu_guest')),
+                label: Text(
+                  t('browse_menu_guest'),
+                  maxLines: 1,
+                  overflow: TextOverflow.ellipsis,
+                ),
               ),
-            const SizedBox(height: 8),
+            const SizedBox(height: 6),
             TextButton.icon(
               onPressed: () => setState(() {
                 _isAdminMode = !_isAdminMode;
@@ -474,14 +532,16 @@ class _WelcomeAuthScreenState extends ConsumerState<WelcomeAuthScreen> {
               }),
               icon: Icon(
                 _isAdminMode
-                    ? Icons.school_outlined
+                    ? Icons.person_outline_rounded
                     : Icons.admin_panel_settings_outlined,
                 size: 18,
               ),
               label: Text(
                 _isAdminMode
-                    ? t('sign_in_tab')
+                    ? t('customer_portal_button')
                     : t('staff_portal_button'),
+                maxLines: 1,
+                overflow: TextOverflow.ellipsis,
               ),
             ),
           ],
@@ -508,16 +568,19 @@ class _ModeTabButton extends StatelessWidget {
     return GestureDetector(
       onTap: onTap,
       child: AnimatedContainer(
-        duration: const Duration(milliseconds: 160),
-        padding: const EdgeInsets.symmetric(vertical: 10),
+        duration: const Duration(milliseconds: 180),
+        curve: Curves.easeOutCubic,
+        padding: const EdgeInsets.symmetric(vertical: 10, horizontal: 8),
         decoration: BoxDecoration(
-          color: selected ? tokens.surfaceCard : Colors.transparent,
+          color: selected ? tokens.surfaceElevated : Colors.transparent,
           borderRadius: BorderRadius.circular(9),
           border: selected ? Border.all(color: tokens.borderSubtle) : null,
         ),
         alignment: Alignment.center,
         child: Text(
           label,
+          maxLines: 1,
+          overflow: TextOverflow.ellipsis,
           style: Theme.of(context).textTheme.labelLarge?.copyWith(
             color: selected ? tokens.textPrimary : tokens.textSecondary,
           ),

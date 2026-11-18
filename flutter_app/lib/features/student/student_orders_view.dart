@@ -22,37 +22,41 @@ class StudentOrdersView extends ConsumerWidget {
     if (user == null || user.role == UserRole.guest) {
       return Center(
         child: Padding(
-          padding: const EdgeInsets.all(32),
+          padding: const EdgeInsets.all(24),
           child: ConstrainedBox(
             constraints: const BoxConstraints(maxWidth: 420),
-            child: Column(
-              mainAxisSize: MainAxisSize.min,
-              children: [
-                Icon(
-                  Icons.confirmation_number_outlined,
-                  size: 56,
-                  color: tokens.brandPrimary,
-                ),
-                const SizedBox(height: 16),
-                Text(
-                  i18n.t('live_pickup_pass'),
-                  style: Theme.of(context).textTheme.headlineSmall,
-                ),
-                const SizedBox(height: 8),
-                Text(
-                  i18n.t('welcome_subtitle'),
-                  textAlign: TextAlign.center,
-                  style: Theme.of(context).textTheme.bodyMedium?.copyWith(
-                    color: tokens.textSecondary,
+            child: EvaSurfaceCard(
+              padding: const EdgeInsets.all(28),
+              child: Column(
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  Icon(
+                    Icons.confirmation_number_outlined,
+                    size: 52,
+                    color: tokens.brandPrimary,
                   ),
-                ),
-                const SizedBox(height: 20),
-                FilledButton.icon(
-                  onPressed: () => context.go('/welcome'),
-                  icon: const Icon(Icons.login_rounded),
-                  label: Text(i18n.t('sign_in_tab')),
-                ),
-              ],
+                  const SizedBox(height: 16),
+                  Text(
+                    i18n.t('live_pickup_pass'),
+                    textAlign: TextAlign.center,
+                    style: Theme.of(context).textTheme.headlineSmall,
+                  ),
+                  const SizedBox(height: 8),
+                  Text(
+                    i18n.t('welcome_subtitle'),
+                    textAlign: TextAlign.center,
+                    style: Theme.of(context).textTheme.bodyMedium?.copyWith(
+                      color: tokens.textSecondary,
+                    ),
+                  ),
+                  const SizedBox(height: 20),
+                  FilledButton.icon(
+                    onPressed: () => context.go('/welcome'),
+                    icon: const Icon(Icons.login_rounded),
+                    label: Text(i18n.t('sign_in_tab')),
+                  ),
+                ],
+              ),
             ),
           ),
         ),
@@ -67,58 +71,100 @@ class StudentOrdersView extends ConsumerWidget {
     if (activeOrder == null && pastOrders.isEmpty) {
       return Center(
         child: Padding(
-          padding: const EdgeInsets.all(32),
-          child: Column(
-            mainAxisSize: MainAxisSize.min,
-            children: [
-              Icon(
-                Icons.receipt_long_outlined,
-                size: 56,
-                color: tokens.textSecondary.withValues(alpha: 0.5),
+          padding: const EdgeInsets.all(24),
+          child: ConstrainedBox(
+            constraints: const BoxConstraints(maxWidth: 380),
+            child: EvaSurfaceCard(
+              padding: const EdgeInsets.all(28),
+              child: Column(
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  Icon(
+                    Icons.receipt_long_outlined,
+                    size: 52,
+                    color: tokens.textSecondary.withValues(alpha: 0.55),
+                  ),
+                  const SizedBox(height: 14),
+                  Text(
+                    i18n.t('no_orders_yet'),
+                    textAlign: TextAlign.center,
+                    style: Theme.of(context).textTheme.titleLarge,
+                  ),
+                  const SizedBox(height: 16),
+                  OutlinedButton.icon(
+                    onPressed: () => context.go('/menu'),
+                    icon: const Icon(Icons.restaurant_menu_rounded, size: 18),
+                    label: Text(i18n.t('nav_menu')),
+                  ),
+                ],
               ),
-              const SizedBox(height: 14),
-              Text(
-                i18n.t('no_orders_yet'),
-                style: Theme.of(context).textTheme.titleLarge,
-              ),
-              const SizedBox(height: 16),
-              OutlinedButton.icon(
-                onPressed: () => context.go('/menu'),
-                icon: const Icon(Icons.restaurant_menu_rounded, size: 18),
-                label: Text(i18n.t('nav_menu')),
-              ),
-            ],
+            ),
           ),
         ),
       );
     }
 
-    return ListView(
-      padding: const EdgeInsets.fromLTRB(16, 16, 16, 36),
+    return Column(
       children: [
-        Center(
-          child: ConstrainedBox(
-            constraints: const BoxConstraints(maxWidth: 720),
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.stretch,
-              children: [
-                if (activeOrder != null) ...[
-                  _LivePickupPassCard(order: activeOrder),
-                  const SizedBox(height: 24),
-                ],
-                if (pastOrders.isNotEmpty) ...[
-                  Text(
-                    i18n.t('past_orders_title'),
-                    style: Theme.of(context).textTheme.titleLarge,
+        EvaGlassBar(
+          padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
+          child: Center(
+            child: ConstrainedBox(
+              constraints: const BoxConstraints(maxWidth: 720),
+              child: Row(
+                children: [
+                  Expanded(
+                    child: Text(
+                      i18n.t('nav_orders'),
+                      maxLines: 1,
+                      overflow: TextOverflow.ellipsis,
+                      style: Theme.of(context).textTheme.headlineSmall,
+                    ),
                   ),
-                  const SizedBox(height: 12),
-                  for (final order in pastOrders) ...[
-                    _PastOrderHistoryCard(order: order),
-                    const SizedBox(height: 12),
-                  ],
+                  const LanguageQuickToggle(),
                 ],
-              ],
+              ),
             ),
+          ),
+        ),
+        Expanded(
+          child: ListView(
+            padding: const EdgeInsets.fromLTRB(16, 16, 16, 36),
+            children: [
+              Center(
+                child: ConstrainedBox(
+                  constraints: const BoxConstraints(maxWidth: 720),
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.stretch,
+                    children: [
+                      if (activeOrder != null) ...[
+                        EvaReveal(
+                          index: 0,
+                          child: _LivePickupPassCard(order: activeOrder),
+                        ),
+                        const SizedBox(height: 24),
+                      ],
+                      if (pastOrders.isNotEmpty) ...[
+                        Text(
+                          i18n.t('past_orders_title'),
+                          style: Theme.of(context).textTheme.titleLarge,
+                        ),
+                        const SizedBox(height: 12),
+                        for (int idx = 0; idx < pastOrders.length; idx++) ...[
+                          EvaReveal(
+                            index: idx + 1,
+                            child: _PastOrderHistoryCard(
+                              order: pastOrders[idx],
+                            ),
+                          ),
+                          const SizedBox(height: 12),
+                        ],
+                      ],
+                    ],
+                  ),
+                ),
+              ),
+            ],
           ),
         ),
       ],
@@ -141,13 +187,12 @@ class _LivePickupPassCard extends ConsumerWidget {
       OrderStatus.delivered => 2,
     };
 
-    return Card(
-      clipBehavior: Clip.antiAlias,
+    return EvaSurfaceCard(
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.stretch,
         children: [
           Container(
-            padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 14),
+            padding: const EdgeInsets.symmetric(horizontal: 18, vertical: 13),
             color: order.status == OrderStatus.delivered
                 ? tokens.statusDeliveredBg
                 : tokens.brandSoftBg,
@@ -165,6 +210,8 @@ class _LivePickupPassCard extends ConsumerWidget {
                 Expanded(
                   child: Text(
                     i18n.t('live_pickup_pass'),
+                    maxLines: 1,
+                    overflow: TextOverflow.ellipsis,
                     style: Theme.of(context).textTheme.titleMedium?.copyWith(
                       color: order.status == OrderStatus.delivered
                           ? tokens.statusDeliveredFg
@@ -172,6 +219,7 @@ class _LivePickupPassCard extends ConsumerWidget {
                     ),
                   ),
                 ),
+                const SizedBox(width: 8),
                 EvaStatusBadge.forOrderStatus(
                   context: context,
                   status: order.status,
@@ -181,14 +229,18 @@ class _LivePickupPassCard extends ConsumerWidget {
             ),
           ),
           Padding(
-            padding: const EdgeInsets.all(24),
+            padding: const EdgeInsets.all(22),
             child: Column(
               children: [
-                Text(
-                  order.pickupNumber,
-                  style: Theme.of(context).textTheme.displayMedium?.copyWith(
-                    fontSize: 48,
-                    color: tokens.textPrimary,
+                AnimatedSwitcher(
+                  duration: const Duration(milliseconds: 220),
+                  child: Text(
+                    order.pickupNumber,
+                    key: ValueKey(order.pickupNumber),
+                    style: Theme.of(context).textTheme.displayMedium?.copyWith(
+                      fontSize: 48,
+                      color: tokens.textPrimary,
+                    ),
                   ),
                 ),
                 const SizedBox(height: 4),
@@ -207,7 +259,7 @@ class _LivePickupPassCard extends ConsumerWidget {
                   textAlign: TextAlign.center,
                   style: Theme.of(context).textTheme.bodySmall,
                 ),
-                const SizedBox(height: 24),
+                const SizedBox(height: 22),
                 _ThreeStageProgress(
                   currentIndex: stepIndex,
                   labels: [
@@ -232,6 +284,7 @@ class _LivePickupPassCard extends ConsumerWidget {
                             style: Theme.of(context).textTheme.bodyMedium,
                           ),
                         ),
+                        const SizedBox(width: 8),
                         Text(
                           i18n.formatPrice(item.price * item.quantity),
                           style: Theme.of(context).textTheme.bodyMedium
@@ -248,11 +301,14 @@ class _LivePickupPassCard extends ConsumerWidget {
                     child: Row(
                       mainAxisAlignment: MainAxisAlignment.spaceBetween,
                       children: [
-                        Text(
-                          i18n.t(disc.nameKey),
-                          style: Theme.of(context).textTheme.bodySmall
-                              ?.copyWith(color: tokens.statusDeliveredFg),
+                        Expanded(
+                          child: Text(
+                            i18n.t(disc.nameKey),
+                            style: Theme.of(context).textTheme.bodySmall
+                                ?.copyWith(color: tokens.statusDeliveredFg),
+                          ),
                         ),
+                        const SizedBox(width: 8),
                         Text(
                           '-${i18n.formatPrice(disc.price.abs())}',
                           style: Theme.of(context).textTheme.bodySmall
@@ -266,12 +322,16 @@ class _LivePickupPassCard extends ConsumerWidget {
                   ),
                 const SizedBox(height: 8),
                 Row(
-                  mainAxisAlignment: MainAxisAlignment.spaceBetween,
                   children: [
-                    Text(
-                      '${i18n.t('total_label')} (${i18n.t('payment_${order.paymentMethod}')})',
-                      style: Theme.of(context).textTheme.titleMedium,
+                    Expanded(
+                      child: Text(
+                        '${i18n.t('total_label')} (${i18n.t('payment_${order.paymentMethod}')})',
+                        maxLines: 1,
+                        overflow: TextOverflow.ellipsis,
+                        style: Theme.of(context).textTheme.titleMedium,
+                      ),
                     ),
+                    const SizedBox(width: 10),
                     Text(
                       i18n.formatPrice(order.totalAmount),
                       style: Theme.of(context).textTheme.titleLarge?.copyWith(
@@ -302,7 +362,7 @@ class _ThreeStageProgress extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final tokens = EvaTokens.of(context);
-    final icons = const [
+    const icons = [
       Icons.receipt_rounded,
       Icons.soup_kitchen_rounded,
       Icons.check_circle_rounded,
@@ -315,7 +375,8 @@ class _ThreeStageProgress extends StatelessWidget {
             child: Column(
               children: [
                 AnimatedContainer(
-                  duration: const Duration(milliseconds: 240),
+                  duration: const Duration(milliseconds: 260),
+                  curve: Curves.easeOutCubic,
                   width: 38,
                   height: 38,
                   decoration: BoxDecoration(
@@ -325,6 +386,11 @@ class _ThreeStageProgress extends StatelessWidget {
                               ? tokens.statusDeliveredFg
                               : tokens.brandPrimary)
                         : tokens.surfaceSubtle,
+                    border: Border.all(
+                      color: i <= currentIndex
+                          ? Colors.transparent
+                          : tokens.borderSubtle,
+                    ),
                   ),
                   child: Icon(
                     icons[i],
@@ -337,6 +403,8 @@ class _ThreeStageProgress extends StatelessWidget {
                 const SizedBox(height: 6),
                 Text(
                   labels[i],
+                  maxLines: 1,
+                  overflow: TextOverflow.ellipsis,
                   textAlign: TextAlign.center,
                   style: Theme.of(context).textTheme.labelSmall?.copyWith(
                     color: i <= currentIndex
@@ -352,7 +420,9 @@ class _ThreeStageProgress extends StatelessWidget {
           ),
           if (i < 2)
             Expanded(
-              child: Container(
+              child: AnimatedContainer(
+                duration: const Duration(milliseconds: 280),
+                curve: Curves.easeOutCubic,
                 height: 3,
                 margin: const EdgeInsets.only(bottom: 20),
                 decoration: BoxDecoration(
@@ -386,77 +456,79 @@ class _PastOrderHistoryCard extends ConsumerWidget {
       'dd MMM yyyy • HH:mm',
     ).format(order.timestamp.toLocal());
 
-    return Card(
-      child: Padding(
-        padding: const EdgeInsets.all(16),
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            Row(
-              children: [
-                Text(
-                  order.pickupNumber,
-                  style: Theme.of(context).textTheme.titleLarge?.copyWith(
-                    fontFeatures: EvaThemeBuilder.tabularNums,
-                  ),
+    return EvaSurfaceCard(
+      padding: const EdgeInsets.all(16),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Row(
+            children: [
+              Text(
+                order.pickupNumber,
+                style: Theme.of(context).textTheme.titleLarge?.copyWith(
+                  fontFeatures: EvaThemeBuilder.tabularNums,
                 ),
-                const SizedBox(width: 10),
-                Expanded(
-                  child: Text(
-                    formattedDate,
-                    style: Theme.of(context).textTheme.bodySmall,
-                  ),
+              ),
+              const SizedBox(width: 10),
+              Expanded(
+                child: Text(
+                  formattedDate,
+                  maxLines: 1,
+                  overflow: TextOverflow.ellipsis,
+                  style: Theme.of(context).textTheme.bodySmall,
                 ),
-                EvaStatusBadge.forOrderStatus(
-                  context: context,
-                  status: order.status,
-                  label: i18n.t('status_${order.status.name}'),
-                ),
-              ],
-            ),
-            const SizedBox(height: 10),
-            Text(
-              order.regularItems
-                  .map((i) => '${i.quantity}× ${i18n.t(i.nameKey)}')
-                  .join(' • '),
-              style: Theme.of(context).textTheme.bodyMedium,
-            ),
-            const SizedBox(height: 12),
-            Row(
-              children: [
-                Text(
+              ),
+              const SizedBox(width: 8),
+              EvaStatusBadge.forOrderStatus(
+                context: context,
+                status: order.status,
+                label: i18n.t('status_${order.status.name}'),
+              ),
+            ],
+          ),
+          const SizedBox(height: 10),
+          Text(
+            order.regularItems
+                .map((i) => '${i.quantity}× ${i18n.t(i.nameKey)}')
+                .join(' • '),
+            style: Theme.of(context).textTheme.bodyMedium,
+          ),
+          const SizedBox(height: 12),
+          Row(
+            children: [
+              Expanded(
+                child: Text(
                   i18n.formatPrice(order.totalAmount),
                   style: Theme.of(context).textTheme.titleMedium?.copyWith(
                     fontFeatures: EvaThemeBuilder.tabularNums,
                   ),
                 ),
-                const Spacer(),
-                OutlinedButton.icon(
-                  onPressed: () {
-                    HapticFeedback.lightImpact();
-                    final added = ref
-                        .read(cartProvider.notifier)
-                        .reorderAvailableItems(order, productsById);
-                    ScaffoldMessenger.of(context).showSnackBar(
-                      SnackBar(
-                        content: Text(
-                          added > 0
-                              ? i18n.t('reordered_toast')
-                              : i18n.t('out_of_stock'),
-                        ),
+              ),
+              OutlinedButton.icon(
+                onPressed: () {
+                  HapticFeedback.lightImpact();
+                  final added = ref
+                      .read(cartProvider.notifier)
+                      .reorderAvailableItems(order, productsById);
+                  ScaffoldMessenger.of(context).showSnackBar(
+                    SnackBar(
+                      content: Text(
+                        added > 0
+                            ? i18n.t('reordered_toast')
+                            : i18n.t('out_of_stock'),
                       ),
-                    );
-                    if (added > 0) {
-                      context.go('/menu');
-                    }
-                  },
-                  icon: const Icon(Icons.replay_rounded, size: 17),
-                  label: Text(i18n.t('reorder_button')),
-                ),
-              ],
-            ),
-          ],
-        ),
+                    ),
+                  );
+                  if (added > 0) {
+                    context.go('/menu');
+                  }
+                },
+                icon: const Icon(Icons.replay_rounded, size: 17),
+                label: Text(i18n.t('reorder_button')),
+              ),
+            ],
+          ),
+        ],
       ),
     );
   }

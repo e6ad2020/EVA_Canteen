@@ -1,6 +1,6 @@
-import 'package:flutter/foundation.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
+import 'package:material_ui/material_ui.dart';
 
 import '../core/models/domain_models.dart';
 import '../core/state/canteen_providers.dart';
@@ -54,9 +54,27 @@ final appRouterProvider = Provider<GoRouter>((ref) {
     routes: [
       GoRoute(
         path: '/welcome',
-        builder: (context, state) {
+        pageBuilder: (context, state) {
           final isAdmin = state.uri.queryParameters['admin'] == '1';
-          return WelcomeAuthScreen(initialAdminMode: isAdmin);
+          return CustomTransitionPage<void>(
+            key: state.pageKey,
+            transitionDuration: const Duration(milliseconds: 240),
+            reverseTransitionDuration: const Duration(milliseconds: 200),
+            child: WelcomeAuthScreen(initialAdminMode: isAdmin),
+            transitionsBuilder: (context, animation, secondaryAnimation, child) {
+              final curved = CurvedAnimation(
+                parent: animation,
+                curve: Curves.easeOutCubic,
+              );
+              return FadeTransition(
+                opacity: curved,
+                child: ScaleTransition(
+                  scale: Tween<double>(begin: 0.985, end: 1.0).animate(curved),
+                  child: child,
+                ),
+              );
+            },
+          );
         },
       ),
       StatefulShellRoute.indexedStack(
