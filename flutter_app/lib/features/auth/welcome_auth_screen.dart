@@ -126,15 +126,15 @@ class _WelcomeAuthScreenState extends ConsumerState<WelcomeAuthScreen> {
                           physics: const ClampingScrollPhysics(),
                           padding: EdgeInsets.fromLTRB(
                             horizontalPad,
-                            isWide ? 40 : 38,
+                            isWide ? 32 : 28,
                             horizontalPad,
-                            isWide ? 28 : 18,
+                            isWide ? 24 : 18,
                           ),
                           child: ConstrainedBox(
                             constraints: BoxConstraints(
                               minHeight: math.max(
                                 0,
-                                viewport.maxHeight - (isWide ? 68 : 56),
+                                viewport.maxHeight - (isWide ? 56 : 46),
                               ),
                             ),
                             child: Center(
@@ -152,7 +152,7 @@ class _WelcomeAuthScreenState extends ConsumerState<WelcomeAuthScreen> {
                                       index: 1,
                                       child: _SimpleBrandHeader(isWide: isWide),
                                     ),
-                                    SizedBox(height: isWide ? 18 : 14),
+                                    SizedBox(height: isWide ? 14 : 10),
 
                                     // Centered Auth Card
                                     EvaReveal(
@@ -206,6 +206,66 @@ class _WelcomeAuthScreenState extends ConsumerState<WelcomeAuthScreen> {
     );
   }
 
+  Widget _buildAnimatedHeaderContent(
+    BuildContext context,
+    EvaTokens tokens,
+    String Function(String, [Map<String, String>?]) t,
+  ) {
+    if (_isAdminMode) {
+      return Column(
+        key: const ValueKey('auth_header_admin'),
+        crossAxisAlignment: CrossAxisAlignment.center,
+        children: [
+          Container(
+            width: 44,
+            height: 44,
+            decoration: BoxDecoration(
+              color: tokens.brandSoftBg,
+              borderRadius: BorderRadius.circular(13),
+            ),
+            child: Icon(
+              Icons.storefront_rounded,
+              color: tokens.brandPrimary,
+              size: 22,
+            ),
+          ),
+          const SizedBox(height: 10),
+          Text(
+            t('admin_portal_title'),
+            textAlign: TextAlign.center,
+            maxLines: 1,
+            overflow: TextOverflow.ellipsis,
+            style: Theme.of(context).textTheme.titleLarge,
+          ),
+          const SizedBox(height: 3),
+          Text(
+            t('admin_signin_subtitle'),
+            textAlign: TextAlign.center,
+            style: Theme.of(context).textTheme.bodySmall,
+          ),
+        ],
+      );
+    }
+
+    return Column(
+      key: ValueKey('auth_header_student_$_isRegister'),
+      crossAxisAlignment: CrossAxisAlignment.center,
+      children: [
+        Text(
+          _isRegister ? t('auth_create_title') : t('auth_welcome_back'),
+          textAlign: TextAlign.center,
+          style: Theme.of(context).textTheme.headlineSmall,
+        ),
+        const SizedBox(height: 4),
+        Text(
+          _isRegister ? t('auth_register_sub') : t('auth_signin_sub'),
+          textAlign: TextAlign.center,
+          style: Theme.of(context).textTheme.bodySmall,
+        ),
+      ],
+    );
+  }
+
   Widget _buildAuthColumn(
     BuildContext context,
     EvaTokens tokens,
@@ -213,6 +273,16 @@ class _WelcomeAuthScreenState extends ConsumerState<WelcomeAuthScreen> {
     bool busy, {
     required bool isWide,
   }) {
+    final isRtl = Directionality.of(context) == TextDirection.rtl;
+    final disableMotion = MediaQuery.maybeDisableAnimationsOf(context) ?? false;
+    final headerSwitchDuration = disableMotion
+        ? Duration.zero
+        : const Duration(milliseconds: 230);
+    final sectionAnimDuration = disableMotion
+        ? Duration.zero
+        : const Duration(milliseconds: 240);
+    final showRegisterFields = !_isAdminMode && _isRegister;
+
     return Column(
       crossAxisAlignment: CrossAxisAlignment.stretch,
       children: [
@@ -222,136 +292,105 @@ class _WelcomeAuthScreenState extends ConsumerState<WelcomeAuthScreen> {
           padding: EdgeInsets.all(isWide ? 28 : 20),
           child: AutofillGroup(
             child: AnimatedSize(
-              duration: const Duration(milliseconds: 200),
+              duration: sectionAnimDuration,
               curve: Curves.easeOutCubic,
               alignment: Alignment.topCenter,
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.stretch,
                 children: [
-                  if (_isAdminMode) ...[
-                    Row(
-                      children: [
-                        Container(
-                          width: 44,
-                          height: 44,
-                          decoration: BoxDecoration(
-                            color: tokens.brandSoftBg,
-                            borderRadius: BorderRadius.circular(13),
-                          ),
-                          child: Icon(
-                            Icons.storefront_rounded,
-                            color: tokens.brandPrimary,
-                            size: 22,
-                          ),
+                  AnimatedSwitcher(
+                    duration: headerSwitchDuration,
+                    switchInCurve: Curves.easeOutCubic,
+                    switchOutCurve: Curves.easeInCubic,
+                    layoutBuilder: (currentChild, previousChildren) => Stack(
+                      alignment: Alignment.center,
+                      children: [...previousChildren, ?currentChild],
+                    ),
+                    transitionBuilder: (child, anim) {
+                      final isIncomingAdmin =
+                          child.key == const ValueKey('auth_header_admin');
+                      final isIncomingRegister =
+                          child.key == const ValueKey('auth_header_student_true');
+                      final forward = _isAdminMode
+                          ? isIncomingAdmin
+                          : (_isRegister ? isIncomingRegister : !isIncomingRegister);
+                      final dir = (forward ? 1.0 : -1.0) * (isRtl ? -1.0 : 1.0);
+                      final isIncoming = anim.status != AnimationStatus.reverse;
+                      final offsetTween = Tween<Offset>(
+                        begin: Offset(isIncoming ? 0.08 * dir : -0.08 * dir, 0),
+                        end: Offset.zero,
+                      );
+                      return FadeTransition(
+                        opacity: anim,
+                        child: SlideTransition(
+                          position: offsetTween.animate(anim),
+                          child: child,
                         ),
-                        const SizedBox(width: 12),
-                        Expanded(
-                          child: Column(
-                            crossAxisAlignment: CrossAxisAlignment.start,
-                            children: [
-                              Text(
-                                t('admin_portal_title'),
-                                maxLines: 1,
-                                overflow: TextOverflow.ellipsis,
-                                style: Theme.of(context).textTheme.titleLarge,
-                              ),
-                              const SizedBox(height: 2),
-                              Text(
-                                t('admin_signin_subtitle'),
-                                style: Theme.of(context).textTheme.bodySmall,
-                              ),
-                            ],
-                          ),
-                        ),
-                      ],
-                    ),
-                  ] else ...[
-                    Text(
-                      _isRegister
-                          ? t('auth_create_title')
-                          : t('auth_welcome_back'),
-                      style: Theme.of(context).textTheme.headlineSmall,
-                    ),
-                    const SizedBox(height: 4),
-                    Text(
-                      _isRegister
-                          ? t('auth_register_sub')
-                          : t('auth_signin_sub'),
-                      style: Theme.of(context).textTheme.bodySmall,
-                    ),
+                      );
+                    },
+                    child: _buildAnimatedHeaderContent(context, tokens, t),
+                  ),
+
+                  if (!_isAdminMode) ...[
                     const SizedBox(height: 16),
-                    Container(
-                      padding: const EdgeInsets.all(4),
-                      decoration: BoxDecoration(
-                        color: tokens.surfaceSubtle,
-                        borderRadius: BorderRadius.circular(14),
-                        border: Border.all(
-                          color: tokens.borderSubtle.withValues(alpha: 0.7),
-                        ),
-                      ),
-                      child: Row(
-                        children: [
-                          Expanded(
-                            child: _ModeTabButton(
-                              label: t('sign_in_tab'),
-                              selected: !_isRegister,
-                              onTap: () {
-                                HapticFeedback.selectionClick();
-                                setState(() {
-                                  _isRegister = false;
-                                  _errorText = null;
-                                });
-                              },
-                            ),
-                          ),
-                          Expanded(
-                            child: _ModeTabButton(
-                              label: t('register_tab'),
-                              selected: _isRegister,
-                              onTap: () {
-                                HapticFeedback.selectionClick();
-                                setState(() {
-                                  _isRegister = true;
-                                  _errorText = null;
-                                });
-                              },
-                            ),
-                          ),
-                        ],
-                      ),
+                    _AuthModeSegmentedBar(
+                      signInLabel: t('sign_in_tab'),
+                      registerLabel: t('register_tab'),
+                      isRegister: _isRegister,
+                      onSelect: (register) {
+                        if (_isRegister == register) return;
+                        HapticFeedback.selectionClick();
+                        setState(() {
+                          _isRegister = register;
+                          _errorText = null;
+                        });
+                      },
                     ),
                   ],
 
                   const SizedBox(height: 18),
 
-                  if (!_isAdminMode && _isRegister) ...[
-                    Text(
-                      t('choose_avatar_label'),
-                      style: Theme.of(context).textTheme.labelMedium?.copyWith(
-                        color: tokens.textSecondary,
-                      ),
-                    ),
-                    const SizedBox(height: 8),
-                    Row(
-                      children: [
-                        for (int i = 0; i < 3; i++) ...[
-                          if (i > 0) const SizedBox(width: 10),
-                          Expanded(
-                            child: _AvatarChoiceTile(
-                              picKey: 'pic${i + 1}',
-                              selected: _selectedPic == 'pic${i + 1}',
-                              tokens: tokens,
-                              onTap: () {
-                                HapticFeedback.selectionClick();
-                                setState(() => _selectedPic = 'pic${i + 1}');
-                              },
-                            ),
-                          ),
-                        ],
-                      ],
-                    ),
-                    const SizedBox(height: 16),
-                  ],
+                  AnimatedSize(
+                    duration: sectionAnimDuration,
+                    curve: Curves.easeOutCubic,
+                    alignment: Alignment.topCenter,
+                    child: showRegisterFields
+                        ? Column(
+                            key: const ValueKey('register_avatar_section'),
+                            crossAxisAlignment: CrossAxisAlignment.stretch,
+                            children: [
+                              Text(
+                                t('choose_avatar_label'),
+                                style: Theme.of(context).textTheme.labelMedium
+                                    ?.copyWith(color: tokens.textSecondary),
+                              ),
+                              const SizedBox(height: 8),
+                              Row(
+                                children: [
+                                  for (int i = 0; i < 3; i++) ...[
+                                    if (i > 0) const SizedBox(width: 10),
+                                    Expanded(
+                                      child: _AvatarChoiceTile(
+                                        picKey: 'pic${i + 1}',
+                                        selected:
+                                            _selectedPic == 'pic${i + 1}',
+                                        tokens: tokens,
+                                        onTap: () {
+                                          HapticFeedback.selectionClick();
+                                          setState(
+                                            () => _selectedPic = 'pic${i + 1}',
+                                          );
+                                        },
+                                      ),
+                                    ),
+                                  ],
+                                ],
+                              ),
+                              const SizedBox(height: 16),
+                            ],
+                          )
+                        : const SizedBox.shrink(),
+                  ),
 
                   Text(
                     t('email_label'),
@@ -387,7 +426,7 @@ class _WelcomeAuthScreenState extends ConsumerState<WelcomeAuthScreen> {
                           ? AutofillHints.newPassword
                           : AutofillHints.password,
                     ],
-                    textInputAction: !_isAdminMode && _isRegister
+                    textInputAction: showRegisterFields
                         ? TextInputAction.next
                         : TextInputAction.done,
                     onSubmitted: (_) {
@@ -413,27 +452,38 @@ class _WelcomeAuthScreenState extends ConsumerState<WelcomeAuthScreen> {
                     ),
                   ),
 
-                  if (!_isAdminMode && _isRegister) ...[
-                    const SizedBox(height: 14),
-                    Text(
-                      t('confirm_password_label'),
-                      style: Theme.of(context).textTheme.labelMedium,
-                    ),
-                    const SizedBox(height: 6),
-                    TextField(
-                      controller: _confirmCtrl,
-                      obscureText: _obscurePassword,
-                      textInputAction: TextInputAction.done,
-                      onSubmitted: (_) => _submit(),
-                      decoration: const InputDecoration(
-                        hintText: '••••••••',
-                        prefixIcon: Icon(
-                          Icons.verified_user_outlined,
-                          size: 19,
-                        ),
-                      ),
-                    ),
-                  ],
+                  AnimatedSize(
+                    duration: sectionAnimDuration,
+                    curve: Curves.easeOutCubic,
+                    alignment: Alignment.topCenter,
+                    child: showRegisterFields
+                        ? Column(
+                            key: const ValueKey('register_confirm_section'),
+                            crossAxisAlignment: CrossAxisAlignment.stretch,
+                            children: [
+                              const SizedBox(height: 14),
+                              Text(
+                                t('confirm_password_label'),
+                                style: Theme.of(context).textTheme.labelMedium,
+                              ),
+                              const SizedBox(height: 6),
+                              TextField(
+                                controller: _confirmCtrl,
+                                obscureText: _obscurePassword,
+                                textInputAction: TextInputAction.done,
+                                onSubmitted: (_) => _submit(),
+                                decoration: const InputDecoration(
+                                  hintText: '••••••••',
+                                  prefixIcon: Icon(
+                                    Icons.verified_user_outlined,
+                                    size: 19,
+                                  ),
+                                ),
+                              ),
+                            ],
+                          )
+                        : const SizedBox.shrink(),
+                  ),
 
                   if (_errorText != null) ...[
                     const SizedBox(height: 14),
@@ -484,26 +534,34 @@ class _WelcomeAuthScreenState extends ConsumerState<WelcomeAuthScreen> {
                                   color: tokens.brandOnPrimary,
                                 ),
                               )
-                            : Row(
-                                mainAxisAlignment: MainAxisAlignment.center,
-                                children: [
-                                  Flexible(
-                                    child: Text(
-                                      _isAdminMode
-                                          ? t('sign_in_tab')
-                                          : (_isRegister
-                                                ? t('register_cta')
-                                                : t('login_cta')),
-                                      maxLines: 1,
-                                      overflow: TextOverflow.ellipsis,
+                            : AnimatedSwitcher(
+                                duration: headerSwitchDuration,
+                                switchInCurve: Curves.easeOutCubic,
+                                switchOutCurve: Curves.easeInCubic,
+                                child: Row(
+                                  key: ValueKey(
+                                    'cta_${_isAdminMode}_$_isRegister',
+                                  ),
+                                  mainAxisAlignment: MainAxisAlignment.center,
+                                  children: [
+                                    Flexible(
+                                      child: Text(
+                                        _isAdminMode
+                                            ? t('sign_in_tab')
+                                            : (_isRegister
+                                                  ? t('register_cta')
+                                                  : t('login_cta')),
+                                        maxLines: 1,
+                                        overflow: TextOverflow.ellipsis,
+                                      ),
                                     ),
-                                  ),
-                                  const SizedBox(width: 8),
-                                  const Icon(
-                                    Icons.arrow_forward_rounded,
-                                    size: 18,
-                                  ),
-                                ],
+                                    const SizedBox(width: 8),
+                                    const Icon(
+                                      Icons.arrow_forward_rounded,
+                                      size: 18,
+                                    ),
+                                  ],
+                                ),
                               ),
                       ),
                     ),
@@ -534,14 +592,14 @@ class _WelcomeAuthScreenState extends ConsumerState<WelcomeAuthScreen> {
             ),
           ),
         ),
-        const SizedBox(height: 10),
+        const SizedBox(height: 12),
         Wrap(
           alignment: WrapAlignment.center,
           crossAxisAlignment: WrapCrossAlignment.center,
-          spacing: 6,
-          runSpacing: 4,
+          spacing: 10,
+          runSpacing: 8,
           children: [
-            TextButton.icon(
+            OutlinedButton.icon(
               onPressed: () {
                 HapticFeedback.selectionClick();
                 setState(() {
@@ -549,18 +607,31 @@ class _WelcomeAuthScreenState extends ConsumerState<WelcomeAuthScreen> {
                   _errorText = null;
                 });
               },
-              style: TextButton.styleFrom(
-                foregroundColor: tokens.textSecondary,
+              style: OutlinedButton.styleFrom(
+                foregroundColor: tokens.textPrimary,
+                backgroundColor: tokens.surfaceElevated.withValues(
+                  alpha: tokens.isNight ? 0.72 : 0.88,
+                ),
+                side: BorderSide(
+                  color: tokens.borderSubtle,
+                  width: math.max(tokens.borderWidth, 1.0),
+                ),
+                shape: const StadiumBorder(),
+                minimumSize: const Size(0, 38),
                 padding: const EdgeInsets.symmetric(
-                  horizontal: 12,
+                  horizontal: 14,
                   vertical: 8,
+                ),
+                tapTargetSize: MaterialTapTargetSize.shrinkWrap,
+                textStyle: Theme.of(context).textTheme.labelMedium?.copyWith(
+                  fontWeight: FontWeight.w600,
                 ),
               ),
               icon: Icon(
                 _isAdminMode
                     ? Icons.person_outline_rounded
                     : Icons.storefront_outlined,
-                size: 17,
+                size: 16,
               ),
               label: Text(
                 _isAdminMode
@@ -570,16 +641,29 @@ class _WelcomeAuthScreenState extends ConsumerState<WelcomeAuthScreen> {
                 overflow: TextOverflow.ellipsis,
               ),
             ),
-            TextButton.icon(
+            OutlinedButton.icon(
               onPressed: () {
                 HapticFeedback.lightImpact();
                 ref.read(appPreferencesProvider.notifier).toggleLanguage();
               },
-              style: TextButton.styleFrom(
-                foregroundColor: tokens.textSecondary,
+              style: OutlinedButton.styleFrom(
+                foregroundColor: tokens.textPrimary,
+                backgroundColor: tokens.surfaceElevated.withValues(
+                  alpha: tokens.isNight ? 0.72 : 0.88,
+                ),
+                side: BorderSide(
+                  color: tokens.borderSubtle,
+                  width: math.max(tokens.borderWidth, 1.0),
+                ),
+                shape: const StadiumBorder(),
+                minimumSize: const Size(0, 38),
                 padding: const EdgeInsets.symmetric(
-                  horizontal: 10,
+                  horizontal: 14,
                   vertical: 8,
+                ),
+                tapTargetSize: MaterialTapTargetSize.shrinkWrap,
+                textStyle: Theme.of(context).textTheme.labelMedium?.copyWith(
+                  fontWeight: FontWeight.w700,
                 ),
               ),
               icon: const Icon(Icons.translate_rounded, size: 15),
@@ -606,7 +690,92 @@ class _SimpleBrandHeader extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return Center(
-      child: EvaBrandLogo(size: isWide ? 232 : 204, hero: true),
+      child: EvaBrandLogo(size: isWide ? 276 : 248, hero: true),
+    );
+  }
+}
+
+/// Sliding pill segmented tab switcher between "Sign in" and "Create account".
+class _AuthModeSegmentedBar extends StatelessWidget {
+  const _AuthModeSegmentedBar({
+    required this.signInLabel,
+    required this.registerLabel,
+    required this.isRegister,
+    required this.onSelect,
+  });
+
+  final String signInLabel;
+  final String registerLabel;
+  final bool isRegister;
+  final ValueChanged<bool> onSelect;
+
+  @override
+  Widget build(BuildContext context) {
+    final tokens = EvaTokens.of(context);
+    final disableMotion = MediaQuery.maybeDisableAnimationsOf(context) ?? false;
+    final duration = disableMotion
+        ? Duration.zero
+        : const Duration(milliseconds: 240);
+
+    return Container(
+      height: 46,
+      padding: const EdgeInsets.all(4),
+      decoration: BoxDecoration(
+        color: tokens.surfaceSubtle,
+        borderRadius: BorderRadius.circular(14),
+        border: Border.all(
+          color: tokens.borderSubtle.withValues(alpha: 0.7),
+        ),
+      ),
+      child: Stack(
+        children: [
+          AnimatedAlign(
+            duration: duration,
+            curve: Curves.easeOutCubic,
+            alignment: isRegister
+                ? AlignmentDirectional.centerEnd
+                : AlignmentDirectional.centerStart,
+            child: FractionallySizedBox(
+              widthFactor: 0.5,
+              heightFactor: 1.0,
+              child: DecoratedBox(
+                decoration: BoxDecoration(
+                  color: tokens.surfaceElevated,
+                  borderRadius: BorderRadius.circular(10),
+                  border: Border.all(color: tokens.borderSubtle),
+                  boxShadow: tokens.isNight
+                      ? null
+                      : [
+                          BoxShadow(
+                            color: tokens.brandPrimary.withValues(alpha: 0.08),
+                            blurRadius: 8,
+                            offset: const Offset(0, 2),
+                          ),
+                        ],
+                ),
+              ),
+            ),
+          ),
+          Row(
+            children: [
+              Expanded(
+                child: _ModeTabButton(
+                  label: signInLabel,
+                  selected: !isRegister,
+                  onTap: () => onSelect(false),
+                ),
+              ),
+              Expanded(
+                child: _ModeTabButton(
+                  label: registerLabel,
+                  selected: isRegister,
+                  onTap: () => onSelect(true),
+                ),
+              ),
+            ],
+          ),
+        ],
+      ),
     );
   }
 }
@@ -689,25 +858,25 @@ class _ModeTabButton extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final tokens = EvaTokens.of(context);
+    final baseStyle = Theme.of(context).textTheme.labelLarge ?? const TextStyle();
     return GestureDetector(
+      behavior: HitTestBehavior.opaque,
       onTap: onTap,
-      child: AnimatedContainer(
-        duration: const Duration(milliseconds: 170),
-        curve: Curves.easeOutCubic,
-        padding: const EdgeInsets.symmetric(vertical: 10, horizontal: 8),
-        decoration: BoxDecoration(
-          color: selected ? tokens.surfaceElevated : Colors.transparent,
-          borderRadius: BorderRadius.circular(10),
-          border: selected ? Border.all(color: tokens.borderSubtle) : null,
-        ),
-        alignment: Alignment.center,
-        child: Text(
-          label,
-          maxLines: 1,
-          overflow: TextOverflow.ellipsis,
-          style: Theme.of(context).textTheme.labelLarge?.copyWith(
-            color: selected ? tokens.textPrimary : tokens.textSecondary,
-            fontWeight: selected ? FontWeight.w700 : FontWeight.w600,
+      child: Center(
+        child: Padding(
+          padding: const EdgeInsets.symmetric(horizontal: 8),
+          child: AnimatedDefaultTextStyle(
+            duration: const Duration(milliseconds: 180),
+            curve: Curves.easeOutCubic,
+            style: baseStyle.copyWith(
+              color: selected ? tokens.textPrimary : tokens.textSecondary,
+              fontWeight: selected ? FontWeight.w700 : FontWeight.w600,
+            ),
+            child: Text(
+              label,
+              maxLines: 1,
+              overflow: TextOverflow.ellipsis,
+            ),
           ),
         ),
       ),

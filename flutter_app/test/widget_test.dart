@@ -1011,7 +1011,7 @@ void main() {
       );
       await tester.pumpAndSettle();
 
-      // 1. Verify status badge is at top-left and logo is enlarged hero (204dp wide) on 360x800 phone
+      // 1. Verify status badge is at top-left, logo is enlarged hero (248dp wide), title is centered, and footer buttons are stroked on 360x800 phone
       final statusRect = tester.getRect(
         find.byKey(const ValueKey('welcome_status_top_left')),
       );
@@ -1022,9 +1022,26 @@ void main() {
       final logoFinder = find.byType(EvaBrandLogo);
       expect(logoFinder, findsOneWidget);
       final logoSize = tester.getSize(logoFinder);
-      expect(logoSize.width, 204.0);
-      expect(logoSize.height, closeTo(204.0 * 0.72, 0.5));
+      expect(logoSize.width, 248.0);
+      expect(logoSize.height, closeTo(248.0 * 0.72, 0.5));
       expect(tester.widget<EvaBrandLogo>(logoFinder).hero, isTrue);
+
+      final titleWidget = tester.widget<Text>(find.text('Welcome back'));
+      expect(titleWidget.textAlign, TextAlign.center);
+      expect(
+        find.ancestor(
+          of: find.text('Staff & kitchen portal'),
+          matching: find.byType(OutlinedButton),
+        ),
+        findsOneWidget,
+      );
+      expect(
+        find.ancestor(
+          of: find.text('عربي'),
+          matching: find.byType(OutlinedButton),
+        ),
+        findsOneWidget,
+      );
 
       // 2. Sign in as a customer (balance 50 L.E) with 5 distinct items in cart
       SharedPreferences.setMockInitialValues({

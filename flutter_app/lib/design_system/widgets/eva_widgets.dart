@@ -1977,16 +1977,21 @@ class EvaBrandLogo extends StatelessWidget {
         child: SizedBox(
           width: size,
           height: size * 0.72,
-          child: Image.asset(
-            'assets/images/logo.png',
-            fit: BoxFit.contain,
-            cacheWidth: cachePx,
-            gaplessPlayback: true,
-            filterQuality: FilterQuality.medium,
-            errorBuilder: (_, _, _) => Icon(
-              Icons.restaurant_menu_rounded,
-              color: tokens.brandPrimary,
-              size: size * 0.5,
+          child: ClipRect(
+            child: Image.asset(
+              'assets/images/logo.png',
+              width: size,
+              height: size * 0.72,
+              fit: BoxFit.fitWidth,
+              alignment: Alignment.center,
+              cacheWidth: cachePx,
+              gaplessPlayback: true,
+              filterQuality: FilterQuality.medium,
+              errorBuilder: (_, _, _) => Icon(
+                Icons.restaurant_menu_rounded,
+                color: tokens.brandPrimary,
+                size: size * 0.5,
+              ),
             ),
           ),
         ),
