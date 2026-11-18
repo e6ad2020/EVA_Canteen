@@ -106,69 +106,70 @@ class StudentOrdersView extends ConsumerWidget {
       );
     }
 
-    return Column(
-      children: [
-        EvaGlassBar(
-          padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
-          child: Center(
+    return EvaFloatingHeaderScaffold(
+      initialHeaderHeight: 66.0,
+      headerBuilder: (context, isScrolled) => EvaGlassBar(
+        isScrolled: isScrolled,
+        padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
+        child: Center(
+          child: ConstrainedBox(
+            constraints: const BoxConstraints(maxWidth: 720),
+            child: Row(
+              children: [
+                Expanded(
+                  child: Text(
+                    i18n.t('nav_orders'),
+                    maxLines: 1,
+                    overflow: TextOverflow.ellipsis,
+                    style: Theme.of(context).textTheme.headlineSmall,
+                  ),
+                ),
+              ],
+            ),
+          ),
+        ),
+      ),
+      bodyBuilder: (context, topClearance, _) => ListView(
+        padding: EdgeInsets.fromLTRB(
+          16,
+          topClearance + 8,
+          16,
+          28 + navClearance,
+        ),
+        children: [
+          Center(
             child: ConstrainedBox(
               constraints: const BoxConstraints(maxWidth: 720),
-              child: Row(
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.stretch,
                 children: [
-                  Expanded(
-                    child: Text(
-                      i18n.t('nav_orders'),
-                      maxLines: 1,
-                      overflow: TextOverflow.ellipsis,
-                      style: Theme.of(context).textTheme.headlineSmall,
+                  if (activeOrder != null) ...[
+                    EvaReveal(
+                      index: 0,
+                      child: _LivePickupPassCard(order: activeOrder),
                     ),
-                  ),
+                    const SizedBox(height: 24),
+                  ],
+                  if (pastOrders.isNotEmpty) ...[
+                    Text(
+                      i18n.t('past_orders_title'),
+                      style: Theme.of(context).textTheme.titleLarge,
+                    ),
+                    const SizedBox(height: 12),
+                    for (int idx = 0; idx < pastOrders.length; idx++) ...[
+                      EvaReveal(
+                        index: idx + 1,
+                        child: _PastOrderHistoryCard(order: pastOrders[idx]),
+                      ),
+                      const SizedBox(height: 12),
+                    ],
+                  ],
                 ],
               ),
             ),
           ),
-        ),
-        Expanded(
-          child: ListView(
-            padding: EdgeInsets.fromLTRB(16, 16, 16, 28 + navClearance),
-            children: [
-              Center(
-                child: ConstrainedBox(
-                  constraints: const BoxConstraints(maxWidth: 720),
-                  child: Column(
-                    crossAxisAlignment: CrossAxisAlignment.stretch,
-                    children: [
-                      if (activeOrder != null) ...[
-                        EvaReveal(
-                          index: 0,
-                          child: _LivePickupPassCard(order: activeOrder),
-                        ),
-                        const SizedBox(height: 24),
-                      ],
-                      if (pastOrders.isNotEmpty) ...[
-                        Text(
-                          i18n.t('past_orders_title'),
-                          style: Theme.of(context).textTheme.titleLarge,
-                        ),
-                        const SizedBox(height: 12),
-                        for (int idx = 0; idx < pastOrders.length; idx++) ...[
-                          EvaReveal(
-                            index: idx + 1,
-                            child: _PastOrderHistoryCard(
-                              order: pastOrders[idx],
-                            ),
-                          ),
-                          const SizedBox(height: 12),
-                        ],
-                      ],
-                    ],
-                  ),
-                ),
-              ),
-            ],
-          ),
-        ),
-      ],
+        ],
+      ),
     );
   }
 }

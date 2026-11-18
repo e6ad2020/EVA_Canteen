@@ -1,5 +1,6 @@
 import 'dart:math' as math;
 
+import 'package:flutter/rendering.dart';
 import 'package:flutter/scheduler.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
@@ -19,53 +20,64 @@ class EvaScaffoldBackground extends StatelessWidget {
   Widget build(BuildContext context) {
     final tokens = EvaTokens.of(context);
     final wallpaperFolder = tokens.wallpaperFolder;
+    final iconBrightness = tokens.isNight ? Brightness.light : Brightness.dark;
 
-    return ColoredBox(
-      color: tokens.canvasBackground,
-      child: Stack(
-        fit: StackFit.expand,
-        children: [
-          Positioned.fill(
-            child: RepaintBoundary(
-              child: wallpaperFolder != null
-                  ? LayoutBuilder(
-                      key: ValueKey('wallpaper_$wallpaperFolder'),
-                      builder: (context, constraints) {
-                        final isDesktop = constraints.maxWidth >= 768;
-                        final assetPath =
-                            '$wallpaperFolder/${isDesktop ? "desktop.png" : "phone.png"}';
-                        return Stack(
-                          fit: StackFit.expand,
-                          children: [
-                            Image.asset(
-                              assetPath,
-                              fit: BoxFit.cover,
-                              alignment: Alignment.center,
-                              gaplessPlayback: true,
-                              filterQuality: FilterQuality.medium,
-                              errorBuilder: (_, _, _) =>
-                                  ColoredBox(color: tokens.canvasBackground),
-                            ),
-                            // Subtle veil keeps illustrated line art crisp without competing with UI text
-                            const ColoredBox(color: Color(0x26FFFFFF)),
-                          ],
-                        );
-                      },
-                    )
-                  : tokens.showDoodlePattern
-                  ? CustomPaint(
-                      key: ValueKey('grid_${tokens.isNight}'),
-                      painter: _SubtleArchitecturalPatternPainter(
-                        dotColor: tokens.brandPrimary.withValues(
-                          alpha: tokens.isNight ? 0.07 : 0.055,
+    return AnnotatedRegion<SystemUiOverlayStyle>(
+      value: SystemUiOverlayStyle(
+        statusBarColor: Colors.transparent,
+        statusBarIconBrightness: iconBrightness,
+        statusBarBrightness: tokens.isNight ? Brightness.dark : Brightness.light,
+        systemNavigationBarColor: Colors.transparent,
+        systemNavigationBarDividerColor: Colors.transparent,
+        systemNavigationBarIconBrightness: iconBrightness,
+      ),
+      child: ColoredBox(
+        color: tokens.canvasBackground,
+        child: Stack(
+          fit: StackFit.expand,
+          children: [
+            Positioned.fill(
+              child: RepaintBoundary(
+                child: wallpaperFolder != null
+                    ? LayoutBuilder(
+                        key: ValueKey('wallpaper_$wallpaperFolder'),
+                        builder: (context, constraints) {
+                          final isDesktop = constraints.maxWidth >= 768;
+                          final assetPath =
+                              '$wallpaperFolder/${isDesktop ? "desktop.png" : "phone.png"}';
+                          return Stack(
+                            fit: StackFit.expand,
+                            children: [
+                              Image.asset(
+                                assetPath,
+                                fit: BoxFit.cover,
+                                alignment: Alignment.center,
+                                gaplessPlayback: true,
+                                filterQuality: FilterQuality.medium,
+                                errorBuilder: (_, _, _) =>
+                                    ColoredBox(color: tokens.canvasBackground),
+                              ),
+                              // Subtle veil keeps illustrated line art crisp without competing with UI text
+                              const ColoredBox(color: Color(0x26FFFFFF)),
+                            ],
+                          );
+                        },
+                      )
+                    : tokens.showDoodlePattern
+                    ? CustomPaint(
+                        key: ValueKey('grid_${tokens.isNight}'),
+                        painter: _SubtleArchitecturalPatternPainter(
+                          dotColor: tokens.brandPrimary.withValues(
+                            alpha: tokens.isNight ? 0.07 : 0.055,
+                          ),
                         ),
-                      ),
-                    )
-                  : const SizedBox.expand(),
+                      )
+                    : const SizedBox.expand(),
+              ),
             ),
-          ),
-          child,
-        ],
+            child,
+          ],
+        ),
       ),
     );
   }
@@ -309,6 +321,159 @@ class _EvaGlassBarState extends State<EvaGlassBar>
         );
       },
     );
+  }
+}
+
+/// Full-bleed floating-island header scaffold that eliminates sharp horizontal
+/// viewport clipping beneath [EvaGlassBar].
+///
+/// The scrollable [bodyBuilder] spans `0 .. screenHeight` edge-to-edge so cards
+/// glide smoothly behind the rounded floating [EvaGlassBar], while an ultra-light
+/// atmospheric top feather scrim (ending behind the upper half of the opaque
+/// header pill) keeps status-bar icons crisp with zero `BackdropFilter` blur.
+class EvaFloatingHeaderScaffold extends StatefulWidget {
+  const EvaFloatingHeaderScaffold({
+    super.key,
+    required this.headerBuilder,
+    required this.bodyBuilder,
+    this.initialHeaderHeight = 68.0,
+    this.scrollThreshold = 8.0,
+  });
+
+  final Widget Function(BuildContext context, bool isScrolled) headerBuilder;
+  final Widget Function(
+    BuildContext context,
+    double topClearance,
+    bool isScrolled,
+  ) bodyBuilder;
+  final double initialHeaderHeight;
+  final double scrollThreshold;
+
+  @override
+  State<EvaFloatingHeaderScaffold> createState() =>
+      _EvaFloatingHeaderScaffoldState();
+}
+
+class _EvaFloatingHeaderScaffoldState extends State<EvaFloatingHeaderScaffold> {
+  late double _headerHeight = widget.initialHeaderHeight;
+  bool _isScrolled = false;
+
+  void _onHeaderHeightMeasured(double measuredHeight) {
+    if (!mounted) return;
+    if ((measuredHeight - _headerHeight).abs() > 0.5) {
+      setState(() => _headerHeight = measuredHeight);
+    }
+  }
+
+  bool _onScrollNotification(ScrollNotification notification) {
+    if (notification.depth != 0) return false;
+    if (notification.metrics.axis != Axis.vertical) return false;
+    final nextScrolled = notification.metrics.pixels > widget.scrollThreshold;
+    if (nextScrolled != _isScrolled) {
+      setState(() => _isScrolled = nextScrolled);
+    }
+    return false;
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final tokens = EvaTokens.of(context);
+    final topInset = MediaQuery.paddingOf(context).top;
+    final topClearance = topInset + _headerHeight + 4.0;
+    // Ends behind the opaque body of EvaGlassBar so there is never a visible seam
+    final scrimHeight = topInset + math.min(_headerHeight * 0.56, 40.0);
+
+    return Stack(
+      fit: StackFit.expand,
+      children: [
+        NotificationListener<ScrollNotification>(
+          onNotification: _onScrollNotification,
+          child: widget.bodyBuilder(context, topClearance, _isScrolled),
+        ),
+        Positioned(
+          top: 0,
+          left: 0,
+          right: 0,
+          height: scrimHeight,
+          child: IgnorePointer(
+            child: AnimatedOpacity(
+              duration: const Duration(milliseconds: 220),
+              curve: Curves.easeOutCubic,
+              opacity: _isScrolled ? 1.0 : (topInset > 0 ? 0.45 : 0.0),
+              child: DecoratedBox(
+                decoration: BoxDecoration(
+                  gradient: LinearGradient(
+                    begin: Alignment.topCenter,
+                    end: Alignment.bottomCenter,
+                    stops: const [0.0, 0.56, 1.0],
+                    colors: [
+                      tokens.canvasBackground.withValues(
+                        alpha: tokens.isNight ? 0.95 : 0.92,
+                      ),
+                      tokens.canvasBackground.withValues(
+                        alpha: tokens.isNight ? 0.68 : 0.62,
+                      ),
+                      tokens.canvasBackground.withValues(alpha: 0.0),
+                    ],
+                  ),
+                ),
+              ),
+            ),
+          ),
+        ),
+        Positioned(
+          top: topInset,
+          left: 0,
+          right: 0,
+          child: _HeaderSizeObserver(
+            onHeightChanged: _onHeaderHeightMeasured,
+            child: widget.headerBuilder(context, _isScrolled),
+          ),
+        ),
+      ],
+    );
+  }
+}
+
+class _HeaderSizeObserver extends SingleChildRenderObjectWidget {
+  const _HeaderSizeObserver({
+    required this.onHeightChanged,
+    required super.child,
+  });
+
+  final ValueChanged<double> onHeightChanged;
+
+  @override
+  RenderObject createRenderObject(BuildContext context) {
+    return _RenderHeaderSizeObserver(onHeightChanged);
+  }
+
+  @override
+  void updateRenderObject(
+    BuildContext context,
+    covariant _RenderHeaderSizeObserver renderObject,
+  ) {
+    renderObject.onHeightChanged = onHeightChanged;
+  }
+}
+
+class _RenderHeaderSizeObserver extends RenderProxyBox {
+  _RenderHeaderSizeObserver(this.onHeightChanged);
+
+  ValueChanged<double> onHeightChanged;
+  double? _lastHeight;
+
+  @override
+  void performLayout() {
+    super.performLayout();
+    final newHeight = size.height;
+    if (newHeight > 0 &&
+        (_lastHeight == null || (newHeight - _lastHeight!).abs() > 0.5)) {
+      _lastHeight = newHeight;
+      SchedulerBinding.instance.addPostFrameCallback((_) {
+        onHeightChanged(newHeight);
+      });
+    }
   }
 }
 
@@ -777,7 +942,8 @@ class EvaFloatingNavBar extends StatefulWidget {
   /// Bottom scroll clearance so scrollable content passes behind the floating
   /// capsule's margins while resting completely above it at the bottom.
   static double bottomClearance(BuildContext context) {
-    return MediaQuery.sizeOf(context).width < shellWideBreakpoint ? 86.0 : 0.0;
+    if (MediaQuery.sizeOf(context).width >= shellWideBreakpoint) return 0.0;
+    return 86.0 + MediaQuery.paddingOf(context).bottom;
   }
 
   @override
@@ -936,12 +1102,14 @@ class _EvaFloatingNavBarState extends State<EvaFloatingNavBar>
           final double trackHeight =
               48.0 + (isDense ? 12.0 : 14.0) * labelFraction;
 
+          final bottomSafe = MediaQuery.paddingOf(context).bottom;
+
           return Padding(
             padding: EdgeInsets.fromLTRB(
               horizontalMargin,
               6,
               horizontalMargin,
-              12,
+              12 + bottomSafe,
             ),
             child: Align(
               alignment: Alignment.bottomCenter,
@@ -1829,7 +1997,98 @@ class EvaStatusBadge extends StatelessWidget {
   }
 }
 
-class EvaQuantityStepper extends StatelessWidget {
+/// Directional rolling counter/price text for cart totals, line subtotals, and badges.
+class EvaAnimatedCounterText extends StatefulWidget {
+  const EvaAnimatedCounterText({
+    super.key,
+    required this.text,
+    required this.numericValue,
+    this.style,
+    this.textAlign,
+    this.maxLines = 1,
+    this.overflow = TextOverflow.ellipsis,
+  });
+
+  final String text;
+  final num numericValue;
+  final TextStyle? style;
+  final TextAlign? textAlign;
+  final int maxLines;
+  final TextOverflow overflow;
+
+  @override
+  State<EvaAnimatedCounterText> createState() => _EvaAnimatedCounterTextState();
+}
+
+class _EvaAnimatedCounterTextState extends State<EvaAnimatedCounterText> {
+  double _dir = 1.0;
+
+  @override
+  void didUpdateWidget(covariant EvaAnimatedCounterText oldWidget) {
+    super.didUpdateWidget(oldWidget);
+    if (widget.numericValue != oldWidget.numericValue) {
+      _dir = widget.numericValue > oldWidget.numericValue ? 1.0 : -1.0;
+    }
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final disableMotion = MediaQuery.maybeDisableAnimationsOf(context) ?? false;
+    final resolvedStyle = (widget.style ?? DefaultTextStyle.of(context).style)
+        .copyWith(fontFeatures: EvaThemeBuilder.tabularNums);
+
+    if (disableMotion) {
+      return Text(
+        widget.text,
+        textAlign: widget.textAlign,
+        maxLines: widget.maxLines,
+        overflow: widget.overflow,
+        style: resolvedStyle,
+      );
+    }
+
+    final currentKey = ValueKey<String>(widget.text);
+    return ClipRect(
+      child: AnimatedSwitcher(
+        duration: const Duration(milliseconds: 210),
+        switchInCurve: Curves.easeOutCubic,
+        switchOutCurve: Curves.easeInCubic,
+        layoutBuilder: (currentChild, previousChildren) => Stack(
+          alignment: switch (widget.textAlign) {
+            TextAlign.center => Alignment.center,
+            TextAlign.right || TextAlign.end => AlignmentDirectional.centerEnd,
+            _ => AlignmentDirectional.centerStart,
+          },
+          children: [...previousChildren, ?currentChild],
+        ),
+        transitionBuilder: (child, anim) {
+          final isIncoming = child.key == currentKey;
+          final offsetTween = Tween<Offset>(
+            begin: Offset(0, isIncoming ? 0.52 * _dir : -0.52 * _dir),
+            end: Offset.zero,
+          );
+          return FadeTransition(
+            opacity: anim,
+            child: SlideTransition(
+              position: offsetTween.animate(anim),
+              child: child,
+            ),
+          );
+        },
+        child: Text(
+          widget.text,
+          key: currentKey,
+          textAlign: widget.textAlign,
+          maxLines: widget.maxLines,
+          overflow: widget.overflow,
+          style: resolvedStyle,
+        ),
+      ),
+    );
+  }
+}
+
+class EvaQuantityStepper extends StatefulWidget {
   const EvaQuantityStepper({
     super.key,
     required this.quantity,
@@ -1840,6 +2099,7 @@ class EvaQuantityStepper extends StatelessWidget {
     this.maxReached = false,
     this.compact = false,
     this.fullWidth = false,
+    this.highlightRemoveAtOne = false,
   });
 
   final int quantity;
@@ -1850,168 +2110,287 @@ class EvaQuantityStepper extends StatelessWidget {
   final bool maxReached;
   final bool compact;
   final bool fullWidth;
+  final bool highlightRemoveAtOne;
+
+  @override
+  State<EvaQuantityStepper> createState() => _EvaQuantityStepperState();
+}
+
+class _EvaQuantityStepperState extends State<EvaQuantityStepper>
+    with SingleTickerProviderStateMixin {
+  double _dir = 1.0;
+  late final AnimationController _pulseCtrl;
+  late final Animation<double> _pulseScale;
+
+  @override
+  void initState() {
+    super.initState();
+    _pulseCtrl = AnimationController(
+      vsync: this,
+      duration: const Duration(milliseconds: 190),
+    );
+    _pulseScale = TweenSequence<double>([
+      TweenSequenceItem(
+        tween: Tween<double>(
+          begin: 1.0,
+          end: 1.065,
+        ).chain(CurveTween(curve: Curves.easeOutCubic)),
+        weight: 42,
+      ),
+      TweenSequenceItem(
+        tween: Tween<double>(
+          begin: 1.065,
+          end: 1.0,
+        ).chain(CurveTween(curve: Curves.easeInOutCubic)),
+        weight: 58,
+      ),
+    ]).animate(_pulseCtrl);
+  }
+
+  @override
+  void didUpdateWidget(covariant EvaQuantityStepper oldWidget) {
+    super.didUpdateWidget(oldWidget);
+    if (widget.quantity != oldWidget.quantity) {
+      _dir = widget.quantity > oldWidget.quantity ? 1.0 : -1.0;
+      final disableMotion =
+          MediaQuery.maybeDisableAnimationsOf(context) ?? false;
+      if (!disableMotion && oldWidget.quantity > 0 && widget.quantity > 0) {
+        _pulseCtrl.forward(from: 0.0);
+      }
+    }
+  }
+
+  @override
+  void dispose() {
+    _pulseCtrl.dispose();
+    super.dispose();
+  }
 
   @override
   Widget build(BuildContext context) {
     final tokens = EvaTokens.of(context);
-    final height = compact ? 36.0 : 40.0;
-    final emptyFg = disabled ? tokens.textSecondary : tokens.brandPrimary;
+    final disableMotion = MediaQuery.maybeDisableAnimationsOf(context) ?? false;
+    final height = widget.compact ? 36.0 : 40.0;
+    final emptyFg = widget.disabled ? tokens.textSecondary : tokens.brandPrimary;
+    final quantity = widget.quantity;
+    final currentQtyKey = ValueKey<int>(quantity);
+    final isRemoveAtOne = quantity == 1;
 
-    return AnimatedSwitcher(
-      duration: const Duration(milliseconds: 180),
-      switchInCurve: Curves.easeOutBack,
-      layoutBuilder: (currentChild, previousChildren) => Stack(
-        alignment: fullWidth ? Alignment.center : AlignmentDirectional.centerEnd,
-        children: [...previousChildren, ?currentChild],
-      ),
-      transitionBuilder: (child, anim) =>
-          ScaleTransition(scale: anim, child: child),
-      child: quantity <= 0
-          ? SizedBox(
-              key: const ValueKey('stepper_empty'),
-              width: fullWidth ? double.infinity : null,
-              height: height,
-              child: Material(
-                color: disabled ? tokens.surfaceSubtle : tokens.brandSoftBg,
-                shape: StadiumBorder(
-                  side: BorderSide(
-                    color: disabled
-                        ? tokens.borderSubtle
-                        : tokens.brandPrimary.withValues(alpha: 0.28),
-                    width: 1.15,
+    return ScaleTransition(
+      scale: _pulseScale,
+      child: AnimatedSwitcher(
+        duration: disableMotion
+            ? Duration.zero
+            : const Duration(milliseconds: 190),
+        layoutBuilder: (currentChild, previousChildren) => Stack(
+          alignment: widget.fullWidth
+              ? Alignment.center
+              : AlignmentDirectional.centerEnd,
+          children: [...previousChildren, ?currentChild],
+        ),
+        transitionBuilder: (child, anim) => FadeTransition(
+          opacity: CurvedAnimation(
+            parent: anim,
+            curve: const Interval(0.0, 0.85, curve: Curves.easeOutCubic),
+          ),
+          child: ScaleTransition(
+            scale: CurvedAnimation(
+              parent: anim,
+              curve: Curves.easeOutBack,
+              reverseCurve: Curves.easeInCubic,
+            ),
+            child: child,
+          ),
+        ),
+        child: quantity <= 0
+            ? SizedBox(
+                key: const ValueKey('stepper_empty'),
+                width: widget.fullWidth ? double.infinity : null,
+                height: height,
+                child: Material(
+                  color: widget.disabled
+                      ? tokens.surfaceSubtle
+                      : tokens.brandSoftBg,
+                  shape: StadiumBorder(
+                    side: BorderSide(
+                      color: widget.disabled
+                          ? tokens.borderSubtle
+                          : tokens.brandPrimary.withValues(alpha: 0.28),
+                      width: 1.15,
+                    ),
+                  ),
+                  clipBehavior: Clip.antiAlias,
+                  child: InkWell(
+                    customBorder: const StadiumBorder(),
+                    onTap: widget.disabled
+                        ? null
+                        : () {
+                            HapticFeedback.selectionClick();
+                            widget.onIncrement();
+                          },
+                    child: ConstrainedBox(
+                      constraints: BoxConstraints(
+                        minWidth: widget.fullWidth
+                            ? double.infinity
+                            : (widget.compact ? 82.0 : 104.0),
+                        minHeight: height,
+                      ),
+                      child: Padding(
+                        padding: EdgeInsets.symmetric(
+                          horizontal: widget.compact ? 12 : 16,
+                        ),
+                        child: Row(
+                          mainAxisSize: widget.fullWidth
+                              ? MainAxisSize.max
+                              : MainAxisSize.min,
+                          mainAxisAlignment: MainAxisAlignment.center,
+                          crossAxisAlignment: CrossAxisAlignment.center,
+                          children: [
+                            Icon(
+                              Icons.add_rounded,
+                              size: widget.compact ? 17 : 18,
+                              color: emptyFg,
+                            ),
+                            const SizedBox(width: 5),
+                            Flexible(
+                              child: Text(
+                                widget.addLabel,
+                                maxLines: 1,
+                                overflow: TextOverflow.ellipsis,
+                                strutStyle: const StrutStyle(
+                                  forceStrutHeight: true,
+                                  height: 1.0,
+                                  leading: 0,
+                                ),
+                                style: Theme.of(context).textTheme.labelMedium
+                                    ?.copyWith(
+                                      color: emptyFg,
+                                      fontWeight: FontWeight.w800,
+                                      height: 1.0,
+                                    ),
+                              ),
+                            ),
+                          ],
+                        ),
+                      ),
+                    ),
                   ),
                 ),
-                clipBehavior: Clip.antiAlias,
-                child: InkWell(
-                  customBorder: const StadiumBorder(),
-                  onTap: disabled
-                      ? null
-                      : () {
-                          HapticFeedback.selectionClick();
-                          onIncrement();
-                        },
+              )
+            : SizedBox(
+                key: const ValueKey('stepper_active'),
+                width: widget.fullWidth ? double.infinity : null,
+                height: height,
+                child: Material(
+                  color: tokens.brandPrimary,
+                  shape: const StadiumBorder(),
+                  clipBehavior: Clip.antiAlias,
                   child: ConstrainedBox(
                     constraints: BoxConstraints(
-                      minWidth: fullWidth
+                      minWidth: widget.fullWidth
                           ? double.infinity
-                          : (compact ? 82.0 : 104.0),
-                      minHeight: height,
+                          : (widget.compact ? 98.0 : 114.0),
                     ),
-                    child: Padding(
-                      padding: EdgeInsets.symmetric(
-                        horizontal: compact ? 12 : 16,
-                      ),
-                      child: Row(
-                        mainAxisSize:
-                            fullWidth ? MainAxisSize.max : MainAxisSize.min,
-                        mainAxisAlignment: MainAxisAlignment.center,
-                        crossAxisAlignment: CrossAxisAlignment.center,
-                        children: [
-                          Icon(
-                            Icons.add_rounded,
-                            size: compact ? 17 : 18,
-                            color: emptyFg,
-                          ),
-                          const SizedBox(width: 5),
-                          Flexible(
-                            child: Text(
-                              addLabel,
-                              maxLines: 1,
-                              overflow: TextOverflow.ellipsis,
-                              strutStyle: const StrutStyle(
-                                forceStrutHeight: true,
-                                height: 1.0,
-                                leading: 0,
-                              ),
-                              style: Theme.of(context).textTheme.labelMedium
-                                  ?.copyWith(
-                                    color: emptyFg,
-                                    fontWeight: FontWeight.w800,
+                    child: Row(
+                      mainAxisSize: widget.fullWidth
+                          ? MainAxisSize.max
+                          : MainAxisSize.min,
+                      mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                      crossAxisAlignment: CrossAxisAlignment.center,
+                      children: [
+                        _StepperIconBtn(
+                          icon: isRemoveAtOne
+                              ? Icons.delete_outline_rounded
+                              : Icons.remove_rounded,
+                          color: tokens.brandOnPrimary,
+                          highlightBg: widget.highlightRemoveAtOne &&
+                                  isRemoveAtOne
+                              ? Colors.black.withValues(alpha: 0.16)
+                              : null,
+                          size: height,
+                          onTap: () {
+                            if (isRemoveAtOne) {
+                              HapticFeedback.lightImpact();
+                            } else {
+                              HapticFeedback.selectionClick();
+                            }
+                            widget.onDecrement();
+                          },
+                        ),
+                        ConstrainedBox(
+                          constraints: const BoxConstraints(minWidth: 26),
+                          child: ClipRect(
+                            child: Center(
+                              child: AnimatedSwitcher(
+                                duration: disableMotion
+                                    ? Duration.zero
+                                    : const Duration(milliseconds: 180),
+                                switchInCurve: Curves.easeOutCubic,
+                                switchOutCurve: Curves.easeInCubic,
+                                transitionBuilder: (child, anim) {
+                                  final isIncoming = child.key == currentQtyKey;
+                                  final slideTween = Tween<Offset>(
+                                    begin: Offset(
+                                      0,
+                                      isIncoming ? 0.65 * _dir : -0.65 * _dir,
+                                    ),
+                                    end: Offset.zero,
+                                  );
+                                  return FadeTransition(
+                                    opacity: anim,
+                                    child: SlideTransition(
+                                      position: slideTween.animate(anim),
+                                      child: ScaleTransition(
+                                        scale: Tween<double>(
+                                          begin: 0.84,
+                                          end: 1.0,
+                                        ).animate(anim),
+                                        child: child,
+                                      ),
+                                    ),
+                                  );
+                                },
+                                child: Text(
+                                  '$quantity',
+                                  key: currentQtyKey,
+                                  textAlign: TextAlign.center,
+                                  strutStyle: const StrutStyle(
+                                    forceStrutHeight: true,
                                     height: 1.0,
+                                    leading: 0,
                                   ),
-                            ),
-                          ),
-                        ],
-                      ),
-                    ),
-                  ),
-                ),
-              ),
-            )
-          : SizedBox(
-              key: const ValueKey('stepper_active'),
-              width: fullWidth ? double.infinity : null,
-              height: height,
-              child: Material(
-                color: tokens.brandPrimary,
-                shape: const StadiumBorder(),
-                clipBehavior: Clip.antiAlias,
-                child: ConstrainedBox(
-                  constraints: BoxConstraints(
-                    minWidth: fullWidth
-                        ? double.infinity
-                        : (compact ? 98.0 : 114.0),
-                  ),
-                  child: Row(
-                    mainAxisSize:
-                        fullWidth ? MainAxisSize.max : MainAxisSize.min,
-                    mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                    crossAxisAlignment: CrossAxisAlignment.center,
-                    children: [
-                      _StepperIconBtn(
-                        icon: quantity == 1
-                            ? Icons.delete_outline_rounded
-                            : Icons.remove_rounded,
-                        color: tokens.brandOnPrimary,
-                        size: height,
-                        onTap: () {
-                          HapticFeedback.selectionClick();
-                          onDecrement();
-                        },
-                      ),
-                      ConstrainedBox(
-                        constraints: const BoxConstraints(minWidth: 26),
-                        child: Center(
-                          child: AnimatedSwitcher(
-                            duration: const Duration(milliseconds: 140),
-                            child: Text(
-                              '$quantity',
-                              key: ValueKey<int>(quantity),
-                              textAlign: TextAlign.center,
-                              strutStyle: const StrutStyle(
-                                forceStrutHeight: true,
-                                height: 1.0,
-                                leading: 0,
+                                  style: Theme.of(context).textTheme.labelLarge
+                                      ?.copyWith(
+                                        color: tokens.brandOnPrimary,
+                                        fontWeight: FontWeight.w800,
+                                        height: 1.0,
+                                        fontFeatures:
+                                            EvaThemeBuilder.tabularNums,
+                                      ),
+                                ),
                               ),
-                              style: Theme.of(context).textTheme.labelLarge
-                                  ?.copyWith(
-                                    color: tokens.brandOnPrimary,
-                                    fontWeight: FontWeight.w800,
-                                    height: 1.0,
-                                    fontFeatures: EvaThemeBuilder.tabularNums,
-                                  ),
                             ),
                           ),
                         ),
-                      ),
-                      _StepperIconBtn(
-                        icon: Icons.add_rounded,
-                        color: maxReached
-                            ? tokens.brandOnPrimary.withValues(alpha: 0.38)
-                            : tokens.brandOnPrimary,
-                        size: height,
-                        onTap: maxReached
-                            ? null
-                            : () {
-                                HapticFeedback.selectionClick();
-                                onIncrement();
-                              },
-                      ),
-                    ],
+                        _StepperIconBtn(
+                          icon: Icons.add_rounded,
+                          color: widget.maxReached
+                              ? tokens.brandOnPrimary.withValues(alpha: 0.38)
+                              : tokens.brandOnPrimary,
+                          size: height,
+                          onTap: widget.maxReached
+                              ? null
+                              : () {
+                                  HapticFeedback.selectionClick();
+                                  widget.onIncrement();
+                                },
+                        ),
+                      ],
+                    ),
                   ),
                 ),
               ),
-            ),
+      ),
     );
   }
 }
@@ -2021,23 +2400,46 @@ class _StepperIconBtn extends StatelessWidget {
     required this.icon,
     required this.color,
     required this.size,
+    this.highlightBg,
     this.onTap,
   });
 
   final IconData icon;
   final Color color;
   final double size;
+  final Color? highlightBg;
   final VoidCallback? onTap;
 
   @override
   Widget build(BuildContext context) {
+    final disableMotion = MediaQuery.maybeDisableAnimationsOf(context) ?? false;
     return InkWell(
       onTap: onTap,
       customBorder: const CircleBorder(),
-      child: SizedBox(
+      child: AnimatedContainer(
+        duration: const Duration(milliseconds: 160),
         width: size,
         height: size,
-        child: Center(child: Icon(icon, size: 17.5, color: color)),
+        decoration: BoxDecoration(
+          shape: BoxShape.circle,
+          color: highlightBg ?? Colors.transparent,
+        ),
+        child: Center(
+          child: AnimatedSwitcher(
+            duration: disableMotion
+                ? Duration.zero
+                : const Duration(milliseconds: 150),
+            switchInCurve: Curves.easeOutBack,
+            transitionBuilder: (child, anim) =>
+                ScaleTransition(scale: anim, child: child),
+            child: Icon(
+              icon,
+              key: ValueKey<int>(icon.codePoint),
+              size: 17.5,
+              color: color,
+            ),
+          ),
+        ),
       ),
     );
   }
@@ -2053,6 +2455,7 @@ class ConnectionStatusBanner extends ConsumerWidget {
     );
     final i18n = ref.watch(i18nProvider);
     final tokens = EvaTokens.of(context);
+    final topInset = MediaQuery.paddingOf(context).top;
 
     return AnimatedSize(
       duration: const Duration(milliseconds: 220),
@@ -2061,7 +2464,7 @@ class ConnectionStatusBanner extends ConsumerWidget {
           ? const SizedBox.shrink()
           : Container(
               width: double.infinity,
-              padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+              padding: EdgeInsets.fromLTRB(16, 8 + topInset, 16, 8),
               color: tokens.statusPendingBg,
               child: Row(
                 children: [

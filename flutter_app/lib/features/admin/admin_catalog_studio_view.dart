@@ -67,23 +67,25 @@ class _AdminCatalogStudioViewState
   }
 
   void _handleDragAutoScroll(
-    BuildContext gridContext,
+    BuildContext scrollAreaContext,
     DragUpdateDetails details,
+    double topClearance,
   ) {
     if (!_productsScrollCtrl.hasClients) return;
-    final renderBox = gridContext.findRenderObject();
+    final renderBox = scrollAreaContext.findRenderObject();
     if (renderBox is! RenderBox || !renderBox.hasSize) return;
     final localY = renderBox.globalToLocal(details.globalPosition).dy;
-    const edgeZone = 64.0;
+    final topZone = topClearance + 52.0;
+    const bottomZone = 96.0;
     const maxStep = 14.0;
 
     double delta = 0.0;
-    if (localY < edgeZone) {
-      delta = -maxStep * ((edgeZone - localY) / edgeZone).clamp(0.15, 1.0);
-    } else if (localY > renderBox.size.height - edgeZone) {
+    if (localY < topZone) {
+      delta = -maxStep * ((topZone - localY) / 64.0).clamp(0.15, 1.0);
+    } else if (localY > renderBox.size.height - bottomZone) {
       delta =
           maxStep *
-          ((localY - (renderBox.size.height - edgeZone)) / edgeZone).clamp(
+          ((localY - (renderBox.size.height - bottomZone)) / bottomZone).clamp(
             0.15,
             1.0,
           );
@@ -105,143 +107,162 @@ class _AdminCatalogStudioViewState
     final tokens = EvaTokens.of(context);
     final i18n = ref.watch(i18nProvider);
     final store = ref.watch(canteenStoreProvider);
-    return Column(
-      children: [
-        // Studio Header
-        EvaGlassBar(
-          padding: const EdgeInsets.fromLTRB(16, 12, 16, 12),
-          child: Column(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              Row(
-                children: [
-                  Expanded(
-                    child: Text(
-                      i18n.t('admin_catalog_title'),
-                      maxLines: 1,
-                      overflow: TextOverflow.ellipsis,
-                      style: Theme.of(context).textTheme.headlineSmall,
-                    ),
-                  ),
-                  const SizedBox(width: 8),
-                  if (_section == _StudioSection.products)
-                    FilledButton.icon(
-                      style: FilledButton.styleFrom(
-                        minimumSize: const Size(0, 38),
-                        padding: const EdgeInsets.symmetric(horizontal: 12),
-                      ),
-                      onPressed: () => _openProductEditor(
-                        context,
-                        existing: null,
-                        defaultCategoryKey:
-                            (_selectedCategoryKey != null &&
-                                _selectedCategoryKey != 'archive')
-                            ? _selectedCategoryKey!
-                            : (store.studentCategories.firstOrNull?.key ??
-                                  'sandwiches'),
-                      ),
-                      icon: const Icon(Icons.add_rounded, size: 18),
-                      label: Text(i18n.t('new_product_cta')),
-                    )
-                  else if (_section == _StudioSection.categories)
-                    FilledButton.icon(
-                      style: FilledButton.styleFrom(
-                        minimumSize: const Size(0, 38),
-                        padding: const EdgeInsets.symmetric(horizontal: 12),
-                      ),
-                      onPressed: () =>
-                          _openCategoryDialog(context, existing: null),
-                      icon: const Icon(Icons.add_rounded, size: 18),
-                      label: Text(i18n.t('new_category_cta')),
-                    )
-                  else
-                    FilledButton.icon(
-                      style: FilledButton.styleFrom(
-                        minimumSize: const Size(0, 38),
-                        padding: const EdgeInsets.symmetric(horizontal: 12),
-                      ),
-                      onPressed: () =>
-                          _openBundleEditor(context, existing: null),
-                      icon: const Icon(Icons.add_rounded, size: 18),
-                      label: Text(i18n.t('new_bundle_cta')),
-                    ),
-                ],
-              ),
-              const SizedBox(height: 10),
-              SizedBox(
-                width: double.infinity,
-                child: SegmentedButton<_StudioSection>(
-                  showSelectedIcon: false,
-                  segments: [
-                    ButtonSegment(
-                      value: _StudioSection.products,
-                      icon: const Icon(Icons.lunch_dining_rounded, size: 16),
-                      label: Text(
-                        i18n.t('studio_products_tab'),
-                        maxLines: 1,
-                        overflow: TextOverflow.ellipsis,
-                      ),
-                    ),
-                    ButtonSegment(
-                      value: _StudioSection.categories,
-                      icon: const Icon(Icons.category_rounded, size: 16),
-                      label: Text(
-                        i18n.t('studio_categories_tab'),
-                        maxLines: 1,
-                        overflow: TextOverflow.ellipsis,
-                      ),
-                    ),
-                    ButtonSegment(
-                      value: _StudioSection.bundles,
-                      icon: const Icon(Icons.local_offer_rounded, size: 16),
-                      label: Text(
-                        i18n.t('studio_bundles_tab'),
-                        maxLines: 1,
-                        overflow: TextOverflow.ellipsis,
-                      ),
-                    ),
-                  ],
-                  selected: {_section},
-                  onSelectionChanged: (sel) {
-                    setState(() => _section = sel.first);
-                  },
-                ),
-              ),
-            ],
-          ),
-        ),
+    final showSegmentIcons = MediaQuery.sizeOf(context).width >= 400;
 
-        // Active Sub-View
-        Expanded(
-          child: AnimatedSwitcher(
-            duration: const Duration(milliseconds: 200),
-            switchInCurve: Curves.easeOutCubic,
-            child: KeyedSubtree(
-              key: ValueKey(_section),
-              child: switch (_section) {
-                _StudioSection.products => _buildProductsSection(
-                  context,
-                  store,
-                  i18n,
-                  tokens,
+    return EvaFloatingHeaderScaffold(
+      initialHeaderHeight: 118.0,
+      headerBuilder: (context, isScrolled) => Center(
+        child: ConstrainedBox(
+          constraints: const BoxConstraints(maxWidth: 1204),
+          child: EvaGlassBar(
+            isScrolled: isScrolled,
+            padding: const EdgeInsets.fromLTRB(14, 11, 14, 11),
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                Row(
+                  children: [
+                    Expanded(
+                      child: Text(
+                        i18n.t('admin_catalog_title'),
+                        maxLines: 1,
+                        overflow: TextOverflow.ellipsis,
+                        style: Theme.of(context).textTheme.headlineSmall,
+                      ),
+                    ),
+                    const SizedBox(width: 8),
+                    if (_section == _StudioSection.products)
+                      FilledButton.icon(
+                        style: FilledButton.styleFrom(
+                          minimumSize: const Size(0, 38),
+                          padding: const EdgeInsets.symmetric(horizontal: 12),
+                        ),
+                        onPressed: () => _openProductEditor(
+                          context,
+                          existing: null,
+                          defaultCategoryKey:
+                              (_selectedCategoryKey != null &&
+                                  _selectedCategoryKey != 'archive')
+                              ? _selectedCategoryKey!
+                              : (store.studentCategories.firstOrNull?.key ??
+                                    'sandwiches'),
+                        ),
+                        icon: const Icon(Icons.add_rounded, size: 18),
+                        label: Text(i18n.t('new_product_cta')),
+                      )
+                    else if (_section == _StudioSection.categories)
+                      FilledButton.icon(
+                        style: FilledButton.styleFrom(
+                          minimumSize: const Size(0, 38),
+                          padding: const EdgeInsets.symmetric(horizontal: 12),
+                        ),
+                        onPressed: () =>
+                            _openCategoryDialog(context, existing: null),
+                        icon: const Icon(Icons.add_rounded, size: 18),
+                        label: Text(i18n.t('new_category_cta')),
+                      )
+                    else
+                      FilledButton.icon(
+                        style: FilledButton.styleFrom(
+                          minimumSize: const Size(0, 38),
+                          padding: const EdgeInsets.symmetric(horizontal: 12),
+                        ),
+                        onPressed: () =>
+                            _openBundleEditor(context, existing: null),
+                        icon: const Icon(Icons.add_rounded, size: 18),
+                        label: Text(i18n.t('new_bundle_cta')),
+                      ),
+                  ],
                 ),
-                _StudioSection.categories => _buildCategoriesSection(
-                  context,
-                  store,
-                  i18n,
-                  tokens,
+                const SizedBox(height: 10),
+                SizedBox(
+                  width: double.infinity,
+                  child: SegmentedButton<_StudioSection>(
+                    showSelectedIcon: false,
+                    style: const ButtonStyle(
+                      visualDensity: VisualDensity.compact,
+                      tapTargetSize: MaterialTapTargetSize.shrinkWrap,
+                      padding: WidgetStatePropertyAll(
+                        EdgeInsets.symmetric(horizontal: 8, vertical: 8),
+                      ),
+                    ),
+                    segments: [
+                      ButtonSegment(
+                        value: _StudioSection.products,
+                        icon: showSegmentIcons
+                            ? const Icon(Icons.lunch_dining_rounded, size: 15)
+                            : null,
+                        label: Text(
+                          i18n.t('studio_products_tab'),
+                          maxLines: 1,
+                          overflow: TextOverflow.ellipsis,
+                        ),
+                      ),
+                      ButtonSegment(
+                        value: _StudioSection.categories,
+                        icon: showSegmentIcons
+                            ? const Icon(Icons.category_rounded, size: 15)
+                            : null,
+                        label: Text(
+                          i18n.t('studio_categories_tab'),
+                          maxLines: 1,
+                          overflow: TextOverflow.ellipsis,
+                        ),
+                      ),
+                      ButtonSegment(
+                        value: _StudioSection.bundles,
+                        icon: showSegmentIcons
+                            ? const Icon(Icons.local_offer_rounded, size: 15)
+                            : null,
+                        label: Text(
+                          i18n.t('studio_bundles_tab'),
+                          maxLines: 1,
+                          overflow: TextOverflow.ellipsis,
+                        ),
+                      ),
+                    ],
+                    selected: {_section},
+                    onSelectionChanged: (sel) {
+                      setState(() => _section = sel.first);
+                    },
+                  ),
                 ),
-                _StudioSection.bundles => _buildBundlesSection(
-                  context,
-                  store,
-                  i18n,
-                  tokens,
-                ),
-              },
+              ],
             ),
           ),
         ),
-      ],
+      ),
+      bodyBuilder: (context, topClearance, _) => AnimatedSwitcher(
+        duration: const Duration(milliseconds: 220),
+        switchInCurve: Curves.easeOutCubic,
+        child: KeyedSubtree(
+          key: ValueKey(_section),
+          child: switch (_section) {
+            _StudioSection.products => _buildProductsSection(
+              context,
+              store,
+              i18n,
+              tokens,
+              topClearance,
+            ),
+            _StudioSection.categories => _buildCategoriesSection(
+              context,
+              store,
+              i18n,
+              tokens,
+              topClearance,
+            ),
+            _StudioSection.bundles => _buildBundlesSection(
+              context,
+              store,
+              i18n,
+              tokens,
+              topClearance,
+            ),
+          },
+        ),
+      ),
     );
   }
 
@@ -253,6 +274,7 @@ class _AdminCatalogStudioViewState
     CanteenStoreState store,
     EvaTranslator i18n,
     EvaTokens tokens,
+    double topClearance,
   ) {
     final archivedCount = store.products.where((p) => p.isArchived).length;
     final baseList = _selectedCategoryKey == null
@@ -288,99 +310,123 @@ class _AdminCatalogStudioViewState
         _selectedCategoryKey != 'archive' &&
         _searchQuery.trim().isEmpty &&
         filtered.length > 1;
+    final navClearance = EvaFloatingNavBar.bottomClearance(context);
+    final restoreCatKey =
+        store.studentCategories.firstOrNull?.key ?? 'sandwiches';
 
-    return Column(
-      children: [
-        Padding(
-          padding: const EdgeInsets.fromLTRB(16, 10, 16, 6),
-          child: Column(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              TextField(
-                controller: _searchCtrl,
-                onChanged: (v) => setState(() => _searchQuery = v),
-                decoration: InputDecoration(
-                  hintText: i18n.t('search_hint'),
-                  prefixIcon: const Icon(Icons.search_rounded, size: 20),
-                  suffixIcon: _searchQuery.isNotEmpty
-                      ? IconButton(
-                          onPressed: () {
-                            _searchCtrl.clear();
-                            setState(() => _searchQuery = '');
-                          },
-                          icon: const Icon(Icons.close_rounded, size: 18),
-                        )
-                      : null,
-                ),
-              ),
-              const SizedBox(height: 10),
-              SingleChildScrollView(
-                scrollDirection: Axis.horizontal,
-                child: Row(
-                  children: [
-                    ChoiceChip(
-                      selected: _selectedCategoryKey == null,
-                      label: Text(i18n.t('all_categories')),
-                      onSelected: (_) =>
-                          setState(() => _selectedCategoryKey = null),
-                    ),
-                    const SizedBox(width: 8),
-                    for (final cat in store.studentCategories) ...[
-                      ChoiceChip(
-                        selected: _selectedCategoryKey == cat.key,
-                        label: Text(i18n.t(cat.nameKey)),
-                        onSelected: (_) =>
-                            setState(() => _selectedCategoryKey = cat.key),
-                      ),
-                      const SizedBox(width: 8),
-                    ],
-                    ChoiceChip(
-                      selected: _selectedCategoryKey == 'archive',
-                      avatar: Icon(
-                        Icons.archive_outlined,
-                        size: 16,
-                        color: _selectedCategoryKey == 'archive'
-                            ? tokens.brandPrimary
-                            : tokens.textSecondary,
-                      ),
-                      label: Text(
-                        '${i18n.t('archive_shelf_label')} ($archivedCount)',
-                      ),
-                      onSelected: (_) =>
-                          setState(() => _selectedCategoryKey = 'archive'),
-                    ),
-                  ],
-                ),
-              ),
-              if (isRankingActive)
-                Padding(
-                  padding: const EdgeInsets.only(top: 8),
-                  child: Row(
+    return Builder(
+      builder: (scrollAreaContext) => CustomScrollView(
+        controller: _productsScrollCtrl,
+        physics: const ClampingScrollPhysics(),
+        slivers: [
+          SliverToBoxAdapter(
+            child: Center(
+              child: ConstrainedBox(
+                constraints: const BoxConstraints(maxWidth: 1180),
+                child: Padding(
+                  padding: EdgeInsets.fromLTRB(14, topClearance + 6, 14, 6),
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
-                      Icon(
-                        Icons.grid_view_rounded,
-                        size: 15,
-                        color: tokens.brandPrimary,
-                      ),
-                      const SizedBox(width: 6),
-                      Expanded(
-                        child: Text(
-                          i18n.t('catalog_grid_rank_hint'),
-                          maxLines: 2,
-                          overflow: TextOverflow.ellipsis,
-                          style: Theme.of(context).textTheme.bodySmall
-                              ?.copyWith(color: tokens.brandPrimary),
+                      TextField(
+                        controller: _searchCtrl,
+                        onChanged: (v) => setState(() => _searchQuery = v),
+                        decoration: InputDecoration(
+                          hintText: i18n.t('search_hint'),
+                          prefixIcon: const Icon(
+                            Icons.search_rounded,
+                            size: 20,
+                          ),
+                          suffixIcon: _searchQuery.isNotEmpty
+                              ? IconButton(
+                                  onPressed: () {
+                                    _searchCtrl.clear();
+                                    setState(() => _searchQuery = '');
+                                  },
+                                  icon: const Icon(
+                                    Icons.close_rounded,
+                                    size: 18,
+                                  ),
+                                )
+                              : null,
                         ),
                       ),
+                      const SizedBox(height: 10),
+                      SingleChildScrollView(
+                        scrollDirection: Axis.horizontal,
+                        child: Row(
+                          children: [
+                            ChoiceChip(
+                              selected: _selectedCategoryKey == null,
+                              label: Text(i18n.t('all_categories')),
+                              onSelected: (_) =>
+                                  setState(() => _selectedCategoryKey = null),
+                            ),
+                            const SizedBox(width: 8),
+                            for (final cat in store.studentCategories) ...[
+                              ChoiceChip(
+                                selected: _selectedCategoryKey == cat.key,
+                                label: Text(i18n.t(cat.nameKey)),
+                                onSelected: (_) => setState(
+                                  () => _selectedCategoryKey = cat.key,
+                                ),
+                              ),
+                              const SizedBox(width: 8),
+                            ],
+                            ChoiceChip(
+                              selected: _selectedCategoryKey == 'archive',
+                              avatar: Icon(
+                                Icons.archive_outlined,
+                                size: 16,
+                                color: _selectedCategoryKey == 'archive'
+                                    ? tokens.brandPrimary
+                                    : tokens.textSecondary,
+                              ),
+                              label: Text(
+                                '${i18n.t('archive_shelf_label')} ($archivedCount)',
+                              ),
+                              onSelected: (_) => setState(
+                                () => _selectedCategoryKey = 'archive',
+                              ),
+                            ),
+                          ],
+                        ),
+                      ),
+                      if (isRankingActive)
+                        Padding(
+                          padding: const EdgeInsets.only(top: 8),
+                          child: Row(
+                            children: [
+                              Icon(
+                                Icons.grid_view_rounded,
+                                size: 15,
+                                color: tokens.brandPrimary,
+                              ),
+                              const SizedBox(width: 6),
+                              Expanded(
+                                child: Text(
+                                  i18n.t('catalog_grid_rank_hint'),
+                                  maxLines: 2,
+                                  overflow: TextOverflow.ellipsis,
+                                  style: Theme.of(context).textTheme.bodySmall
+                                      ?.copyWith(color: tokens.brandPrimary),
+                                ),
+                              ),
+                            ],
+                          ),
+                        ),
                     ],
                   ),
                 ),
-            ],
+              ),
+            ),
           ),
-        ),
-        Expanded(
-          child: filtered.isEmpty
-              ? Center(
+          if (filtered.isEmpty)
+            SliverFillRemaining(
+              hasScrollBody: false,
+              child: Padding(
+                padding: EdgeInsets.only(bottom: navClearance),
+                child: Center(
                   child: Text(
                     i18n.isRtl
                         ? 'لا توجد أصناف في هذا القسم.'
@@ -389,159 +435,156 @@ class _AdminCatalogStudioViewState
                       color: tokens.textSecondary,
                     ),
                   ),
-                )
-              : LayoutBuilder(
-                  builder: (gridContext, constraints) {
-                    // Exact column & spacing geometry from StudentMenuView so admin ranking mirrors the live menu 1:1
-                    final totalW = constraints.maxWidth;
-                    final sidePad = totalW < 420
-                        ? 12.0
-                        : math.max(16.0, (totalW - 1180) / 2);
-                    final gridW = math.max(220.0, totalW - sidePad * 2);
+                ),
+              ),
+            )
+          else
+            SliverLayoutBuilder(
+              builder: (context, constraints) {
+                // Exact column & spacing geometry from StudentMenuView so admin ranking mirrors the live menu 1:1
+                final totalW = constraints.crossAxisExtent;
+                final sidePad = totalW < 420
+                    ? 12.0
+                    : math.max(16.0, (totalW - 1180) / 2);
+                final gridW = math.max(220.0, totalW - sidePad * 2);
 
-                    final int cols = gridW < 260
-                        ? 1
-                        : (gridW < 620 ? 2 : (gridW < 920 ? 3 : 4));
-                    final double spacing = cols <= 2 ? 10.0 : 14.0;
-                    final double cardHeight = cols <= 2 ? 258.0 : 276.0;
-                    final double cellWidth =
-                        (gridW - spacing * (cols - 1)) / cols;
-                    final navClearance = EvaFloatingNavBar.bottomClearance(
-                      context,
-                    );
-                    final restoreCatKey =
-                        store.studentCategories.firstOrNull?.key ??
-                        'sandwiches';
+                final int cols = gridW < 260
+                    ? 1
+                    : (gridW < 620 ? 2 : (gridW < 920 ? 3 : 4));
+                final double spacing = cols <= 2 ? 10.0 : 14.0;
+                final double cardHeight = cols <= 2 ? 258.0 : 276.0;
+                final double cellWidth = (gridW - spacing * (cols - 1)) / cols;
 
-                    return GridView.builder(
-                      key: const ValueKey('admin_catalog_items_grid'),
-                      controller: _productsScrollCtrl,
-                      padding: EdgeInsets.fromLTRB(
-                        sidePad,
-                        8,
-                        sidePad,
-                        24 + navClearance,
-                      ),
-                      gridDelegate: SliverGridDelegateWithFixedCrossAxisCount(
-                        crossAxisCount: cols,
-                        crossAxisSpacing: spacing,
-                        mainAxisSpacing: spacing,
-                        mainAxisExtent: cardHeight,
-                      ),
-                      itemCount: filtered.length,
-                      itemBuilder: (context, idx) {
-                        final prod = filtered[idx];
-                        final rankIdx = rankIndexByProductId[prod.id] ?? 0;
-                        final catCount =
-                            categoryCountByKey[prod.categoryKey] ?? 1;
-                        final catNameKey =
-                            categoryNameKeyByKey[prod.categoryKey];
-                        final canRankItem =
-                            !prod.isArchived &&
-                            _searchQuery.trim().isEmpty &&
-                            catCount > 1;
+                return SliverPadding(
+                  padding: EdgeInsets.fromLTRB(
+                    sidePad,
+                    8,
+                    sidePad,
+                    24 + navClearance,
+                  ),
+                  sliver: SliverGrid(
+                    key: const ValueKey('admin_catalog_items_grid'),
+                    gridDelegate: SliverGridDelegateWithFixedCrossAxisCount(
+                      crossAxisCount: cols,
+                      crossAxisSpacing: spacing,
+                      mainAxisSpacing: spacing,
+                      mainAxisExtent: cardHeight,
+                    ),
+                    delegate: SliverChildBuilderDelegate((context, idx) {
+                      final prod = filtered[idx];
+                      final rankIdx = rankIndexByProductId[prod.id] ?? 0;
+                      final catCount =
+                          categoryCountByKey[prod.categoryKey] ?? 1;
+                      final catNameKey = categoryNameKeyByKey[prod.categoryKey];
+                      final canRankItem =
+                          !prod.isArchived &&
+                          _searchQuery.trim().isEmpty &&
+                          catCount > 1;
 
-                        Widget buildCard({bool isDropTarget = false}) {
-                          return _AdminProductStudioCard(
-                            key: ValueKey('admin_prod_card_${prod.id}'),
-                            product: prod,
-                            isCompactGrid: cols <= 2,
-                            showCategoryLabel: _selectedCategoryKey == null,
-                            categoryLabel: catNameKey != null
-                                ? i18n.t(catNameKey)
-                                : prod.categoryKey,
-                            rankNumber: prod.isArchived ? null : (rankIdx + 1),
-                            canRank: canRankItem,
-                            isDropHighlighted: isDropTarget,
-                            defaultRestoreCategoryKey: restoreCatKey,
-                            onEdit: () => _openProductEditor(
-                              context,
-                              existing: prod,
-                              defaultCategoryKey: prod.categoryKey,
-                            ),
-                            onMoveRankEarlier: canRankItem && rankIdx > 0
-                                ? () => _reorderProductInCategory(
-                                    store: store,
-                                    categoryKey: prod.categoryKey,
-                                    draggedProductId: prod.id,
-                                    newIndexInCategory: rankIdx - 1,
-                                  )
-                                : null,
-                            onMoveRankLater:
-                                canRankItem && rankIdx < catCount - 1
-                                ? () => _reorderProductInCategory(
-                                    store: store,
-                                    categoryKey: prod.categoryKey,
-                                    draggedProductId: prod.id,
-                                    newIndexInCategory: rankIdx + 1,
-                                  )
-                                : null,
+                      Widget buildCard({bool isDropTarget = false}) {
+                        return _AdminProductStudioCard(
+                          key: ValueKey('admin_prod_card_${prod.id}'),
+                          product: prod,
+                          isCompactGrid: cols <= 2,
+                          showCategoryLabel: _selectedCategoryKey == null,
+                          categoryLabel: catNameKey != null
+                              ? i18n.t(catNameKey)
+                              : prod.categoryKey,
+                          rankNumber: prod.isArchived ? null : (rankIdx + 1),
+                          canRank: canRankItem,
+                          isDropHighlighted: isDropTarget,
+                          defaultRestoreCategoryKey: restoreCatKey,
+                          onEdit: () => _openProductEditor(
+                            context,
+                            existing: prod,
+                            defaultCategoryKey: prod.categoryKey,
+                          ),
+                          onMoveRankEarlier: canRankItem && rankIdx > 0
+                              ? () => _reorderProductInCategory(
+                                  store: store,
+                                  categoryKey: prod.categoryKey,
+                                  draggedProductId: prod.id,
+                                  newIndexInCategory: rankIdx - 1,
+                                )
+                              : null,
+                          onMoveRankLater: canRankItem && rankIdx < catCount - 1
+                              ? () => _reorderProductInCategory(
+                                  store: store,
+                                  categoryKey: prod.categoryKey,
+                                  draggedProductId: prod.id,
+                                  newIndexInCategory: rankIdx + 1,
+                                )
+                              : null,
+                        );
+                      }
+
+                      if (!canRankItem) {
+                        return EvaReveal(index: idx, child: buildCard());
+                      }
+
+                      return DragTarget<ProductItem>(
+                        key: ValueKey('admin_prod_target_${prod.id}'),
+                        onWillAcceptWithDetails: (details) {
+                          final dragged = details.data;
+                          return dragged.id != prod.id &&
+                              dragged.categoryKey == prod.categoryKey &&
+                              !prod.isArchived;
+                        },
+                        onAcceptWithDetails: (details) {
+                          _reorderProductInCategory(
+                            store: store,
+                            categoryKey: prod.categoryKey,
+                            draggedProductId: details.data.id,
+                            newIndexInCategory: rankIdx,
                           );
-                        }
-
-                        if (!canRankItem) {
-                          return EvaReveal(index: idx, child: buildCard());
-                        }
-
-                        return DragTarget<ProductItem>(
-                          key: ValueKey('admin_prod_target_${prod.id}'),
-                          onWillAcceptWithDetails: (details) {
-                            final dragged = details.data;
-                            return dragged.id != prod.id &&
-                                dragged.categoryKey == prod.categoryKey &&
-                                !prod.isArchived;
-                          },
-                          onAcceptWithDetails: (details) {
-                            _reorderProductInCategory(
-                              store: store,
-                              categoryKey: prod.categoryKey,
-                              draggedProductId: details.data.id,
-                              newIndexInCategory: rankIdx,
-                            );
-                          },
-                          builder: (context, candidateData, _) {
-                            final isHovering = candidateData.isNotEmpty;
-                            return AnimatedScale(
-                              scale: isHovering ? 1.03 : 1.0,
-                              duration: const Duration(milliseconds: 150),
-                              curve: Curves.easeOutCubic,
-                              child: LongPressDraggable<ProductItem>(
-                                data: prod,
-                                delay: const Duration(milliseconds: 220),
-                                hapticFeedbackOnStart: true,
-                                onDragUpdate: (details) =>
-                                    _handleDragAutoScroll(gridContext, details),
-                                feedback: Material(
-                                  type: MaterialType.transparency,
-                                  child: SizedBox(
-                                    width: cellWidth,
-                                    height: cardHeight,
-                                    child: Transform.scale(
-                                      scale: 1.04,
-                                      child: IgnorePointer(
-                                        child: buildCard(isDropTarget: true),
-                                      ),
+                        },
+                        builder: (context, candidateData, _) {
+                          final isHovering = candidateData.isNotEmpty;
+                          return AnimatedScale(
+                            scale: isHovering ? 1.03 : 1.0,
+                            duration: const Duration(milliseconds: 150),
+                            curve: Curves.easeOutCubic,
+                            child: LongPressDraggable<ProductItem>(
+                              data: prod,
+                              delay: const Duration(milliseconds: 220),
+                              hapticFeedbackOnStart: true,
+                              onDragUpdate: (details) => _handleDragAutoScroll(
+                                scrollAreaContext,
+                                details,
+                                topClearance,
+                              ),
+                              feedback: Material(
+                                type: MaterialType.transparency,
+                                child: SizedBox(
+                                  width: cellWidth,
+                                  height: cardHeight,
+                                  child: Transform.scale(
+                                    scale: 1.04,
+                                    child: IgnorePointer(
+                                      child: buildCard(isDropTarget: true),
                                     ),
                                   ),
                                 ),
-                                childWhenDragging: Opacity(
-                                  opacity: 0.32,
-                                  child: buildCard(),
-                                ),
-                                child: EvaReveal(
-                                  index: idx,
-                                  child: buildCard(isDropTarget: isHovering),
-                                ),
                               ),
-                            );
-                          },
-                        );
-                      },
-                    );
-                  },
-                ),
-        ),
-      ],
+                              childWhenDragging: Opacity(
+                                opacity: 0.32,
+                                child: buildCard(),
+                              ),
+                              child: EvaReveal(
+                                index: idx,
+                                child: buildCard(isDropTarget: isHovering),
+                              ),
+                            ),
+                          );
+                        },
+                      );
+                    }, childCount: filtered.length),
+                  ),
+                );
+              },
+            ),
+        ],
+      ),
     );
   }
 
@@ -553,130 +596,122 @@ class _AdminCatalogStudioViewState
     CanteenStoreState store,
     EvaTranslator i18n,
     EvaTokens tokens,
+    double topClearance,
   ) {
     final activeCats = store.studentCategories;
 
-    return Column(
-      crossAxisAlignment: CrossAxisAlignment.start,
-      children: [
-        Padding(
-          padding: const EdgeInsets.fromLTRB(16, 14, 16, 6),
-          child: Text(
-            i18n.isRtl
-                ? 'اسحب الفئات لإعادة ترتيب أقسام القائمة. يجب إفراغ الفئة من الأصناف قبل حذفها.'
-                : 'Drag categories to reorder menu sections. Empty a category before deleting it.',
-            style: Theme.of(context).textTheme.bodySmall,
-          ),
+    return ReorderableListView.builder(
+      padding: EdgeInsets.fromLTRB(
+        16,
+        topClearance + 8,
+        16,
+        24 + EvaFloatingNavBar.bottomClearance(context),
+      ),
+      header: Padding(
+        padding: const EdgeInsets.only(bottom: 10),
+        child: Text(
+          i18n.isRtl
+              ? 'اسحب الفئات لإعادة ترتيب أقسام القائمة. يجب إفراغ الفئة من الأصناف قبل حذفها.'
+              : 'Drag categories to reorder menu sections. Empty a category before deleting it.',
+          style: Theme.of(context).textTheme.bodySmall,
         ),
-        Expanded(
-          child: ReorderableListView.builder(
-            padding: EdgeInsets.fromLTRB(
-              16,
-              8,
-              16,
-              24 + EvaFloatingNavBar.bottomClearance(context),
-            ),
-            buildDefaultDragHandles: false,
-            itemCount: activeCats.length,
-            onReorderItem: (oldIndex, newIndex) {
-              final list = List<CategoryItem>.from(activeCats);
-              final moved = list.removeAt(oldIndex);
-              list.insert(newIndex, moved);
-              final archives = store.categories
-                  .where((c) => c.isArchive)
-                  .toList();
-              HapticFeedback.selectionClick();
-              ref.read(canteenStoreProvider.notifier).reorderCategories([
-                ...list,
-                ...archives,
-              ]);
-            },
-            itemBuilder: (context, idx) {
-              final cat = activeCats[idx];
-              final prodCount = store.products
-                  .where((p) => p.categoryKey == cat.key)
-                  .length;
-              final enName = i18n.rawForLang(cat.nameKey, 'en');
-              final arName = i18n.rawForLang(cat.nameKey, 'ar');
+      ),
+      buildDefaultDragHandles: false,
+      itemCount: activeCats.length,
+      onReorderItem: (oldIndex, newIndex) {
+        final list = List<CategoryItem>.from(activeCats);
+        final moved = list.removeAt(oldIndex);
+        list.insert(newIndex, moved);
+        final archives = store.categories.where((c) => c.isArchive).toList();
+        HapticFeedback.selectionClick();
+        ref.read(canteenStoreProvider.notifier).reorderCategories([
+          ...list,
+          ...archives,
+        ]);
+      },
+      itemBuilder: (context, idx) {
+        final cat = activeCats[idx];
+        final prodCount = store.products
+            .where((p) => p.categoryKey == cat.key)
+            .length;
+        final enName = i18n.rawForLang(cat.nameKey, 'en');
+        final arName = i18n.rawForLang(cat.nameKey, 'ar');
 
-              return Padding(
-                key: ValueKey('cat_row_${cat.key}'),
-                padding: const EdgeInsets.only(bottom: 10),
-                child: EvaSurfaceCard(
-                  child: ListTile(
-                    contentPadding: const EdgeInsets.symmetric(
-                      horizontal: 14,
-                      vertical: 6,
-                    ),
-                    leading: ReorderableDragStartListener(
-                      index: idx,
-                      child: Container(
-                        width: 38,
-                        height: 38,
-                        decoration: BoxDecoration(
-                          color: tokens.surfaceSubtle,
-                          borderRadius: BorderRadius.circular(10),
-                        ),
-                        child: Icon(
-                          Icons.drag_handle_rounded,
-                          color: tokens.textSecondary,
-                        ),
-                      ),
-                    ),
-                    title: Text(
-                      enName.isNotEmpty && arName.isNotEmpty
-                          ? '$enName  •  $arName'
-                          : i18n.t(cat.nameKey),
-                      maxLines: 1,
-                      overflow: TextOverflow.ellipsis,
-                      style: Theme.of(context).textTheme.titleMedium,
-                    ),
-                    subtitle: Text(
-                      'Key: ${cat.key}  •  $prodCount items',
-                      maxLines: 1,
-                      overflow: TextOverflow.ellipsis,
-                      style: Theme.of(context).textTheme.bodySmall,
-                    ),
-                    trailing: Row(
-                      mainAxisSize: MainAxisSize.min,
-                      children: [
-                        IconButton(
-                          tooltip: i18n.t('edit_button'),
-                          visualDensity: VisualDensity.compact,
-                          onPressed: () =>
-                              _openCategoryDialog(context, existing: cat),
-                          icon: const Icon(Icons.edit_outlined),
-                        ),
-                        Tooltip(
-                          message: prodCount > 0
-                              ? (i18n.isRtl
-                                    ? 'انقل الأصناف للأرشيف أولاً قبل حذف الفئة'
-                                    : 'Move or archive $prodCount items before deleting')
-                              : i18n.t('delete_cta'),
-                          child: IconButton(
-                            visualDensity: VisualDensity.compact,
-                            onPressed: prodCount > 0
-                                ? null
-                                : () => ref
-                                      .read(canteenStoreProvider.notifier)
-                                      .deleteCategory(cat.key),
-                            icon: Icon(
-                              Icons.delete_outline_rounded,
-                              color: prodCount > 0
-                                  ? tokens.textSecondary.withValues(alpha: 0.35)
-                                  : tokens.statusClosedFg,
-                            ),
-                          ),
-                        ),
-                      ],
-                    ),
+        return Padding(
+          key: ValueKey('cat_row_${cat.key}'),
+          padding: const EdgeInsets.only(bottom: 10),
+          child: EvaSurfaceCard(
+            child: ListTile(
+              contentPadding: const EdgeInsets.symmetric(
+                horizontal: 14,
+                vertical: 6,
+              ),
+              leading: ReorderableDragStartListener(
+                index: idx,
+                child: Container(
+                  width: 38,
+                  height: 38,
+                  decoration: BoxDecoration(
+                    color: tokens.surfaceSubtle,
+                    borderRadius: BorderRadius.circular(10),
+                  ),
+                  child: Icon(
+                    Icons.drag_handle_rounded,
+                    color: tokens.textSecondary,
                   ),
                 ),
-              );
-            },
+              ),
+              title: Text(
+                enName.isNotEmpty && arName.isNotEmpty
+                    ? '$enName  •  $arName'
+                    : i18n.t(cat.nameKey),
+                maxLines: 1,
+                overflow: TextOverflow.ellipsis,
+                style: Theme.of(context).textTheme.titleMedium,
+              ),
+              subtitle: Text(
+                'Key: ${cat.key}  •  $prodCount items',
+                maxLines: 1,
+                overflow: TextOverflow.ellipsis,
+                style: Theme.of(context).textTheme.bodySmall,
+              ),
+              trailing: Row(
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  IconButton(
+                    tooltip: i18n.t('edit_button'),
+                    visualDensity: VisualDensity.compact,
+                    onPressed: () =>
+                        _openCategoryDialog(context, existing: cat),
+                    icon: const Icon(Icons.edit_outlined),
+                  ),
+                  Tooltip(
+                    message: prodCount > 0
+                        ? (i18n.isRtl
+                              ? 'انقل الأصناف للأرشيف أولاً قبل حذف الفئة'
+                              : 'Move or archive $prodCount items before deleting')
+                        : i18n.t('delete_cta'),
+                    child: IconButton(
+                      visualDensity: VisualDensity.compact,
+                      onPressed: prodCount > 0
+                          ? null
+                          : () => ref
+                                .read(canteenStoreProvider.notifier)
+                                .deleteCategory(cat.key),
+                      icon: Icon(
+                        Icons.delete_outline_rounded,
+                        color: prodCount > 0
+                            ? tokens.textSecondary.withValues(alpha: 0.35)
+                            : tokens.statusClosedFg,
+                      ),
+                    ),
+                  ),
+                ],
+              ),
+            ),
           ),
-        ),
-      ],
+        );
+      },
     );
   }
 
@@ -688,6 +723,7 @@ class _AdminCatalogStudioViewState
     CanteenStoreState store,
     EvaTranslator i18n,
     EvaTokens tokens,
+    double topClearance,
   ) {
     final allBundles = store.adminBundles.isNotEmpty
         ? store.adminBundles
@@ -695,12 +731,17 @@ class _AdminCatalogStudioViewState
     final productsMap = store.productsById;
 
     if (allBundles.isEmpty) {
-      return Center(
-        child: Text(
-          i18n.isRtl ? 'لا توجد عروض مسجلة بعد.' : 'No bundles configured yet.',
-          style: Theme.of(
-            context,
-          ).textTheme.titleMedium?.copyWith(color: tokens.textSecondary),
+      return Padding(
+        padding: EdgeInsets.only(top: topClearance),
+        child: Center(
+          child: Text(
+            i18n.isRtl
+                ? 'لا توجد عروض مسجلة بعد.'
+                : 'No bundles configured yet.',
+            style: Theme.of(
+              context,
+            ).textTheme.titleMedium?.copyWith(color: tokens.textSecondary),
+          ),
         ),
       );
     }
@@ -708,7 +749,7 @@ class _AdminCatalogStudioViewState
     return ListView.separated(
       padding: EdgeInsets.fromLTRB(
         16,
-        14,
+        topClearance + 8,
         16,
         24 + EvaFloatingNavBar.bottomClearance(context),
       ),

@@ -21,36 +21,36 @@ class SharedSettingsView extends ConsumerWidget {
     final tokens = EvaTokens.of(context);
     final user = store.currentUser;
 
-    return Column(
-      children: [
-        EvaGlassBar(
-          padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
-          child: Center(
-            child: ConstrainedBox(
-              constraints: const BoxConstraints(maxWidth: 720),
-              child: Row(
-                children: [
-                  Expanded(
-                    child: Text(
-                      i18n.t('nav_settings'),
-                      maxLines: 1,
-                      overflow: TextOverflow.ellipsis,
-                      style: Theme.of(context).textTheme.headlineSmall,
-                    ),
+    return EvaFloatingHeaderScaffold(
+      initialHeaderHeight: 66.0,
+      headerBuilder: (context, isScrolled) => EvaGlassBar(
+        isScrolled: isScrolled,
+        padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
+        child: Center(
+          child: ConstrainedBox(
+            constraints: const BoxConstraints(maxWidth: 720),
+            child: Row(
+              children: [
+                Expanded(
+                  child: Text(
+                    i18n.t('nav_settings'),
+                    maxLines: 1,
+                    overflow: TextOverflow.ellipsis,
+                    style: Theme.of(context).textTheme.headlineSmall,
                   ),
-                ],
-              ),
+                ),
+              ],
             ),
           ),
         ),
-        Expanded(
-          child: ListView(
-            padding: EdgeInsets.fromLTRB(
-              16,
-              16,
-              16,
-              32 + EvaFloatingNavBar.bottomClearance(context),
-            ),
+      ),
+      bodyBuilder: (context, topClearance, _) => ListView(
+        padding: EdgeInsets.fromLTRB(
+          16,
+          topClearance + 8,
+          16,
+          32 + EvaFloatingNavBar.bottomClearance(context),
+        ),
             children: [
               Center(
                 child: ConstrainedBox(
@@ -412,9 +412,7 @@ class SharedSettingsView extends ConsumerWidget {
                 ),
               ),
             ],
-          ),
-        ),
-      ],
+      ),
     );
   }
 

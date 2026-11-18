@@ -20,24 +20,64 @@ class StudentMenuView extends ConsumerStatefulWidget {
 
 class _StudentMenuViewState extends ConsumerState<StudentMenuView> {
   final _searchCtrl = TextEditingController();
+  final _categoryScrollCtrl = ScrollController();
+  final Map<String, GlobalKey> _chipKeys = {};
   String _searchQuery = '';
   String? _selectedCategoryKey;
-  bool _isScrolled = false;
+  int _categorySwitchTick = 0;
+  double _categorySlideDir = 1.0;
 
   @override
   void dispose() {
     _searchCtrl.dispose();
+    _categoryScrollCtrl.dispose();
     super.dispose();
   }
 
-  bool _handleScrollNotification(ScrollNotification notification) {
-    if (notification.metrics.axis == Axis.vertical) {
-      final nextScrolled = notification.metrics.pixels > 8;
-      if (nextScrolled != _isScrolled) {
-        setState(() => _isScrolled = nextScrolled);
+  GlobalKey _chipKeyFor(String? categoryKey) =>
+      _chipKeys.putIfAbsent(categoryKey ?? '__all__', GlobalKey.new);
+
+  void _selectCategory(String? nextKey, List<CategoryItem> categories) {
+    if (_selectedCategoryKey == nextKey) return;
+    final orderedKeys = <String?>[null, ...categories.map((c) => c.key)];
+    final oldIdx = orderedKeys.indexOf(_selectedCategoryKey);
+    final newIdx = orderedKeys.indexOf(nextKey);
+    final logicalDir = newIdx >= oldIdx ? 1.0 : -1.0;
+
+    setState(() {
+      _selectedCategoryKey = nextKey;
+      _categorySlideDir = logicalDir;
+      _categorySwitchTick++;
+    });
+
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      if (!mounted || !_categoryScrollCtrl.hasClients) return;
+      final position = _categoryScrollCtrl.position;
+      if (position.maxScrollExtent <= 0) return;
+      final chipCtx = _chipKeyFor(nextKey).currentContext;
+      final listBox =
+          position.context.storageContext.findRenderObject() as RenderBox?;
+      final chipBox = chipCtx?.findRenderObject() as RenderBox?;
+      if (chipBox == null || listBox == null || !chipBox.attached) return;
+
+      final chipLeftInViewport = chipBox
+          .localToGlobal(Offset.zero, ancestor: listBox)
+          .dx;
+      final desiredDelta =
+          (chipLeftInViewport + chipBox.size.width / 2) -
+          (listBox.size.width / 2);
+      final targetOffset = (position.pixels + desiredDelta).clamp(
+        0.0,
+        position.maxScrollExtent,
+      );
+      if ((targetOffset - position.pixels).abs() > 2.0) {
+        _categoryScrollCtrl.animateTo(
+          targetOffset,
+          duration: const Duration(milliseconds: 260),
+          curve: Curves.easeOutCubic,
+        );
       }
-    }
-    return false;
+    });
   }
 
   @override
@@ -63,318 +103,306 @@ class _StudentMenuViewState extends ConsumerState<StudentMenuView> {
     final activeBundles = store.bundles
         .where((b) => b.active)
         .toList(growable: false);
+    final showCombos =
+        _searchQuery.trim().isEmpty &&
+        _selectedCategoryKey == null &&
+        activeBundles.isNotEmpty;
     final activeOrder = store.activeStudentOrder;
     final isGuest = user == null || user.role == UserRole.guest;
     final showWalletInHeader =
-        !isGuest && user.role == UserRole.student && store.paymentMethods.wallet;
+        !isGuest &&
+        user.role == UserRole.student &&
+        store.paymentMethods.wallet;
+    final bottomSafe = MediaQuery.paddingOf(context).bottom;
 
-    return Column(
-      children: [
-        // Floating Rounded Animated Top Bar
-        Center(
-          child: ConstrainedBox(
-            constraints: const BoxConstraints(maxWidth: 1204),
-            child: EvaGlassBar(
-              isScrolled: _isScrolled,
-              borderRadius: 22,
-              margin: const EdgeInsets.fromLTRB(12, 8, 12, 4),
-              padding: EdgeInsets.symmetric(
-                horizontal: 13,
-                vertical: _isScrolled ? 8 : 11,
-              ),
-              child: Row(
-                children: [
-                  AnimatedScale(
-                    scale: _isScrolled ? 0.92 : 1.0,
-                    duration: const Duration(milliseconds: 200),
-                    curve: Curves.easeOutCubic,
-                    child: const EvaBrandLogo(size: 38),
-                  ),
-                  const SizedBox(width: 10),
-                  Expanded(
-                    child: Column(
-                      crossAxisAlignment: CrossAxisAlignment.start,
-                      mainAxisSize: MainAxisSize.min,
-                      children: [
-                        AnimatedSwitcher(
-                          duration: const Duration(milliseconds: 180),
-                          layoutBuilder: (currentChild, previousChildren) =>
-                              Stack(
-                                alignment: AlignmentDirectional.centerStart,
-                                children: [
-                                  ...previousChildren,
-                                  ?currentChild,
-                                ],
-                              ),
-                          child: Text(
-                            i18n.t('canteen_name'),
-                            key: ValueKey<String>(i18n.t('canteen_name')),
-                            maxLines: 1,
-                            overflow: TextOverflow.ellipsis,
-                            style: Theme.of(context).textTheme.titleMedium
-                                ?.copyWith(fontWeight: FontWeight.w800),
-                          ),
+    return EvaFloatingHeaderScaffold(
+      initialHeaderHeight: 72.0,
+      headerBuilder: (context, isScrolled) => Center(
+        child: ConstrainedBox(
+          constraints: const BoxConstraints(maxWidth: 1204),
+          child: EvaGlassBar(
+            isScrolled: isScrolled,
+            borderRadius: 22,
+            margin: const EdgeInsets.fromLTRB(12, 8, 12, 4),
+            padding: EdgeInsets.symmetric(
+              horizontal: 13,
+              vertical: isScrolled ? 8 : 11,
+            ),
+            child: Row(
+              children: [
+                AnimatedScale(
+                  scale: isScrolled ? 0.92 : 1.0,
+                  duration: const Duration(milliseconds: 200),
+                  curve: Curves.easeOutCubic,
+                  child: const EvaBrandLogo(size: 38),
+                ),
+                const SizedBox(width: 10),
+                Expanded(
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    mainAxisSize: MainAxisSize.min,
+                    children: [
+                      AnimatedSwitcher(
+                        duration: const Duration(milliseconds: 180),
+                        layoutBuilder: (currentChild, previousChildren) =>
+                            Stack(
+                              alignment: AlignmentDirectional.centerStart,
+                              children: [...previousChildren, ?currentChild],
+                            ),
+                        child: Text(
+                          i18n.t('canteen_name'),
+                          key: ValueKey<String>(i18n.t('canteen_name')),
+                          maxLines: 1,
+                          overflow: TextOverflow.ellipsis,
+                          style: Theme.of(context).textTheme.titleMedium
+                              ?.copyWith(fontWeight: FontWeight.w800),
                         ),
-                        const SizedBox(height: 1),
-                        if (showWalletInHeader)
-                          Row(
-                            mainAxisSize: MainAxisSize.min,
-                            children: [
-                              Icon(
-                                Icons.account_balance_wallet_outlined,
-                                size: 12.5,
-                                color: tokens.brandPrimary,
+                      ),
+                      const SizedBox(height: 1),
+                      if (showWalletInHeader)
+                        Row(
+                          mainAxisSize: MainAxisSize.min,
+                          children: [
+                            Icon(
+                              Icons.account_balance_wallet_outlined,
+                              size: 12.5,
+                              color: tokens.brandPrimary,
+                            ),
+                            const SizedBox(width: 4),
+                            Flexible(
+                              child: EvaAnimatedCounterText(
+                                text: i18n.formatPrice(user.balance),
+                                numericValue: user.balance,
+                                style: Theme.of(context).textTheme.labelSmall
+                                    ?.copyWith(
+                                      color: tokens.brandPrimary,
+                                      fontWeight: FontWeight.w700,
+                                    ),
                               ),
-                              const SizedBox(width: 4),
-                              Flexible(
-                                child: AnimatedSwitcher(
-                                  duration: const Duration(milliseconds: 180),
-                                  child: Text(
-                                    i18n.formatPrice(user.balance),
-                                    key: ValueKey<double>(user.balance),
-                                    maxLines: 1,
-                                    overflow: TextOverflow.ellipsis,
-                                    style: Theme.of(context)
-                                        .textTheme
-                                        .labelSmall
-                                        ?.copyWith(
-                                          color: tokens.brandPrimary,
-                                          fontWeight: FontWeight.w700,
-                                          fontFeatures:
-                                              EvaThemeBuilder.tabularNums,
-                                        ),
-                                  ),
-                                ),
+                            ),
+                          ],
+                        )
+                      else
+                        Text(
+                          isGuest ? i18n.t('guest_mode_short') : user.email,
+                          maxLines: 1,
+                          overflow: TextOverflow.ellipsis,
+                          style: Theme.of(context).textTheme.labelSmall
+                              ?.copyWith(
+                                color: tokens.textSecondary,
+                                fontWeight: FontWeight.w600,
                               ),
-                            ],
-                          )
-                        else
-                          Text(
-                            isGuest ? i18n.t('guest_mode_short') : user.email,
-                            maxLines: 1,
-                            overflow: TextOverflow.ellipsis,
-                            style: Theme.of(context).textTheme.labelSmall
-                                ?.copyWith(
-                                  color: tokens.textSecondary,
-                                  fontWeight: FontWeight.w600,
-                                ),
-                          ),
-                      ],
-                    ),
+                        ),
+                    ],
                   ),
-                  const SizedBox(width: 8),
-                  EvaStatusBadge(
-                    label: store.isCanteenOpen
-                        ? i18n.t('canteen_open_badge')
-                        : i18n.t('canteen_closed_badge'),
-                    background: store.isCanteenOpen
-                        ? tokens.statusDeliveredBg
-                        : tokens.statusClosedBg,
-                    foreground: store.isCanteenOpen
-                        ? tokens.statusDeliveredFg
-                        : tokens.statusClosedFg,
-                    pulsing: store.isCanteenOpen,
-                  ),
-                ],
-              ),
+                ),
+                const SizedBox(width: 8),
+                EvaStatusBadge(
+                  label: store.isCanteenOpen
+                      ? i18n.t('canteen_open_badge')
+                      : i18n.t('canteen_closed_badge'),
+                  background: store.isCanteenOpen
+                      ? tokens.statusDeliveredBg
+                      : tokens.statusClosedBg,
+                  foreground: store.isCanteenOpen
+                      ? tokens.statusDeliveredFg
+                      : tokens.statusClosedFg,
+                  pulsing: store.isCanteenOpen,
+                ),
+              ],
             ),
           ),
         ),
-
-        Expanded(
-          child: Stack(
-            children: [
-              NotificationListener<ScrollNotification>(
-                onNotification: _handleScrollNotification,
-                child: CustomScrollView(
-                  physics: const ClampingScrollPhysics(),
-                  slivers: [
-                    SliverToBoxAdapter(
-                      child: Padding(
-                        padding: const EdgeInsets.fromLTRB(12, 8, 12, 6),
-                        child: Center(
-                          child: ConstrainedBox(
-                            constraints: const BoxConstraints(maxWidth: 1180),
-                            child: Column(
-                              crossAxisAlignment: CrossAxisAlignment.stretch,
-                              children: [
-                                if (isGuest) ...[
-                                  EvaSurfaceCard(
-                                    padding: const EdgeInsets.symmetric(
-                                      horizontal: 12,
-                                      vertical: 8,
-                                    ),
-                                    borderRadius: 16,
-                                    child: Row(
-                                      children: [
-                                        EvaAvatar(
-                                          profilePic: user?.profilePic ?? 'pic2',
-                                          radius: 14,
-                                        ),
-                                        const SizedBox(width: 10),
-                                        Expanded(
-                                          child: Text(
-                                            i18n.t('guest_mode_short'),
-                                            maxLines: 1,
-                                            overflow: TextOverflow.ellipsis,
-                                            style: Theme.of(context)
-                                                .textTheme
-                                                .labelLarge
-                                                ?.copyWith(
-                                                  color: tokens.textPrimary,
-                                                ),
-                                          ),
-                                        ),
-                                        TextButton.icon(
-                                          onPressed: () =>
-                                              context.go('/welcome'),
-                                          style: TextButton.styleFrom(
-                                            minimumSize: const Size(0, 32),
-                                            tapTargetSize: MaterialTapTargetSize
-                                                .shrinkWrap,
-                                            padding: const EdgeInsets.symmetric(
-                                              horizontal: 10,
-                                              vertical: 4,
-                                            ),
-                                          ),
-                                          icon: const Icon(
-                                            Icons.login_rounded,
-                                            size: 15,
-                                          ),
-                                          label: Text(i18n.t('sign_in_tab')),
-                                        ),
-                                      ],
+      ),
+      bodyBuilder: (context, topClearance, _) => Stack(
+        fit: StackFit.expand,
+        children: [
+          CustomScrollView(
+            physics: const ClampingScrollPhysics(),
+            slivers: [
+              SliverToBoxAdapter(
+                child: Padding(
+                  padding: EdgeInsets.fromLTRB(12, topClearance + 4, 12, 6),
+                  child: Center(
+                    child: ConstrainedBox(
+                      constraints: const BoxConstraints(maxWidth: 1180),
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.stretch,
+                        children: [
+                          if (isGuest) ...[
+                            EvaSurfaceCard(
+                              padding: const EdgeInsets.symmetric(
+                                horizontal: 12,
+                                vertical: 8,
+                              ),
+                              borderRadius: 16,
+                              child: Row(
+                                children: [
+                                  EvaAvatar(
+                                    profilePic: user?.profilePic ?? 'pic2',
+                                    radius: 14,
+                                  ),
+                                  const SizedBox(width: 10),
+                                  Expanded(
+                                    child: Text(
+                                      i18n.t('guest_mode_short'),
+                                      maxLines: 1,
+                                      overflow: TextOverflow.ellipsis,
+                                      style: Theme.of(context)
+                                          .textTheme
+                                          .labelLarge
+                                          ?.copyWith(color: tokens.textPrimary),
                                     ),
                                   ),
-                                  const SizedBox(height: 10),
-                                ],
-
-                                if (!store.isCanteenOpen) ...[
-                                  Container(
-                                    padding: const EdgeInsets.all(12),
-                                    decoration: BoxDecoration(
-                                      color: tokens.statusClosedBg,
-                                      borderRadius: BorderRadius.circular(14),
-                                      border: Border.all(
-                                        color: tokens.statusClosedFg.withValues(
-                                          alpha: 0.25,
-                                        ),
+                                  TextButton.icon(
+                                    onPressed: () => context.go('/welcome'),
+                                    style: TextButton.styleFrom(
+                                      minimumSize: const Size(0, 32),
+                                      tapTargetSize:
+                                          MaterialTapTargetSize.shrinkWrap,
+                                      padding: const EdgeInsets.symmetric(
+                                        horizontal: 10,
+                                        vertical: 4,
                                       ),
                                     ),
-                                    child: Row(
-                                      children: [
-                                        Icon(
-                                          Icons.storefront_outlined,
-                                          color: tokens.statusClosedFg,
-                                          size: 20,
-                                        ),
-                                        const SizedBox(width: 10),
-                                        Expanded(
-                                          child: Text(
-                                            i18n.t(
-                                              'canteen_closed_browse_banner',
-                                            ),
-                                            style: Theme.of(context)
-                                                .textTheme
-                                                .bodySmall
-                                                ?.copyWith(
-                                                  color: tokens.statusClosedFg,
-                                                  fontWeight: FontWeight.w600,
-                                                ),
-                                          ),
-                                        ),
-                                      ],
+                                    icon: const Icon(
+                                      Icons.login_rounded,
+                                      size: 15,
                                     ),
+                                    label: Text(i18n.t('sign_in_tab')),
                                   ),
-                                  const SizedBox(height: 10),
                                 ],
+                              ),
+                            ),
+                            const SizedBox(height: 10),
+                          ],
 
-                                if (activeOrder != null) ...[
-                                  EvaSurfaceCard(
-                                    onTap: () => context.go('/orders'),
-                                    backgroundColor: tokens.brandSoftBg,
-                                    borderColor: tokens.brandPrimary.withValues(
-                                      alpha: 0.35,
-                                    ),
-                                    borderRadius: 16,
-                                    padding: const EdgeInsets.symmetric(
-                                      horizontal: 14,
-                                      vertical: 11,
-                                    ),
-                                    child: Row(
-                                      children: [
-                                        Icon(
-                                          Icons.confirmation_number_outlined,
-                                          color: tokens.brandPrimary,
-                                          size: 20,
-                                        ),
-                                        const SizedBox(width: 10),
-                                        Expanded(
-                                          child: Text(
-                                            i18n.t('active_order_pill', {
-                                              'num': activeOrder.pickupNumber,
-                                              'status': i18n.t(
-                                                'status_${activeOrder.status.name}',
-                                              ),
-                                            }),
-                                            maxLines: 1,
-                                            overflow: TextOverflow.ellipsis,
-                                            style: Theme.of(context)
-                                                .textTheme
-                                                .titleMedium
-                                                ?.copyWith(
-                                                  color: tokens.brandPrimary,
-                                                ),
-                                          ),
-                                        ),
-                                        Icon(
-                                          Icons.chevron_right_rounded,
-                                          size: 20,
-                                          color: tokens.brandPrimary,
-                                        ),
-                                      ],
-                                    ),
-                                  ),
-                                  const SizedBox(height: 10),
-                                ],
-
-                                TextField(
-                                  controller: _searchCtrl,
-                                  onChanged: (v) =>
-                                      setState(() => _searchQuery = v),
-                                  decoration: InputDecoration(
-                                    hintText: i18n.t('search_hint'),
-                                    prefixIcon: const Icon(
-                                      Icons.search_rounded,
-                                      size: 20,
-                                    ),
-                                    suffixIcon: _searchQuery.isEmpty
-                                        ? null
-                                        : IconButton(
-                                            onPressed: () {
-                                              _searchCtrl.clear();
-                                              setState(() => _searchQuery = '');
-                                            },
-                                            icon: const Icon(
-                                              Icons.close_rounded,
-                                              size: 18,
-                                            ),
-                                          ),
+                          if (!store.isCanteenOpen) ...[
+                            Container(
+                              padding: const EdgeInsets.all(12),
+                              decoration: BoxDecoration(
+                                color: tokens.statusClosedBg,
+                                borderRadius: BorderRadius.circular(14),
+                                border: Border.all(
+                                  color: tokens.statusClosedFg.withValues(
+                                    alpha: 0.25,
                                   ),
                                 ),
-                              ],
+                              ),
+                              child: Row(
+                                children: [
+                                  Icon(
+                                    Icons.storefront_outlined,
+                                    color: tokens.statusClosedFg,
+                                    size: 20,
+                                  ),
+                                  const SizedBox(width: 10),
+                                  Expanded(
+                                    child: Text(
+                                      i18n.t('canteen_closed_browse_banner'),
+                                      style: Theme.of(context)
+                                          .textTheme
+                                          .bodySmall
+                                          ?.copyWith(
+                                            color: tokens.statusClosedFg,
+                                            fontWeight: FontWeight.w600,
+                                          ),
+                                    ),
+                                  ),
+                                ],
+                              ),
+                            ),
+                            const SizedBox(height: 10),
+                          ],
+
+                          if (activeOrder != null) ...[
+                            EvaSurfaceCard(
+                              onTap: () => context.go('/orders'),
+                              backgroundColor: tokens.brandSoftBg,
+                              borderColor: tokens.brandPrimary.withValues(
+                                alpha: 0.35,
+                              ),
+                              borderRadius: 16,
+                              padding: const EdgeInsets.symmetric(
+                                horizontal: 14,
+                                vertical: 11,
+                              ),
+                              child: Row(
+                                children: [
+                                  Icon(
+                                    Icons.confirmation_number_outlined,
+                                    color: tokens.brandPrimary,
+                                    size: 20,
+                                  ),
+                                  const SizedBox(width: 10),
+                                  Expanded(
+                                    child: Text(
+                                      i18n.t('active_order_pill', {
+                                        'num': activeOrder.pickupNumber,
+                                        'status': i18n.t(
+                                          'status_${activeOrder.status.name}',
+                                        ),
+                                      }),
+                                      maxLines: 1,
+                                      overflow: TextOverflow.ellipsis,
+                                      style: Theme.of(context)
+                                          .textTheme
+                                          .titleMedium
+                                          ?.copyWith(
+                                            color: tokens.brandPrimary,
+                                          ),
+                                    ),
+                                  ),
+                                  Icon(
+                                    Icons.chevron_right_rounded,
+                                    size: 20,
+                                    color: tokens.brandPrimary,
+                                  ),
+                                ],
+                              ),
+                            ),
+                            const SizedBox(height: 10),
+                          ],
+
+                          TextField(
+                            controller: _searchCtrl,
+                            onChanged: (v) => setState(() => _searchQuery = v),
+                            decoration: InputDecoration(
+                              hintText: i18n.t('search_hint'),
+                              prefixIcon: const Icon(
+                                Icons.search_rounded,
+                                size: 20,
+                              ),
+                              suffixIcon: _searchQuery.isEmpty
+                                  ? null
+                                  : IconButton(
+                                      onPressed: () {
+                                        _searchCtrl.clear();
+                                        setState(() => _searchQuery = '');
+                                      },
+                                      icon: const Icon(
+                                        Icons.close_rounded,
+                                        size: 18,
+                                      ),
+                                    ),
                             ),
                           ),
-                        ),
+                        ],
                       ),
                     ),
+                  ),
+                ),
+              ),
 
-                    // Featured Combos & Deals Carousel
-                    if (_searchQuery.trim().isEmpty &&
-                        _selectedCategoryKey == null &&
-                        activeBundles.isNotEmpty)
-                      SliverToBoxAdapter(
-                        child: Center(
+              // Smoothly collapsing/expanding Featured Combos & Deals Carousel
+              SliverToBoxAdapter(
+                child: AnimatedSize(
+                  duration: const Duration(milliseconds: 260),
+                  curve: Curves.easeOutCubic,
+                  alignment: Alignment.topCenter,
+                  child: !showCombos
+                      ? const SizedBox(width: double.infinity)
+                      : Center(
                           child: ConstrainedBox(
                             constraints: const BoxConstraints(maxWidth: 1180),
                             child: Column(
@@ -432,256 +460,246 @@ class _StudentMenuViewState extends ConsumerState<StudentMenuView> {
                             ),
                           ),
                         ),
-                      ),
-
-                    // Category Filter Chips
-                    SliverToBoxAdapter(
-                      child: Center(
-                        child: ConstrainedBox(
-                          constraints: const BoxConstraints(maxWidth: 1180),
-                          child: SizedBox(
-                            height: 52,
-                            child: ListView(
-                              padding: const EdgeInsets.fromLTRB(12, 8, 12, 6),
-                              scrollDirection: Axis.horizontal,
-                              children: [
-                                _CategoryFilterChip(
-                                  label: i18n.t('all_categories'),
-                                  selected: _selectedCategoryKey == null,
-                                  onTap: () => setState(
-                                    () => _selectedCategoryKey = null,
-                                  ),
-                                ),
-                                for (final cat in visibleCategories) ...[
-                                  const SizedBox(width: 8),
-                                  _CategoryFilterChip(
-                                    label: i18n.t(cat.nameKey),
-                                    selected: _selectedCategoryKey == cat.key,
-                                    onTap: () => setState(
-                                      () => _selectedCategoryKey = cat.key,
-                                    ),
-                                  ),
-                                ],
-                              ],
-                            ),
-                          ),
-                        ),
-                      ),
-                    ),
-
-                    // True Multi-Column Product Grid (2 cols on phones, 3 on tablet, 4 on desktop)
-                    SliverLayoutBuilder(
-                      builder: (context, constraints) {
-                        final totalW = constraints.crossAxisExtent;
-                        final sidePad = totalW < 420
-                            ? 12.0
-                            : math.max(16.0, (totalW - 1180) / 2);
-                        final gridW = math.max(220.0, totalW - sidePad * 2);
-
-                        final int cols = gridW < 260
-                            ? 1
-                            : (gridW < 620 ? 2 : (gridW < 920 ? 3 : 4));
-                        final double spacing = cols <= 2 ? 10 : 14;
-                        final double cardHeight = cols <= 2 ? 262 : 280;
-
-                        final navClearance = EvaFloatingNavBar.bottomClearance(
-                          context,
-                        );
-
-                        return SliverPadding(
-                          padding: EdgeInsets.fromLTRB(
-                            sidePad,
-                            8,
-                            sidePad,
-                            (cartSummary.isEmpty ? 24.0 : 96.0) + navClearance,
-                          ),
-                          sliver: SliverGrid(
-                            gridDelegate:
-                                SliverGridDelegateWithFixedCrossAxisCount(
-                                  crossAxisCount: cols,
-                                  mainAxisSpacing: spacing,
-                                  crossAxisSpacing: spacing,
-                                  mainAxisExtent: cardHeight,
-                                ),
-                            delegate: SliverChildBuilderDelegate(
-                              (context, index) {
-                                final product = filteredProducts[index];
-                                return EvaReveal(
-                                  index: index,
-                                  child: _MenuProductCard(
-                                    product: product,
-                                    isCompactGrid: cols <= 2,
-                                    onOpenDetails: () =>
-                                        _showItemDetailSheet(context, product),
-                                  ),
-                                );
-                              },
-                              childCount: filteredProducts.length,
-                            ),
-                          ),
-                        );
-                      },
-                    ),
-                  ],
                 ),
               ),
 
-              // Animated Floating Checkout Dock (lifts cleanly above EvaFloatingNavBar on mobile)
-              Positioned(
-                left: 16,
-                right: 16,
-                bottom:
-                    MediaQuery.sizeOf(context).width <
-                        EvaFloatingNavBar.shellWideBreakpoint
-                    ? 84
-                    : 14,
-                child: AnimatedSwitcher(
-                  duration: const Duration(milliseconds: 220),
-                  switchInCurve: Curves.easeOutCubic,
-                  switchOutCurve: Curves.easeInCubic,
-                  transitionBuilder: (child, anim) {
-                    return FadeTransition(
-                      opacity: anim,
-                      child: SlideTransition(
-                        position: Tween<Offset>(
-                          begin: const Offset(0, 0.35),
-                          end: Offset.zero,
-                        ).animate(anim),
-                        child: child,
+              // Category Filter Chips with Auto-Centering & Animated Active State
+              SliverToBoxAdapter(
+                child: Center(
+                  child: ConstrainedBox(
+                    constraints: const BoxConstraints(maxWidth: 1180),
+                    child: SizedBox(
+                      height: 54,
+                      child: ListView(
+                        controller: _categoryScrollCtrl,
+                        padding: const EdgeInsets.fromLTRB(12, 8, 12, 6),
+                        scrollDirection: Axis.horizontal,
+                        children: [
+                          _CategoryFilterChip(
+                            key: _chipKeyFor(null),
+                            label: i18n.t('all_categories'),
+                            selected: _selectedCategoryKey == null,
+                            onTap: () =>
+                                _selectCategory(null, visibleCategories),
+                          ),
+                          for (final cat in visibleCategories) ...[
+                            const SizedBox(width: 8),
+                            _CategoryFilterChip(
+                              key: _chipKeyFor(cat.key),
+                              label: i18n.t(cat.nameKey),
+                              selected: _selectedCategoryKey == cat.key,
+                              onTap: () =>
+                                  _selectCategory(cat.key, visibleCategories),
+                            ),
+                          ],
+                        ],
                       ),
-                    );
-                  },
-                  child: cartSummary.isEmpty
-                      ? const SizedBox.shrink()
-                      : Center(
-                          key: const ValueKey('checkout_dock_visible'),
-                          child: ConstrainedBox(
-                            constraints: const BoxConstraints(maxWidth: 560),
-                            child: EvaPressable(
-                              child: Material(
-                                color: tokens.brandPrimary,
-                                elevation: 8,
-                                shadowColor: Colors.black.withValues(
-                                  alpha: 0.25,
+                    ),
+                  ),
+                ),
+              ),
+
+              // True Multi-Column Product Grid with Directional Category Transitions
+              SliverLayoutBuilder(
+                builder: (context, constraints) {
+                  final totalW = constraints.crossAxisExtent;
+                  final sidePad = totalW < 420
+                      ? 12.0
+                      : math.max(16.0, (totalW - 1180) / 2);
+                  final gridW = math.max(220.0, totalW - sidePad * 2);
+
+                  final int cols = gridW < 260
+                      ? 1
+                      : (gridW < 620 ? 2 : (gridW < 920 ? 3 : 4));
+                  final double spacing = cols <= 2 ? 10 : 14;
+                  final double cardHeight = cols <= 2 ? 262 : 280;
+
+                  final navClearance = EvaFloatingNavBar.bottomClearance(
+                    context,
+                  );
+
+                  return SliverPadding(
+                    padding: EdgeInsets.fromLTRB(
+                      sidePad,
+                      8,
+                      sidePad,
+                      (cartSummary.isEmpty ? 24.0 : 96.0) + navClearance,
+                    ),
+                    sliver: SliverGrid(
+                      gridDelegate: SliverGridDelegateWithFixedCrossAxisCount(
+                        crossAxisCount: cols,
+                        mainAxisSpacing: spacing,
+                        crossAxisSpacing: spacing,
+                        mainAxisExtent: cardHeight,
+                      ),
+                      delegate: SliverChildBuilderDelegate((context, index) {
+                        final product = filteredProducts[index];
+                        return _CategoryCardEntrance(
+                          key: ValueKey(
+                            'cat_${_selectedCategoryKey ?? "all"}_${_categorySwitchTick}_${product.id}',
+                          ),
+                          index: index,
+                          isCategorySwitch: _categorySwitchTick > 0,
+                          logicalDirection: _categorySlideDir,
+                          child: _MenuProductCard(
+                            product: product,
+                            isCompactGrid: cols <= 2,
+                            onOpenDetails: () =>
+                                _showItemDetailSheet(context, product),
+                          ),
+                        );
+                      }, childCount: filteredProducts.length),
+                    ),
+                  );
+                },
+              ),
+            ],
+          ),
+
+          // Animated Floating Checkout Dock (lifts cleanly above EvaFloatingNavBar on mobile)
+          Positioned(
+            left: 16,
+            right: 16,
+            bottom:
+                MediaQuery.sizeOf(context).width <
+                    EvaFloatingNavBar.shellWideBreakpoint
+                ? 84 + bottomSafe
+                : 14,
+            child: AnimatedSwitcher(
+              duration: const Duration(milliseconds: 220),
+              switchInCurve: Curves.easeOutCubic,
+              switchOutCurve: Curves.easeInCubic,
+              transitionBuilder: (child, anim) {
+                return FadeTransition(
+                  opacity: anim,
+                  child: SlideTransition(
+                    position: Tween<Offset>(
+                      begin: const Offset(0, 0.35),
+                      end: Offset.zero,
+                    ).animate(anim),
+                    child: child,
+                  ),
+                );
+              },
+              child: cartSummary.isEmpty
+                  ? const SizedBox.shrink()
+                  : Center(
+                      key: const ValueKey('checkout_dock_visible'),
+                      child: ConstrainedBox(
+                        constraints: const BoxConstraints(maxWidth: 560),
+                        child: EvaPressable(
+                          child: Material(
+                            color: tokens.brandPrimary,
+                            elevation: 8,
+                            shadowColor: Colors.black.withValues(alpha: 0.25),
+                            borderRadius: BorderRadius.circular(18),
+                            child: InkWell(
+                              borderRadius: BorderRadius.circular(18),
+                              onTap: () => showCartCheckoutSheet(context),
+                              child: Padding(
+                                padding: const EdgeInsets.symmetric(
+                                  horizontal: 16,
+                                  vertical: 13,
                                 ),
-                                borderRadius: BorderRadius.circular(18),
-                                child: InkWell(
-                                  borderRadius: BorderRadius.circular(18),
-                                  onTap: () => showCartCheckoutSheet(context),
-                                  child: Padding(
-                                    padding: const EdgeInsets.symmetric(
-                                      horizontal: 16,
-                                      vertical: 13,
+                                child: Row(
+                                  children: [
+                                    Container(
+                                      padding: const EdgeInsets.symmetric(
+                                        horizontal: 10,
+                                        vertical: 4,
+                                      ),
+                                      decoration: BoxDecoration(
+                                        color: tokens.brandOnPrimary.withValues(
+                                          alpha: 0.18,
+                                        ),
+                                        borderRadius: BorderRadius.circular(
+                                          999,
+                                        ),
+                                      ),
+                                      child: EvaAnimatedCounterText(
+                                        text: '${cartSummary.totalItemCount}',
+                                        numericValue:
+                                            cartSummary.totalItemCount,
+                                        textAlign: TextAlign.center,
+                                        style: Theme.of(context)
+                                            .textTheme
+                                            .labelLarge
+                                            ?.copyWith(
+                                              color: tokens.brandOnPrimary,
+                                              fontWeight: FontWeight.w800,
+                                            ),
+                                      ),
                                     ),
-                                    child: Row(
-                                      children: [
-                                        Container(
-                                          padding: const EdgeInsets.symmetric(
-                                            horizontal: 10,
-                                            vertical: 4,
+                                    const SizedBox(width: 12),
+                                    Expanded(
+                                      child: Column(
+                                        crossAxisAlignment:
+                                            CrossAxisAlignment.start,
+                                        mainAxisSize: MainAxisSize.min,
+                                        children: [
+                                          Text(
+                                            i18n.t('review_order_cta'),
+                                            maxLines: 1,
+                                            overflow: TextOverflow.ellipsis,
+                                            style: Theme.of(context)
+                                                .textTheme
+                                                .labelLarge
+                                                ?.copyWith(
+                                                  color: tokens.brandOnPrimary,
+                                                ),
                                           ),
-                                          decoration: BoxDecoration(
-                                            color: tokens.brandOnPrimary
-                                                .withValues(alpha: 0.18),
-                                            borderRadius: BorderRadius.circular(
-                                              999,
-                                            ),
-                                          ),
-                                          child: AnimatedSwitcher(
-                                            duration: const Duration(
-                                              milliseconds: 160,
-                                            ),
-                                            child: Text(
-                                              '${cartSummary.totalItemCount}',
-                                              key: ValueKey<int>(
-                                                cartSummary.totalItemCount,
-                                              ),
+                                          if (cartSummary.totalDiscount > 0)
+                                            EvaAnimatedCounterText(
+                                              text:
+                                                  '-${i18n.formatPrice(cartSummary.totalDiscount)} ${i18n.t('bundle_savings_label')}',
+                                              numericValue:
+                                                  cartSummary.totalDiscount,
                                               style: Theme.of(context)
                                                   .textTheme
-                                                  .labelLarge
+                                                  .labelSmall
                                                   ?.copyWith(
-                                                    color:
-                                                        tokens.brandOnPrimary,
-                                                    fontFeatures:
-                                                        EvaThemeBuilder
-                                                            .tabularNums,
+                                                    color: tokens.brandOnPrimary
+                                                        .withValues(
+                                                          alpha: 0.85,
+                                                        ),
                                                   ),
                                             ),
-                                          ),
-                                        ),
-                                        const SizedBox(width: 12),
-                                        Expanded(
-                                          child: Column(
-                                            crossAxisAlignment:
-                                                CrossAxisAlignment.start,
-                                            mainAxisSize: MainAxisSize.min,
-                                            children: [
-                                              Text(
-                                                i18n.t('review_order_cta'),
-                                                maxLines: 1,
-                                                overflow: TextOverflow.ellipsis,
-                                                style: Theme.of(context)
-                                                    .textTheme
-                                                    .labelLarge
-                                                    ?.copyWith(
-                                                      color:
-                                                          tokens.brandOnPrimary,
-                                                    ),
-                                              ),
-                                              if (cartSummary.totalDiscount > 0)
-                                                Text(
-                                                  '-${i18n.formatPrice(cartSummary.totalDiscount)} ${i18n.t('bundle_savings_label')}',
-                                                  maxLines: 1,
-                                                  overflow:
-                                                      TextOverflow.ellipsis,
-                                                  style: Theme.of(context)
-                                                      .textTheme
-                                                      .labelSmall
-                                                      ?.copyWith(
-                                                        color: tokens
-                                                            .brandOnPrimary
-                                                            .withValues(
-                                                              alpha: 0.85,
-                                                            ),
-                                                      ),
-                                                ),
-                                            ],
-                                          ),
-                                        ),
-                                        const SizedBox(width: 8),
-                                        Text(
-                                          i18n.formatPrice(
-                                            cartSummary.finalTotal,
-                                          ),
-                                          style: Theme.of(context)
-                                              .textTheme
-                                              .titleMedium
-                                              ?.copyWith(
-                                                color: tokens.brandOnPrimary,
-                                                fontFeatures:
-                                                    EvaThemeBuilder.tabularNums,
-                                              ),
-                                        ),
-                                        const SizedBox(width: 4),
-                                        Icon(
-                                          Icons.chevron_right_rounded,
-                                          size: 20,
-                                          color: tokens.brandOnPrimary,
-                                        ),
-                                      ],
+                                        ],
+                                      ),
                                     ),
-                                  ),
+                                    const SizedBox(width: 8),
+                                    EvaAnimatedCounterText(
+                                      text: i18n.formatPrice(
+                                        cartSummary.finalTotal,
+                                      ),
+                                      numericValue: cartSummary.finalTotal,
+                                      textAlign: TextAlign.end,
+                                      style: Theme.of(context)
+                                          .textTheme
+                                          .titleMedium
+                                          ?.copyWith(
+                                            color: tokens.brandOnPrimary,
+                                            fontWeight: FontWeight.w800,
+                                          ),
+                                    ),
+                                    const SizedBox(width: 4),
+                                    Icon(
+                                      Icons.chevron_right_rounded,
+                                      size: 20,
+                                      color: tokens.brandOnPrimary,
+                                    ),
+                                  ],
                                 ),
                               ),
                             ),
                           ),
                         ),
-                ),
-              ),
-            ],
+                      ),
+                    ),
+            ),
           ),
-        ),
-      ],
+        ],
+      ),
     );
   }
 
@@ -876,6 +894,7 @@ class _SmartBundleCard extends ConsumerWidget {
 
 class _CategoryFilterChip extends StatelessWidget {
   const _CategoryFilterChip({
+    super.key,
     required this.label,
     required this.selected,
     required this.onTap,
@@ -888,32 +907,163 @@ class _CategoryFilterChip extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final tokens = EvaTokens.of(context);
-    return InkWell(
-      onTap: () {
-        HapticFeedback.selectionClick();
-        onTap();
-      },
-      borderRadius: BorderRadius.circular(999),
-      child: AnimatedContainer(
-        duration: const Duration(milliseconds: 180),
-        curve: Curves.easeOutCubic,
-        padding: const EdgeInsets.symmetric(horizontal: 15, vertical: 7),
-        decoration: BoxDecoration(
-          color: selected ? tokens.brandPrimary : tokens.surfaceElevated,
-          borderRadius: BorderRadius.circular(999),
-          border: Border.all(
-            color: selected ? tokens.brandPrimary : tokens.borderSubtle,
-            width: tokens.borderWidth,
+    return AnimatedScale(
+      scale: selected ? 1.03 : 1.0,
+      duration: const Duration(milliseconds: 200),
+      curve: Curves.easeOutBack,
+      child: InkWell(
+        onTap: () {
+          HapticFeedback.selectionClick();
+          onTap();
+        },
+        borderRadius: BorderRadius.circular(999),
+        child: AnimatedContainer(
+          duration: const Duration(milliseconds: 210),
+          curve: Curves.easeOutCubic,
+          padding: EdgeInsets.symmetric(
+            horizontal: selected ? 14 : 15,
+            vertical: 7,
           ),
-        ),
-        alignment: Alignment.center,
-        child: Text(
-          label,
-          style: Theme.of(context).textTheme.labelLarge?.copyWith(
-            color: selected ? tokens.brandOnPrimary : tokens.textPrimary,
+          decoration: BoxDecoration(
+            color: selected ? tokens.brandPrimary : tokens.surfaceElevated,
+            borderRadius: BorderRadius.circular(999),
+            border: Border.all(
+              color: selected ? tokens.brandPrimary : tokens.borderSubtle,
+              width: tokens.borderWidth,
+            ),
+            boxShadow: selected && !tokens.isNight
+                ? [
+                    BoxShadow(
+                      color: tokens.brandPrimary.withValues(alpha: 0.24),
+                      blurRadius: 10,
+                      offset: const Offset(0, 3),
+                    ),
+                  ]
+                : null,
+          ),
+          alignment: Alignment.center,
+          child: Row(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              AnimatedSize(
+                duration: const Duration(milliseconds: 190),
+                curve: Curves.easeOutCubic,
+                child: selected
+                    ? Padding(
+                        padding: const EdgeInsetsDirectional.only(end: 6),
+                        child: Container(
+                          width: 6,
+                          height: 6,
+                          decoration: BoxDecoration(
+                            color: tokens.brandOnPrimary,
+                            shape: BoxShape.circle,
+                          ),
+                        ),
+                      )
+                    : const SizedBox.shrink(),
+              ),
+              Text(
+                label,
+                style: Theme.of(context).textTheme.labelLarge?.copyWith(
+                  color: selected ? tokens.brandOnPrimary : tokens.textPrimary,
+                  fontWeight: selected ? FontWeight.w800 : FontWeight.w700,
+                ),
+              ),
+            ],
           ),
         ),
       ),
+    );
+  }
+}
+
+class _CategoryCardEntrance extends StatefulWidget {
+  const _CategoryCardEntrance({
+    super.key,
+    required this.index,
+    required this.isCategorySwitch,
+    required this.logicalDirection,
+    required this.child,
+  });
+
+  final int index;
+  final bool isCategorySwitch;
+  final double logicalDirection;
+  final Widget child;
+
+  @override
+  State<_CategoryCardEntrance> createState() => _CategoryCardEntranceState();
+}
+
+class _CategoryCardEntranceState extends State<_CategoryCardEntrance>
+    with SingleTickerProviderStateMixin {
+  late final AnimationController _ctrl;
+  late final Animation<double> _curved;
+  bool _settled = false;
+
+  @override
+  void initState() {
+    super.initState();
+    final clampedIdx = widget.index.clamp(0, 7);
+    final delayMs = clampedIdx * 22;
+    final animMs = widget.isCategorySwitch ? 235 : 210;
+    final totalMs = delayMs + animMs;
+
+    _ctrl = AnimationController(
+      vsync: this,
+      duration: Duration(milliseconds: totalMs),
+    );
+    _curved = CurvedAnimation(
+      parent: _ctrl,
+      curve: Interval(
+        delayMs / totalMs,
+        1.0,
+        curve: Curves.easeOutCubic,
+      ),
+    );
+    _ctrl.addStatusListener((status) {
+      if (status == AnimationStatus.completed && mounted && !_settled) {
+        setState(() => _settled = true);
+      }
+    });
+    _ctrl.forward();
+  }
+
+  @override
+  void dispose() {
+    _ctrl.dispose();
+    super.dispose();
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final disableMotion = MediaQuery.maybeDisableAnimationsOf(context) ?? false;
+    if (_settled || disableMotion) return widget.child;
+
+    final isRtl = Directionality.of(context) == TextDirection.rtl;
+    final visualDir = isRtl
+        ? -widget.logicalDirection
+        : widget.logicalDirection;
+    final startDx = widget.isCategorySwitch ? 24.0 * visualDir : 0.0;
+    final startDy = widget.isCategorySwitch ? 10.0 : 14.0;
+
+    return AnimatedBuilder(
+      animation: _curved,
+      child: widget.child,
+      builder: (context, child) {
+        final t = _curved.value;
+        if (t >= 0.999) return child!;
+        return Opacity(
+          opacity: t.clamp(0.0, 1.0),
+          child: Transform.translate(
+            offset: Offset(startDx * (1.0 - t), startDy * (1.0 - t)),
+            child: Transform.scale(
+              scale: 0.955 + 0.045 * t,
+              child: child,
+            ),
+          ),
+        );
+      },
     );
   }
 }

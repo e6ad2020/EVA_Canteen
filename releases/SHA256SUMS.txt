@@ -1,1 +1,1 @@
-08ded7f871daa6201047024703959a7405c7f498cfc83f90fdcd277ec022a631  EVA-Canteen-v2.0.0-arm64-v8a.apk
+2bcca93d8acd652dc2beebbf3cb53390baa1b3952f1375c6f19ae1edbd5a780c  EVA-Canteen-v2.0.0-arm64-v8a.apk

@@ -62,146 +62,149 @@ class _AdminAnalyticsViewState extends ConsumerState<AdminAnalyticsView> {
         .where((p) => !p.isArchived && (p.isOutOfStock || p.isLowStock))
         .toList(growable: false);
 
-    return Column(
-      children: [
-        // Top Header & Responsive Month/Year Selector
-        EvaGlassBar(
-          padding: const EdgeInsets.fromLTRB(16, 12, 16, 12),
-          child: LayoutBuilder(
-            builder: (context, constraints) {
-              final isNarrow = constraints.maxWidth < 560;
+    return EvaFloatingHeaderScaffold(
+      initialHeaderHeight: 118.0,
+      headerBuilder: (context, isScrolled) => EvaGlassBar(
+        isScrolled: isScrolled,
+        padding: const EdgeInsets.fromLTRB(16, 12, 16, 12),
+        child: LayoutBuilder(
+          builder: (context, constraints) {
+            final isNarrow = constraints.maxWidth < 560;
 
-              final monthDropdown = DropdownButtonFormField<int>(
-                initialValue: _selectedMonth,
-                isExpanded: true,
-                items: [
-                  for (int m = 1; m <= 12; m++)
-                    DropdownMenuItem(
-                      value: m,
-                      child: Text(
-                        DateFormat('MMMM', i18n.langCode).format(
-                          DateTime(2026, m, 1),
-                        ),
-                        overflow: TextOverflow.ellipsis,
-                      ),
-                    ),
-                ],
-                onChanged: (m) {
-                  if (m == null) return;
-                  setState(() => _selectedMonth = m);
-                  ref
-                      .read(canteenStoreProvider.notifier)
-                      .requestAnalytics(month: m, year: _selectedYear);
-                },
-              );
-
-              final yearDropdown = DropdownButtonFormField<int>(
-                initialValue: _selectedYear,
-                isExpanded: true,
-                items: [
-                  for (final y in years)
-                    DropdownMenuItem(value: y, child: Text('$y')),
-                ],
-                onChanged: (y) {
-                  if (y == null) return;
-                  setState(() => _selectedYear = y);
-                  ref
-                      .read(canteenStoreProvider.notifier)
-                      .requestAnalytics(month: _selectedMonth, year: y);
-                },
-              );
-
-              final refreshBtn = IconButton.filledTonal(
-                tooltip: 'Refresh',
-                onPressed: () {
-                  HapticFeedback.lightImpact();
-                  ref
-                      .read(canteenStoreProvider.notifier)
-                      .requestAnalytics(
-                        month: _selectedMonth,
-                        year: _selectedYear,
-                      );
-                },
-                icon: const Icon(Icons.refresh_rounded, size: 20),
-              );
-
-              if (isNarrow) {
-                return Column(
-                  crossAxisAlignment: CrossAxisAlignment.stretch,
-                  children: [
-                    Row(
-                      children: [
-                        Expanded(
-                          child: Text(
-                            i18n.t('admin_analytics_tab'),
-                            maxLines: 1,
-                            overflow: TextOverflow.ellipsis,
-                            style: Theme.of(context).textTheme.headlineSmall,
-                          ),
-                        ),
-                        refreshBtn,
-                      ],
-                    ),
-                    const SizedBox(height: 10),
-                    Row(
-                      children: [
-                        Expanded(flex: 3, child: monthDropdown),
-                        const SizedBox(width: 10),
-                        Expanded(flex: 2, child: yearDropdown),
-                      ],
-                    ),
-                  ],
-                );
-              }
-
-              return Row(
-                children: [
-                  Expanded(
+            final monthDropdown = DropdownButtonFormField<int>(
+              initialValue: _selectedMonth,
+              isExpanded: true,
+              items: [
+                for (int m = 1; m <= 12; m++)
+                  DropdownMenuItem(
+                    value: m,
                     child: Text(
-                      i18n.t('admin_analytics_tab'),
-                      maxLines: 1,
+                      DateFormat(
+                        'MMMM',
+                        i18n.langCode,
+                      ).format(DateTime(2026, m, 1)),
                       overflow: TextOverflow.ellipsis,
-                      style: Theme.of(context).textTheme.headlineSmall,
                     ),
                   ),
-                  SizedBox(width: 152, child: monthDropdown),
-                  const SizedBox(width: 10),
-                  SizedBox(width: 108, child: yearDropdown),
-                  const SizedBox(width: 10),
-                  refreshBtn,
-                ],
-              );
-            },
-          ),
-        ),
+              ],
+              onChanged: (m) {
+                if (m == null) return;
+                setState(() => _selectedMonth = m);
+                ref
+                    .read(canteenStoreProvider.notifier)
+                    .requestAnalytics(month: m, year: _selectedYear);
+              },
+            );
 
-        Expanded(
-          child: snap == null
-              ? Center(
-                  child: Column(
-                    mainAxisSize: MainAxisSize.min,
+            final yearDropdown = DropdownButtonFormField<int>(
+              initialValue: _selectedYear,
+              isExpanded: true,
+              items: [
+                for (final y in years)
+                  DropdownMenuItem(value: y, child: Text('$y')),
+              ],
+              onChanged: (y) {
+                if (y == null) return;
+                setState(() => _selectedYear = y);
+                ref
+                    .read(canteenStoreProvider.notifier)
+                    .requestAnalytics(month: _selectedMonth, year: y);
+              },
+            );
+
+            final refreshBtn = IconButton.filledTonal(
+              tooltip: 'Refresh',
+              onPressed: () {
+                HapticFeedback.lightImpact();
+                ref
+                    .read(canteenStoreProvider.notifier)
+                    .requestAnalytics(
+                      month: _selectedMonth,
+                      year: _selectedYear,
+                    );
+              },
+              icon: const Icon(Icons.refresh_rounded, size: 20),
+            );
+
+            if (isNarrow) {
+              return Column(
+                crossAxisAlignment: CrossAxisAlignment.stretch,
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  Row(
                     children: [
-                      CircularProgressIndicator(color: tokens.brandPrimary),
-                      const SizedBox(height: 12),
-                      Text(
-                        i18n.isRtl
-                            ? 'جاري تحميل التحليلات...'
-                            : 'Loading analytics...',
-                        style: Theme.of(context).textTheme.bodyMedium?.copyWith(
-                          color: tokens.textSecondary,
+                      Expanded(
+                        child: Text(
+                          i18n.t('admin_analytics_tab'),
+                          maxLines: 1,
+                          overflow: TextOverflow.ellipsis,
+                          style: Theme.of(context).textTheme.headlineSmall,
                         ),
                       ),
+                      refreshBtn,
                     ],
                   ),
-                )
-              : ListView(
-                  padding: EdgeInsets.fromLTRB(
-                    16,
-                    16,
-                    16,
-                    28 + EvaFloatingNavBar.bottomClearance(context),
+                  const SizedBox(height: 10),
+                  Row(
+                    children: [
+                      Expanded(flex: 3, child: monthDropdown),
+                      const SizedBox(width: 10),
+                      Expanded(flex: 2, child: yearDropdown),
+                    ],
                   ),
+                ],
+              );
+            }
+
+            return Row(
+              children: [
+                Expanded(
+                  child: Text(
+                    i18n.t('admin_analytics_tab'),
+                    maxLines: 1,
+                    overflow: TextOverflow.ellipsis,
+                    style: Theme.of(context).textTheme.headlineSmall,
+                  ),
+                ),
+                SizedBox(width: 152, child: monthDropdown),
+                const SizedBox(width: 10),
+                SizedBox(width: 108, child: yearDropdown),
+                const SizedBox(width: 10),
+                refreshBtn,
+              ],
+            );
+          },
+        ),
+      ),
+      bodyBuilder: (context, topClearance, _) => snap == null
+          ? Padding(
+              padding: EdgeInsets.only(top: topClearance),
+              child: Center(
+                child: Column(
+                  mainAxisSize: MainAxisSize.min,
                   children: [
+                    CircularProgressIndicator(color: tokens.brandPrimary),
+                    const SizedBox(height: 12),
+                    Text(
+                      i18n.isRtl
+                          ? 'جاري تحميل التحليلات...'
+                          : 'Loading analytics...',
+                      style: Theme.of(context).textTheme.bodyMedium?.copyWith(
+                        color: tokens.textSecondary,
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+            )
+          : ListView(
+              padding: EdgeInsets.fromLTRB(
+                16,
+                topClearance + 8,
+                16,
+                28 + EvaFloatingNavBar.bottomClearance(context),
+              ),
+              children: [
                     // 1. KPI Summary Strip
                     EvaReveal(
                       index: 0,
@@ -431,8 +434,6 @@ class _AdminAnalyticsViewState extends ConsumerState<AdminAnalyticsView> {
                     ),
                   ],
                 ),
-        ),
-      ],
     );
   }
 

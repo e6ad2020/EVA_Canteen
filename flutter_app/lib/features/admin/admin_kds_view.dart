@@ -157,241 +157,244 @@ class _AdminKdsViewState extends ConsumerState<AdminKdsView> {
           ),
         );
 
-        return Column(
-          children: [
-            // Top KDS Control Bar (Responsive across 320dp phones to 1440dp desktops)
-            EvaGlassBar(
-              padding: const EdgeInsets.fromLTRB(16, 12, 16, 12),
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.stretch,
-                children: [
+        return EvaFloatingHeaderScaffold(
+          initialHeaderHeight: isKanbanWide ? 118.0 : 186.0,
+          headerBuilder: (context, isScrolled) => EvaGlassBar(
+            isScrolled: isScrolled,
+            padding: const EdgeInsets.fromLTRB(16, 12, 16, 12),
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.stretch,
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                Row(
+                  children: [
+                    Expanded(
+                      child: Text(
+                        i18n.t('admin_kds_title'),
+                        maxLines: 1,
+                        overflow: TextOverflow.ellipsis,
+                        style: Theme.of(context).textTheme.headlineSmall,
+                      ),
+                    ),
+                    const SizedBox(width: 8),
+                    InkWell(
+                      borderRadius: BorderRadius.circular(999),
+                      onTap: () {
+                        HapticFeedback.mediumImpact();
+                        ref
+                            .read(canteenStoreProvider.notifier)
+                            .setCanteenOpen(!store.isCanteenOpen);
+                      },
+                      child: EvaStatusBadge(
+                        label: store.isCanteenOpen
+                            ? i18n.t('canteen_open_badge')
+                            : i18n.t('canteen_closed_badge'),
+                        background: store.isCanteenOpen
+                            ? tokens.statusDeliveredBg
+                            : tokens.statusClosedBg,
+                        foreground: store.isCanteenOpen
+                            ? tokens.statusDeliveredFg
+                            : tokens.statusClosedFg,
+                        pulsing: store.isCanteenOpen,
+                      ),
+                    ),
+                  ],
+                ),
+                const SizedBox(height: 10),
+                if (isCompactHeader) ...[
+                  SizedBox(width: double.infinity, child: modeToggle),
+                  const SizedBox(height: 10),
+                  searchField,
+                ] else
                   Row(
                     children: [
-                      Expanded(
-                        child: Text(
-                          i18n.t('admin_kds_title'),
-                          maxLines: 1,
-                          overflow: TextOverflow.ellipsis,
-                          style: Theme.of(context).textTheme.headlineSmall,
+                      Expanded(child: searchField),
+                      const SizedBox(width: 12),
+                      modeToggle,
+                    ],
+                  ),
+                if (_archiveMode) ...[
+                  const SizedBox(height: 10),
+                  SingleChildScrollView(
+                    scrollDirection: Axis.horizontal,
+                    child: Row(
+                      children: [
+                        OutlinedButton.icon(
+                          onPressed: _pickArchiveDate,
+                          style: OutlinedButton.styleFrom(
+                            minimumSize: const Size(0, 36),
+                            padding: const EdgeInsets.symmetric(horizontal: 12),
+                          ),
+                          icon: const Icon(
+                            Icons.calendar_today_rounded,
+                            size: 15,
+                          ),
+                          label: Text(
+                            _archiveDateFilter == null
+                                ? (i18n.isRtl ? 'كل التواريخ' : 'All Dates')
+                                : DateFormat(
+                                    'yyyy-MM-dd',
+                                  ).format(_archiveDateFilter!),
+                          ),
+                        ),
+                        if (_archiveDateFilter != null)
+                          IconButton(
+                            tooltip: i18n.isRtl ? 'مسح التاريخ' : 'Clear date',
+                            onPressed: () =>
+                                setState(() => _archiveDateFilter = null),
+                            icon: const Icon(Icons.filter_alt_off_rounded),
+                          ),
+                        const SizedBox(width: 8),
+                        FilterChip(
+                          selected: _archiveStatusFilter == null,
+                          label: Text(i18n.t('all_categories')),
+                          onSelected: (_) =>
+                              setState(() => _archiveStatusFilter = null),
+                        ),
+                        const SizedBox(width: 6),
+                        FilterChip(
+                          selected: _archiveStatusFilter == OrderStatus.pending,
+                          label: Text(i18n.t('status_pending')),
+                          onSelected: (_) => setState(
+                            () => _archiveStatusFilter = OrderStatus.pending,
+                          ),
+                        ),
+                        const SizedBox(width: 6),
+                        FilterChip(
+                          selected:
+                              _archiveStatusFilter == OrderStatus.preparing,
+                          label: Text(i18n.t('status_preparing')),
+                          onSelected: (_) => setState(
+                            () => _archiveStatusFilter = OrderStatus.preparing,
+                          ),
+                        ),
+                        const SizedBox(width: 6),
+                        FilterChip(
+                          selected:
+                              _archiveStatusFilter == OrderStatus.delivered,
+                          label: Text(i18n.t('status_delivered')),
+                          onSelected: (_) => setState(
+                            () => _archiveStatusFilter = OrderStatus.delivered,
+                          ),
+                        ),
+                      ],
+                    ),
+                  ),
+                ],
+                if (!_archiveMode && !isKanbanWide) ...[
+                  const SizedBox(height: 10),
+                  SizedBox(
+                    width: double.infinity,
+                    child: SegmentedButton<OrderStatus>(
+                      showSelectedIcon: false,
+                      style: const ButtonStyle(
+                        visualDensity: VisualDensity.compact,
+                        tapTargetSize: MaterialTapTargetSize.shrinkWrap,
+                        padding: WidgetStatePropertyAll(
+                          EdgeInsets.symmetric(horizontal: 6, vertical: 8),
                         ),
                       ),
-                      const SizedBox(width: 8),
-                      InkWell(
-                        borderRadius: BorderRadius.circular(999),
-                        onTap: () {
-                          HapticFeedback.mediumImpact();
-                          ref
-                              .read(canteenStoreProvider.notifier)
-                              .setCanteenOpen(!store.isCanteenOpen);
-                        },
-                        child: EvaStatusBadge(
-                          label: store.isCanteenOpen
-                              ? i18n.t('canteen_open_badge')
-                              : i18n.t('canteen_closed_badge'),
-                          background: store.isCanteenOpen
-                              ? tokens.statusDeliveredBg
-                              : tokens.statusClosedBg,
-                          foreground: store.isCanteenOpen
-                              ? tokens.statusDeliveredFg
-                              : tokens.statusClosedFg,
-                          pulsing: store.isCanteenOpen,
+                      segments: [
+                        ButtonSegment(
+                          value: OrderStatus.pending,
+                          label: Text(
+                            '${i18n.t('status_pending')} (${pendingToday.length})',
+                            maxLines: 1,
+                            overflow: TextOverflow.ellipsis,
+                          ),
+                        ),
+                        ButtonSegment(
+                          value: OrderStatus.preparing,
+                          label: Text(
+                            '${i18n.t('status_preparing')} (${preparingToday.length})',
+                            maxLines: 1,
+                            overflow: TextOverflow.ellipsis,
+                          ),
+                        ),
+                        ButtonSegment(
+                          value: OrderStatus.delivered,
+                          label: Text(
+                            '${i18n.t('status_delivered')} (${deliveredToday.length})',
+                            maxLines: 1,
+                            overflow: TextOverflow.ellipsis,
+                          ),
+                        ),
+                      ],
+                      selected: {_mobileStageTab},
+                      onSelectionChanged: (sel) {
+                        setState(() => _mobileStageTab = sel.first);
+                      },
+                    ),
+                  ),
+                ],
+              ],
+            ),
+          ),
+          bodyBuilder: (context, topClearance, _) => _archiveMode
+              ? _buildArchiveList(
+                  context,
+                  archiveOrders,
+                  i18n,
+                  tokens,
+                  topClearance,
+                )
+              : isKanbanWide
+              ? Padding(
+                  padding: EdgeInsets.fromLTRB(16, topClearance + 8, 16, 16),
+                  child: Row(
+                    crossAxisAlignment: CrossAxisAlignment.stretch,
+                    children: [
+                      Expanded(
+                        child: _KdsStageColumn(
+                          title: i18n.t('status_pending'),
+                          count: pendingToday.length,
+                          headerBg: tokens.statusPendingBg,
+                          headerFg: tokens.statusPendingFg,
+                          icon: Icons.schedule_rounded,
+                          orders: pendingToday,
+                          now: _now,
+                          emptyLabel: i18n.t('kds_empty_column'),
+                        ),
+                      ),
+                      const SizedBox(width: 14),
+                      Expanded(
+                        child: _KdsStageColumn(
+                          title: i18n.t('status_preparing'),
+                          count: preparingToday.length,
+                          headerBg: tokens.statusPreparingBg,
+                          headerFg: tokens.statusPreparingFg,
+                          icon: Icons.soup_kitchen_rounded,
+                          orders: preparingToday,
+                          now: _now,
+                          emptyLabel: i18n.t('kds_empty_column'),
+                        ),
+                      ),
+                      const SizedBox(width: 14),
+                      Expanded(
+                        child: _KdsStageColumn(
+                          title: i18n.t('status_delivered'),
+                          count: deliveredToday.length,
+                          headerBg: tokens.statusDeliveredBg,
+                          headerFg: tokens.statusDeliveredFg,
+                          icon: Icons.check_circle_rounded,
+                          orders: deliveredToday,
+                          now: _now,
+                          emptyLabel: i18n.t('kds_empty_column'),
                         ),
                       ),
                     ],
                   ),
-                  const SizedBox(height: 10),
-                  if (isCompactHeader) ...[
-                    SizedBox(width: double.infinity, child: modeToggle),
-                    const SizedBox(height: 10),
-                    searchField,
-                  ] else
-                    Row(
-                      children: [
-                        Expanded(child: searchField),
-                        const SizedBox(width: 12),
-                        modeToggle,
-                      ],
-                    ),
-                  if (_archiveMode) ...[
-                    const SizedBox(height: 10),
-                    SingleChildScrollView(
-                      scrollDirection: Axis.horizontal,
-                      child: Row(
-                        children: [
-                          OutlinedButton.icon(
-                            onPressed: _pickArchiveDate,
-                            style: OutlinedButton.styleFrom(
-                              minimumSize: const Size(0, 36),
-                              padding: const EdgeInsets.symmetric(
-                                horizontal: 12,
-                              ),
-                            ),
-                            icon: const Icon(
-                              Icons.calendar_today_rounded,
-                              size: 15,
-                            ),
-                            label: Text(
-                              _archiveDateFilter == null
-                                  ? (i18n.isRtl ? 'كل التواريخ' : 'All Dates')
-                                  : DateFormat(
-                                      'yyyy-MM-dd',
-                                    ).format(_archiveDateFilter!),
-                            ),
-                          ),
-                          if (_archiveDateFilter != null)
-                            IconButton(
-                              tooltip: i18n.isRtl
-                                  ? 'مسح التاريخ'
-                                  : 'Clear date',
-                              onPressed: () =>
-                                  setState(() => _archiveDateFilter = null),
-                              icon: const Icon(Icons.filter_alt_off_rounded),
-                            ),
-                          const SizedBox(width: 8),
-                          FilterChip(
-                            selected: _archiveStatusFilter == null,
-                            label: Text(i18n.t('all_categories')),
-                            onSelected: (_) =>
-                                setState(() => _archiveStatusFilter = null),
-                          ),
-                          const SizedBox(width: 6),
-                          FilterChip(
-                            selected:
-                                _archiveStatusFilter == OrderStatus.pending,
-                            label: Text(i18n.t('status_pending')),
-                            onSelected: (_) => setState(
-                              () => _archiveStatusFilter = OrderStatus.pending,
-                            ),
-                          ),
-                          const SizedBox(width: 6),
-                          FilterChip(
-                            selected:
-                                _archiveStatusFilter == OrderStatus.preparing,
-                            label: Text(i18n.t('status_preparing')),
-                            onSelected: (_) => setState(
-                              () =>
-                                  _archiveStatusFilter = OrderStatus.preparing,
-                            ),
-                          ),
-                          const SizedBox(width: 6),
-                          FilterChip(
-                            selected:
-                                _archiveStatusFilter == OrderStatus.delivered,
-                            label: Text(i18n.t('status_delivered')),
-                            onSelected: (_) => setState(
-                              () =>
-                                  _archiveStatusFilter = OrderStatus.delivered,
-                            ),
-                          ),
-                        ],
-                      ),
-                    ),
-                  ],
-                  if (!_archiveMode && !isKanbanWide) ...[
-                    const SizedBox(height: 10),
-                    SizedBox(
-                      width: double.infinity,
-                      child: SegmentedButton<OrderStatus>(
-                        showSelectedIcon: false,
-                        segments: [
-                          ButtonSegment(
-                            value: OrderStatus.pending,
-                            label: Text(
-                              '${i18n.t('status_pending')} (${pendingToday.length})',
-                              maxLines: 1,
-                              overflow: TextOverflow.ellipsis,
-                            ),
-                          ),
-                          ButtonSegment(
-                            value: OrderStatus.preparing,
-                            label: Text(
-                              '${i18n.t('status_preparing')} (${preparingToday.length})',
-                              maxLines: 1,
-                              overflow: TextOverflow.ellipsis,
-                            ),
-                          ),
-                          ButtonSegment(
-                            value: OrderStatus.delivered,
-                            label: Text(
-                              '${i18n.t('status_delivered')} (${deliveredToday.length})',
-                              maxLines: 1,
-                              overflow: TextOverflow.ellipsis,
-                            ),
-                          ),
-                        ],
-                        selected: {_mobileStageTab},
-                        onSelectionChanged: (sel) {
-                          setState(() => _mobileStageTab = sel.first);
-                        },
-                      ),
-                    ),
-                  ],
-                ],
-              ),
-            ),
-
-            // Body: Kanban Board or Mobile Stage List or Archive List
-            Expanded(
-              child: _archiveMode
-                  ? _buildArchiveList(context, archiveOrders, i18n, tokens)
-                  : isKanbanWide
-                  ? Padding(
-                      padding: const EdgeInsets.all(16),
-                      child: Row(
-                        crossAxisAlignment: CrossAxisAlignment.stretch,
-                        children: [
-                          Expanded(
-                            child: _KdsStageColumn(
-                              title: i18n.t('status_pending'),
-                              count: pendingToday.length,
-                              headerBg: tokens.statusPendingBg,
-                              headerFg: tokens.statusPendingFg,
-                              icon: Icons.schedule_rounded,
-                              orders: pendingToday,
-                              now: _now,
-                              emptyLabel: i18n.t('kds_empty_column'),
-                            ),
-                          ),
-                          const SizedBox(width: 14),
-                          Expanded(
-                            child: _KdsStageColumn(
-                              title: i18n.t('status_preparing'),
-                              count: preparingToday.length,
-                              headerBg: tokens.statusPreparingBg,
-                              headerFg: tokens.statusPreparingFg,
-                              icon: Icons.soup_kitchen_rounded,
-                              orders: preparingToday,
-                              now: _now,
-                              emptyLabel: i18n.t('kds_empty_column'),
-                            ),
-                          ),
-                          const SizedBox(width: 14),
-                          Expanded(
-                            child: _KdsStageColumn(
-                              title: i18n.t('status_delivered'),
-                              count: deliveredToday.length,
-                              headerBg: tokens.statusDeliveredBg,
-                              headerFg: tokens.statusDeliveredFg,
-                              icon: Icons.check_circle_rounded,
-                              orders: deliveredToday,
-                              now: _now,
-                              emptyLabel: i18n.t('kds_empty_column'),
-                            ),
-                          ),
-                        ],
-                      ),
-                    )
-                  : _buildMobileStageList(
-                      switch (_mobileStageTab) {
-                        OrderStatus.pending => pendingToday,
-                        OrderStatus.preparing => preparingToday,
-                        OrderStatus.delivered => deliveredToday,
-                      },
-                      i18n,
-                      tokens,
-                    ),
-            ),
-          ],
+                )
+              : _buildMobileStageList(
+                  switch (_mobileStageTab) {
+                    OrderStatus.pending => pendingToday,
+                    OrderStatus.preparing => preparingToday,
+                    OrderStatus.delivered => deliveredToday,
+                  },
+                  i18n,
+                  tokens,
+                  topClearance,
+                ),
         );
       },
     );
@@ -401,11 +404,12 @@ class _AdminKdsViewState extends ConsumerState<AdminKdsView> {
     List<CanteenOrder> orders,
     EvaTranslator i18n,
     EvaTokens tokens,
+    double topClearance,
   ) {
     final navClearance = EvaFloatingNavBar.bottomClearance(context);
     if (orders.isEmpty) {
       return Padding(
-        padding: EdgeInsets.only(bottom: navClearance),
+        padding: EdgeInsets.only(top: topClearance, bottom: navClearance),
         child: Center(
           child: Column(
             mainAxisSize: MainAxisSize.min,
@@ -429,7 +433,12 @@ class _AdminKdsViewState extends ConsumerState<AdminKdsView> {
     }
 
     return ListView.separated(
-      padding: EdgeInsets.fromLTRB(16, 16, 16, 20 + navClearance),
+      padding: EdgeInsets.fromLTRB(
+        16,
+        topClearance + 8,
+        16,
+        20 + navClearance,
+      ),
       itemCount: orders.length,
       separatorBuilder: (_, _) => const SizedBox(height: 12),
       itemBuilder: (context, idx) =>
@@ -442,11 +451,12 @@ class _AdminKdsViewState extends ConsumerState<AdminKdsView> {
     List<CanteenOrder> orders,
     EvaTranslator i18n,
     EvaTokens tokens,
+    double topClearance,
   ) {
     final navClearance = EvaFloatingNavBar.bottomClearance(context);
     if (orders.isEmpty) {
       return Padding(
-        padding: EdgeInsets.only(bottom: navClearance),
+        padding: EdgeInsets.only(top: topClearance, bottom: navClearance),
         child: Center(
           child: Text(
             i18n.t('no_orders_yet'),
@@ -459,7 +469,12 @@ class _AdminKdsViewState extends ConsumerState<AdminKdsView> {
     }
 
     return ListView.separated(
-      padding: EdgeInsets.fromLTRB(20, 20, 20, 24 + navClearance),
+      padding: EdgeInsets.fromLTRB(
+        20,
+        topClearance + 10,
+        20,
+        24 + navClearance,
+      ),
       itemCount: orders.length,
       separatorBuilder: (_, _) => const SizedBox(height: 12),
       itemBuilder: (context, idx) => Center(

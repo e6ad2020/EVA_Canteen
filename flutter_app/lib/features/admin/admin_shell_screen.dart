@@ -4,6 +4,7 @@ import 'package:go_router/go_router.dart';
 import 'package:material_ui/material_ui.dart';
 
 import '../../core/models/domain_models.dart';
+import '../../core/network/eva_socket_client.dart';
 import '../../core/state/canteen_providers.dart';
 import '../../design_system/eva_theme.dart';
 import '../../design_system/widgets/eva_widgets.dart';
@@ -92,6 +93,12 @@ class AdminShellScreen extends ConsumerWidget {
       child: navigationShell,
     );
 
+    final isConnected = ref.watch(
+      canteenStoreProvider.select(
+        (s) => s.connectionPhase == SocketConnectionPhase.connected,
+      ),
+    );
+
     return LayoutBuilder(
       builder: (context, constraints) {
         final isWide =
@@ -99,112 +106,124 @@ class AdminShellScreen extends ConsumerWidget {
 
         return Scaffold(
           body: EvaScaffoldBackground(
-            child: SafeArea(
-              child: Column(
-                children: [
-                  const ConnectionStatusBanner(),
-                  Expanded(
+            child: Column(
+              children: [
+                const ConnectionStatusBanner(),
+                Expanded(
+                  child: MediaQuery.removePadding(
+                    context: context,
+                    removeTop: !isConnected,
                     child: isWide
                         ? Row(
                             children: [
-                              NavigationRail(
-                                selectedIndex: navigationShell.currentIndex,
-                                onDestinationSelected: (idx) {
-                                  HapticFeedback.selectionClick();
-                                  navigationShell.goBranch(idx);
-                                },
-                                labelType: NavigationRailLabelType.all,
-                                minWidth: 92,
-                                leading: Padding(
-                                  padding: const EdgeInsets.symmetric(
-                                    vertical: 12,
-                                  ),
-                                  child: Column(
-                                    children: [
-                                      const EvaBrandLogo(size: 40),
-                                      const SizedBox(height: 10),
-                                      Tooltip(
-                                        message: i18n.t(
-                                          'storefront_status_card',
+                              SafeArea(
+                                right: false,
+                                child: NavigationRail(
+                                  selectedIndex: navigationShell.currentIndex,
+                                  onDestinationSelected: (idx) {
+                                    HapticFeedback.selectionClick();
+                                    navigationShell.goBranch(idx);
+                                  },
+                                  labelType: NavigationRailLabelType.all,
+                                  minWidth: 92,
+                                  leading: Padding(
+                                    padding: const EdgeInsets.symmetric(
+                                      vertical: 12,
+                                    ),
+                                    child: Column(
+                                      children: [
+                                        const EvaBrandLogo(size: 40),
+                                        const SizedBox(height: 10),
+                                        Tooltip(
+                                          message: i18n.t(
+                                            'storefront_status_card',
+                                          ),
+                                          child: InkWell(
+                                            borderRadius: BorderRadius.circular(
+                                              999,
+                                            ),
+                                            onTap: () {
+                                              HapticFeedback.mediumImpact();
+                                              ref
+                                                  .read(
+                                                    canteenStoreProvider
+                                                        .notifier,
+                                                  )
+                                                  .setCanteenOpen(!isOpen);
+                                            },
+                                            child: EvaStatusBadge(
+                                              label: isOpen
+                                                  ? i18n.t('canteen_open_badge')
+                                                  : i18n.t(
+                                                      'canteen_closed_badge',
+                                                    ),
+                                              background: isOpen
+                                                  ? tokens.statusDeliveredBg
+                                                  : tokens.statusClosedBg,
+                                              foreground: isOpen
+                                                  ? tokens.statusDeliveredFg
+                                                  : tokens.statusClosedFg,
+                                              pulsing: isOpen,
+                                            ),
+                                          ),
                                         ),
-                                        child: InkWell(
-                                          borderRadius: BorderRadius.circular(
-                                            999,
-                                          ),
-                                          onTap: () {
-                                            HapticFeedback.mediumImpact();
-                                            ref
-                                                .read(
-                                                  canteenStoreProvider.notifier,
-                                                )
-                                                .setCanteenOpen(!isOpen);
-                                          },
-                                          child: EvaStatusBadge(
-                                            label: isOpen
-                                                ? i18n.t('canteen_open_badge')
-                                                : i18n.t(
-                                                    'canteen_closed_badge',
-                                                  ),
-                                            background: isOpen
-                                                ? tokens.statusDeliveredBg
-                                                : tokens.statusClosedBg,
-                                            foreground: isOpen
-                                                ? tokens.statusDeliveredFg
-                                                : tokens.statusClosedFg,
-                                            pulsing: isOpen,
-                                          ),
+                                      ],
+                                    ),
+                                  ),
+                                  destinations: [
+                                    NavigationRailDestination(
+                                      icon: Badge(
+                                        isLabelVisible: activeKdsCount > 0,
+                                        label: Text('$activeKdsCount'),
+                                        child: const Icon(
+                                          Icons.kitchen_outlined,
                                         ),
                                       ),
-                                    ],
-                                  ),
+                                      selectedIcon: Badge(
+                                        isLabelVisible: activeKdsCount > 0,
+                                        label: Text('$activeKdsCount'),
+                                        child: const Icon(
+                                          Icons.kitchen_rounded,
+                                        ),
+                                      ),
+                                      label: Text(i18n.t('admin_kds_tab')),
+                                    ),
+                                    NavigationRailDestination(
+                                      icon: const Icon(
+                                        Icons.inventory_2_outlined,
+                                      ),
+                                      selectedIcon: const Icon(
+                                        Icons.inventory_2_rounded,
+                                      ),
+                                      label: Text(i18n.t('admin_catalog_tab')),
+                                    ),
+                                    NavigationRailDestination(
+                                      icon: const Icon(Icons.insights_outlined),
+                                      selectedIcon: const Icon(
+                                        Icons.insights_rounded,
+                                      ),
+                                      label: Text(
+                                        i18n.t('admin_analytics_tab'),
+                                      ),
+                                    ),
+                                    NavigationRailDestination(
+                                      icon: const Icon(
+                                        Icons.account_balance_wallet_outlined,
+                                      ),
+                                      selectedIcon: const Icon(
+                                        Icons.account_balance_wallet_rounded,
+                                      ),
+                                      label: Text(i18n.t('admin_ops_tab')),
+                                    ),
+                                    NavigationRailDestination(
+                                      icon: const Icon(Icons.tune_outlined),
+                                      selectedIcon: const Icon(
+                                        Icons.tune_rounded,
+                                      ),
+                                      label: Text(i18n.t('nav_settings')),
+                                    ),
+                                  ],
                                 ),
-                                destinations: [
-                                  NavigationRailDestination(
-                                    icon: Badge(
-                                      isLabelVisible: activeKdsCount > 0,
-                                      label: Text('$activeKdsCount'),
-                                      child: const Icon(Icons.kitchen_outlined),
-                                    ),
-                                    selectedIcon: Badge(
-                                      isLabelVisible: activeKdsCount > 0,
-                                      label: Text('$activeKdsCount'),
-                                      child: const Icon(Icons.kitchen_rounded),
-                                    ),
-                                    label: Text(i18n.t('admin_kds_tab')),
-                                  ),
-                                  NavigationRailDestination(
-                                    icon: const Icon(
-                                      Icons.inventory_2_outlined,
-                                    ),
-                                    selectedIcon: const Icon(
-                                      Icons.inventory_2_rounded,
-                                    ),
-                                    label: Text(i18n.t('admin_catalog_tab')),
-                                  ),
-                                  NavigationRailDestination(
-                                    icon: const Icon(Icons.insights_outlined),
-                                    selectedIcon: const Icon(
-                                      Icons.insights_rounded,
-                                    ),
-                                    label: Text(i18n.t('admin_analytics_tab')),
-                                  ),
-                                  NavigationRailDestination(
-                                    icon: const Icon(
-                                      Icons.account_balance_wallet_outlined,
-                                    ),
-                                    selectedIcon: const Icon(
-                                      Icons.account_balance_wallet_rounded,
-                                    ),
-                                    label: Text(i18n.t('admin_ops_tab')),
-                                  ),
-                                  NavigationRailDestination(
-                                    icon: const Icon(Icons.tune_outlined),
-                                    selectedIcon: const Icon(
-                                      Icons.tune_rounded,
-                                    ),
-                                    label: Text(i18n.t('nav_settings')),
-                                  ),
-                                ],
                               ),
                               VerticalDivider(
                                 width: 1,
@@ -267,8 +286,8 @@ class AdminShellScreen extends ConsumerWidget {
                             ),
                           ),
                   ),
-                ],
-              ),
+                ),
+              ],
             ),
           ),
         );

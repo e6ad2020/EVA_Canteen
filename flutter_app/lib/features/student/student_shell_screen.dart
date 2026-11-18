@@ -4,6 +4,7 @@ import 'package:go_router/go_router.dart';
 import 'package:material_ui/material_ui.dart';
 
 import '../../core/models/domain_models.dart';
+import '../../core/network/eva_socket_client.dart';
 import '../../core/state/canteen_providers.dart';
 import '../../design_system/eva_theme.dart';
 import '../../design_system/widgets/eva_widgets.dart';
@@ -49,6 +50,12 @@ class StudentShellScreen extends ConsumerWidget {
       child: navigationShell,
     );
 
+    final isConnected = ref.watch(
+      canteenStoreProvider.select(
+        (s) => s.connectionPhase == SocketConnectionPhase.connected,
+      ),
+    );
+
     return LayoutBuilder(
       builder: (context, constraints) {
         final isWide =
@@ -56,59 +63,64 @@ class StudentShellScreen extends ConsumerWidget {
 
         return Scaffold(
           body: EvaScaffoldBackground(
-            child: SafeArea(
-              child: Column(
-                children: [
-                  const ConnectionStatusBanner(),
-                  Expanded(
+            child: Column(
+              children: [
+                const ConnectionStatusBanner(),
+                Expanded(
+                  child: MediaQuery.removePadding(
+                    context: context,
+                    removeTop: !isConnected,
                     child: isWide
                         ? Row(
                             children: [
-                              NavigationRail(
-                                selectedIndex: navigationShell.currentIndex,
-                                onDestinationSelected: (idx) {
-                                  HapticFeedback.selectionClick();
-                                  navigationShell.goBranch(idx);
-                                },
-                                labelType: NavigationRailLabelType.all,
-                                minWidth: 88,
-                                leading: const Padding(
-                                  padding: EdgeInsets.symmetric(vertical: 14),
-                                  child: EvaBrandLogo(size: 40),
+                              SafeArea(
+                                right: false,
+                                child: NavigationRail(
+                                  selectedIndex: navigationShell.currentIndex,
+                                  onDestinationSelected: (idx) {
+                                    HapticFeedback.selectionClick();
+                                    navigationShell.goBranch(idx);
+                                  },
+                                  labelType: NavigationRailLabelType.all,
+                                  minWidth: 88,
+                                  leading: const Padding(
+                                    padding: EdgeInsets.symmetric(vertical: 14),
+                                    child: EvaBrandLogo(size: 40),
+                                  ),
+                                  destinations: [
+                                    NavigationRailDestination(
+                                      icon: const Icon(
+                                        Icons.restaurant_menu_outlined,
+                                      ),
+                                      selectedIcon: const Icon(
+                                        Icons.restaurant_menu_rounded,
+                                      ),
+                                      label: Text(i18n.t('nav_menu')),
+                                    ),
+                                    NavigationRailDestination(
+                                      icon: Badge(
+                                        isLabelVisible: hasLiveInFlight,
+                                        child: const Icon(
+                                          Icons.confirmation_number_outlined,
+                                        ),
+                                      ),
+                                      selectedIcon: Badge(
+                                        isLabelVisible: hasLiveInFlight,
+                                        child: const Icon(
+                                          Icons.confirmation_number_rounded,
+                                        ),
+                                      ),
+                                      label: Text(i18n.t('nav_orders')),
+                                    ),
+                                    NavigationRailDestination(
+                                      icon: const Icon(Icons.tune_outlined),
+                                      selectedIcon: const Icon(
+                                        Icons.tune_rounded,
+                                      ),
+                                      label: Text(i18n.t('nav_settings')),
+                                    ),
+                                  ],
                                 ),
-                                destinations: [
-                                  NavigationRailDestination(
-                                    icon: const Icon(
-                                      Icons.restaurant_menu_outlined,
-                                    ),
-                                    selectedIcon: const Icon(
-                                      Icons.restaurant_menu_rounded,
-                                    ),
-                                    label: Text(i18n.t('nav_menu')),
-                                  ),
-                                  NavigationRailDestination(
-                                    icon: Badge(
-                                      isLabelVisible: hasLiveInFlight,
-                                      child: const Icon(
-                                        Icons.confirmation_number_outlined,
-                                      ),
-                                    ),
-                                    selectedIcon: Badge(
-                                      isLabelVisible: hasLiveInFlight,
-                                      child: const Icon(
-                                        Icons.confirmation_number_rounded,
-                                      ),
-                                    ),
-                                    label: Text(i18n.t('nav_orders')),
-                                  ),
-                                  NavigationRailDestination(
-                                    icon: const Icon(Icons.tune_outlined),
-                                    selectedIcon: const Icon(
-                                      Icons.tune_rounded,
-                                    ),
-                                    label: Text(i18n.t('nav_settings')),
-                                  ),
-                                ],
                               ),
                               VerticalDivider(
                                 width: 1,
@@ -162,8 +174,8 @@ class StudentShellScreen extends ConsumerWidget {
                             ),
                           ),
                   ),
-                ],
-              ),
+                ),
+              ],
             ),
           ),
         );

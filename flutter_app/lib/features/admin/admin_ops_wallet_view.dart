@@ -339,39 +339,38 @@ class _AdminOpsWalletViewState extends ConsumerState<AdminOpsWalletView> {
       return u.email.toLowerCase().contains(_walletQuery.trim().toLowerCase());
     }).toList(growable: false);
 
-    return Column(
-      children: [
-        EvaGlassBar(
-          padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
-          child: Row(
-            children: [
-              Expanded(
-                child: Text(
-                  i18n.t('admin_ops_title'),
-                  maxLines: 1,
-                  overflow: TextOverflow.ellipsis,
-                  style: Theme.of(context).textTheme.headlineSmall,
-                ),
+    return EvaFloatingHeaderScaffold(
+      initialHeaderHeight: 68.0,
+      headerBuilder: (context, isScrolled) => EvaGlassBar(
+        isScrolled: isScrolled,
+        padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
+        child: Row(
+          children: [
+            Expanded(
+              child: Text(
+                i18n.t('admin_ops_title'),
+                maxLines: 1,
+                overflow: TextOverflow.ellipsis,
+                style: Theme.of(context).textTheme.headlineSmall,
               ),
-              IconButton.filledTonal(
-                tooltip: 'Refresh',
-                onPressed: () =>
-                    ref.read(canteenStoreProvider.notifier).requestWallets(),
-                icon: const Icon(Icons.refresh_rounded, size: 20),
-              ),
-            ],
-          ),
-        ),
-
-        Expanded(
-          child: ListView(
-            padding: EdgeInsets.fromLTRB(
-              16,
-              16,
-              16,
-              28 + EvaFloatingNavBar.bottomClearance(context),
             ),
-            children: [
+            IconButton.filledTonal(
+              tooltip: 'Refresh',
+              onPressed: () =>
+                  ref.read(canteenStoreProvider.notifier).requestWallets(),
+              icon: const Icon(Icons.refresh_rounded, size: 20),
+            ),
+          ],
+        ),
+      ),
+      bodyBuilder: (context, topClearance, _) => ListView(
+        padding: EdgeInsets.fromLTRB(
+          16,
+          topClearance + 8,
+          16,
+          28 + EvaFloatingNavBar.bottomClearance(context),
+        ),
+        children: [
               Center(
                 child: ConstrainedBox(
                   constraints: const BoxConstraints(maxWidth: 960),
@@ -705,8 +704,6 @@ class _AdminOpsWalletViewState extends ConsumerState<AdminOpsWalletView> {
               ),
             ],
           ),
-        ),
-      ],
     );
   }
 

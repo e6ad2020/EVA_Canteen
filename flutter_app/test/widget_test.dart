@@ -745,20 +745,21 @@ void main() {
       await tester.pumpAndSettle();
       expect(tester.takeException(), isNull);
 
-      // Verify 2-column GridView on 360dp phone in All view AND Category view
+      // Verify full-bleed CustomScrollView (y == 0) + 2-column SliverGrid on 360dp phone
+      expect(tester.getTopLeft(find.byType(CustomScrollView)).dy, 0.0);
       final gridFinder = find.byKey(const ValueKey('admin_catalog_items_grid'));
       expect(gridFinder, findsOneWidget);
       var gridDelegate =
-          tester.widget<GridView>(gridFinder).gridDelegate
+          tester.widget<SliverGrid>(gridFinder).gridDelegate
               as SliverGridDelegateWithFixedCrossAxisCount;
       expect(gridDelegate.crossAxisCount, 2);
 
-      // Select Sandwiches category chip — stays a 2-column GridView (not a 1-column list!)
+      // Select Sandwiches category chip — stays a 2-column SliverGrid (not a 1-column list!)
       await tester.tap(find.widgetWithText(ChoiceChip, 'Sandwiches'));
       await tester.pumpAndSettle();
       expect(tester.takeException(), isNull);
       gridDelegate =
-          tester.widget<GridView>(gridFinder).gridDelegate
+          tester.widget<SliverGrid>(gridFinder).gridDelegate
               as SliverGridDelegateWithFixedCrossAxisCount;
       expect(gridDelegate.crossAxisCount, 2);
       expect(find.text('#1'), findsOneWidget);
@@ -767,7 +768,7 @@ void main() {
       expect(find.text('#4'), findsOneWidget);
 
       // Scroll slightly on 360x800 phone so row 2 sits completely above EvaFloatingNavBar
-      await tester.drag(gridFinder, const Offset(0, -140));
+      await tester.drag(find.byType(CustomScrollView), const Offset(0, -180));
       await tester.pumpAndSettle();
 
       // 1-Tap Rank Nudge: move p3 (#3) earlier to #2
@@ -807,9 +808,175 @@ void main() {
       await tester.pumpAndSettle();
       expect(tester.takeException(), isNull);
       gridDelegate =
-          tester.widget<GridView>(gridFinder).gridDelegate
+          tester.widget<SliverGrid>(gridFinder).gridDelegate
               as SliverGridDelegateWithFixedCrossAxisCount;
       expect(gridDelegate.crossAxisCount, 4);
+    },
+  );
+
+  testWidgets(
+    'Full-bleed floating header avoids clipping seam, menu category navigation animates, and cart quantity/removal animations run cleanly',
+    (tester) async {
+      await tester.binding.setSurfaceSize(const Size(360, 800));
+      addTearDown(() => tester.binding.setSurfaceSize(null));
+
+      SharedPreferences.setMockInitialValues({});
+      final prefs = await SharedPreferences.getInstance();
+      final mockSocket = EvaSocketClient(enableNetwork: false);
+
+      final container = ProviderContainer(
+        overrides: [
+          sharedPrefsProvider.overrideWithValue(prefs),
+          socketClientProvider.overrideWithValue(mockSocket),
+        ],
+      );
+      addTearDown(container.dispose);
+
+      container.read(canteenStoreProvider.notifier).enterBrowseGuestMode();
+
+      await tester.pumpWidget(
+        UncontrolledProviderScope(
+          container: container,
+          child: const EvaCanteenApp(),
+        ),
+      );
+      await tester.pumpAndSettle();
+
+      mockSocket.injectTestEvent('initial_categories', [
+        {
+          'key': 'sandwiches',
+          'name_key': 'cat_sandwiches',
+          'productIds': ['s1'],
+        },
+        {
+          'key': 'drinks',
+          'name_key': 'cat_drinks',
+          'productIds': ['d1'],
+        },
+      ]);
+      mockSocket.injectTestEvent('initial_translations', {
+        'cat_sandwiches': {'en': 'Sandwiches', 'ar': 'الساندويتشات'},
+        'cat_drinks': {'en': 'Drinks', 'ar': 'المشروبات'},
+        'item_s1': {'en': 'Smoked Turkey Sub', 'ar': 'ساب تركي مدخن'},
+        'desc_s1': {'en': 'Toasted sourdough baguette', 'ar': 'خبز ساور دو'},
+        'item_d1': {'en': 'Iced Matcha Latte', 'ar': 'ماتشا لاتيه مثلج'},
+        'desc_d1': {'en': 'Ceremonial grade matcha', 'ar': 'ماتشا فاخرة'},
+      });
+      mockSocket.injectTestEvent('initial_products', [
+        {
+          'id': 's1',
+          'name_key': 'item_s1',
+          'description_key': 'desc_s1',
+          'price': 60,
+          'quantity': 999,
+          'image': '',
+          'category': 'sandwiches',
+        },
+        {
+          'id': 'd1',
+          'name_key': 'item_d1',
+          'description_key': 'desc_d1',
+          'price': 40,
+          'quantity': 999,
+          'image': '',
+          'category': 'drinks',
+        },
+      ]);
+      await tester.pumpAndSettle();
+
+      // 1. Verify full-bleed viewport: CustomScrollView starts at y = 0.0 behind floating EvaGlassBar
+      final scrollTopY = tester.getTopLeft(find.byType(CustomScrollView)).dy;
+      final glassBottomY = tester.getBottomRight(find.byType(EvaGlassBar)).dy;
+      expect(scrollTopY, 0.0);
+      expect(glassBottomY, greaterThan(50.0));
+
+      // 2. Navigate across categories ('All' -> 'Sandwiches' -> 'Drinks' -> 'All') & pump mid-flight frames
+      await tester.tap(find.text('Sandwiches'));
+      await tester.pump(const Duration(milliseconds: 16));
+      await tester.pump(const Duration(milliseconds: 90));
+      expect(tester.takeException(), isNull);
+      await tester.pumpAndSettle();
+      expect(find.text('Smoked Turkey Sub'), findsOneWidget);
+      expect(find.text('Iced Matcha Latte'), findsNothing);
+
+      await tester.tap(find.text('Drinks'));
+      await tester.pump(const Duration(milliseconds: 16));
+      await tester.pump(const Duration(milliseconds: 90));
+      expect(tester.takeException(), isNull);
+      await tester.pumpAndSettle();
+      expect(find.text('Iced Matcha Latte'), findsOneWidget);
+      expect(find.text('Smoked Turkey Sub'), findsNothing);
+
+      await tester.ensureVisible(find.text('All'));
+      await tester.pumpAndSettle();
+      await tester.tap(find.text('All'));
+      await tester.pump(const Duration(milliseconds: 80));
+      await tester.pumpAndSettle();
+      expect(find.text('Smoked Turkey Sub'), findsOneWidget);
+      expect(find.text('Iced Matcha Latte'), findsOneWidget);
+
+      // 3. Add both items to cart, open CartCheckoutSheet, and verify quantity + removal animations
+      await tester.tap(find.text('Add').first);
+      await tester.pumpAndSettle();
+      await tester.tap(find.text('Add').first);
+      await tester.pumpAndSettle();
+      expect(container.read(cartPricingProvider).totalItemCount, 2);
+
+      await tester.tap(find.text('Review order'));
+      await tester.pumpAndSettle();
+      expect(find.byKey(const ValueKey('cart_entry_s1')), findsOneWidget);
+      expect(find.byKey(const ValueKey('cart_entry_d1')), findsOneWidget);
+
+      // Increment s1 (1 -> 2) inside CartCheckoutSheet and verify odometer/pulse frames
+      final s1Stepper = find.descendant(
+        of: find.byKey(const ValueKey('cart_entry_s1')),
+        matching: find.byType(EvaQuantityStepper),
+      );
+      await tester.tap(
+        find.descendant(of: s1Stepper, matching: find.byIcon(Icons.add_rounded)),
+      );
+      await tester.pump(const Duration(milliseconds: 80));
+      expect(tester.takeException(), isNull);
+      await tester.pumpAndSettle();
+      expect(container.read(cartProvider)['s1'], 2);
+
+      // Decrement s1 back to 1 (2 -> 1), morphing '-' into delete_outline_rounded
+      await tester.tap(
+        find.descendant(
+          of: s1Stepper,
+          matching: find.byIcon(Icons.remove_rounded),
+        ),
+      );
+      await tester.pumpAndSettle();
+      expect(container.read(cartProvider)['s1'], 1);
+      expect(
+        find.descendant(
+          of: s1Stepper,
+          matching: find.byIcon(Icons.delete_outline_rounded),
+        ),
+        findsOneWidget,
+      );
+
+      // Remove s1 (1 -> 0): row stays mounted mid-exit animation (80ms) while collapsing, then unmounts cleanly
+      await tester.tap(
+        find.descendant(
+          of: s1Stepper,
+          matching: find.byIcon(Icons.delete_outline_rounded),
+        ),
+      );
+      await tester.pump(const Duration(milliseconds: 80));
+      expect(tester.takeException(), isNull);
+      expect(find.byKey(const ValueKey('cart_entry_s1')), findsOneWidget);
+      await tester.pumpAndSettle();
+      expect(find.byKey(const ValueKey('cart_entry_s1')), findsNothing);
+      expect(find.byKey(const ValueKey('cart_entry_d1')), findsOneWidget);
+
+      // Clear remaining cart item -> animates row exit then transitions to cart_empty_view
+      await tester.tap(find.byKey(const ValueKey('clear_cart_btn')));
+      await tester.pump(const Duration(milliseconds: 80));
+      expect(tester.takeException(), isNull);
+      await tester.pumpAndSettle();
+      expect(find.byKey(const ValueKey('cart_empty_view')), findsOneWidget);
     },
   );
 }
