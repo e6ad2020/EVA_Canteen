@@ -216,8 +216,29 @@ class CanteenStoreState extends Equatable {
     this.adminNewOrderTick = 0,
     this.lastConfirmedOrder,
     this.notice,
-    _CanteenStoreCache? cache,
-  }) : _cache = cache ?? _CanteenStoreCache();
+  }) : _cache = _CanteenStoreCache();
+
+  const CanteenStoreState._withCache({
+    required this.connectionPhase,
+    required this.isCanteenOpen,
+    required this.products,
+    required this.categories,
+    required this.bundles,
+    required this.adminBundles,
+    required this.translations,
+    required this.paymentMethods,
+    required this.currentUser,
+    required this.myOrders,
+    required this.adminOrders,
+    required this.analytics,
+    required this.walletsSnapshot,
+    required this.authBusy,
+    required this.checkoutBusy,
+    required this.adminNewOrderTick,
+    required this.lastConfirmedOrder,
+    required this.notice,
+    required this._cache,
+  });
 
   final SocketConnectionPhase connectionPhase;
   final bool isCanteenOpen;
@@ -355,7 +376,7 @@ class CanteenStoreState extends Equatable {
                 sameCategories ? _cache.studentCategories : null,
           );
 
-    return CanteenStoreState(
+    return CanteenStoreState._withCache(
       connectionPhase: connectionPhase ?? this.connectionPhase,
       isCanteenOpen: isCanteenOpen ?? this.isCanteenOpen,
       products: products ?? this.products,
