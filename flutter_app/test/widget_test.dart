@@ -121,7 +121,7 @@ void main() {
 
       expect(find.text('كانتين إيفا'), findsNothing);
       expect(
-        Directionality.of(tester.element(find.text('مرحباً بعودتك'))),
+        Directionality.of(tester.element(find.text('أهلاً بك مجدداً'))),
         TextDirection.rtl,
       );
 
