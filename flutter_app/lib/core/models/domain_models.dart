@@ -162,7 +162,7 @@ class ProductItem extends Equatable {
   final String image;
   final String categoryKey;
 
-  bool get isUnlimited => quantity == 999;
+  bool get isUnlimited => quantity == 999 || quantity < 0;
   bool get isOutOfStock => !isUnlimited && quantity <= 0;
   bool get isLowStock => !isUnlimited && quantity > 0 && quantity <= 5;
   bool get isArchived => categoryKey == 'archive';

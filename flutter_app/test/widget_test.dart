@@ -316,7 +316,7 @@ void main() {
       await tester.pumpAndSettle();
       expect(tester.takeException(), isNull);
 
-      await tester.tap(find.text('العمليات'));
+      await tester.tap(find.bySemanticsLabel('العمليات'));
       await tester.pumpAndSettle();
       expect(tester.takeException(), isNull);
     },
@@ -522,6 +522,163 @@ void main() {
       await tester.pumpAndSettle();
       expect(tester.takeException(), isNull);
       expect(find.text('Light Blue'), findsOneWidget);
+    },
+  );
+
+  testWidgets(
+    'Navbar hold-and-move jelly physics, adaptive scroll label hide + Settings toggle, and unblocked flush-aligned ItemDetailBottomSheet CTA work on 360x800 phone',
+    (tester) async {
+      await tester.binding.setSurfaceSize(const Size(360, 800));
+      addTearDown(() => tester.binding.setSurfaceSize(null));
+
+      SharedPreferences.setMockInitialValues({});
+      final prefs = await SharedPreferences.getInstance();
+      final mockSocket = EvaSocketClient(enableNetwork: false);
+
+      final container = ProviderContainer(
+        overrides: [
+          sharedPrefsProvider.overrideWithValue(prefs),
+          socketClientProvider.overrideWithValue(mockSocket),
+        ],
+      );
+      addTearDown(container.dispose);
+
+      expect(
+        container.read(appPreferencesProvider).navBarBehavior,
+        EvaNavBarBehavior.adaptive,
+      );
+
+      container.read(canteenStoreProvider.notifier).enterBrowseGuestMode();
+
+      await tester.pumpWidget(
+        UncontrolledProviderScope(
+          container: container,
+          child: const EvaCanteenApp(),
+        ),
+      );
+      await tester.pumpAndSettle();
+
+      // Inject 10 products so the menu scrolls comfortably on 360x800
+      mockSocket.injectTestEvent('initial_translations', {
+        'item_club': {'en': 'Crispy Chicken Club', 'ar': 'كلوب دجاج مقرمش'},
+        'desc_club': {
+          'en': 'Double-layered toasted brioche',
+          'ar': 'بريوش محمص طازج',
+        },
+      });
+      mockSocket.injectTestEvent('initial_products', [
+        for (int i = 1; i <= 10; i++)
+          {
+            'id': 'club_$i',
+            'name_key': 'item_club',
+            'description_key': 'desc_club',
+            'price': 55,
+            'quantity': 999,
+            'image': '',
+            'category': 'sandwiches',
+          },
+      ]);
+      await tester.pumpAndSettle();
+      expect(tester.takeException(), isNull);
+
+      // 1. Open ItemDetailBottomSheet by tapping the first product title
+      await tester.tap(find.text('Crispy Chicken Club').first);
+      await tester.pumpAndSettle();
+      expect(tester.takeException(), isNull);
+
+      // Verify EvaQuantityStepper inside the sheet is 100% flush with the right content edge (360 - 20 = 340)
+      final sheetCtaFinder = find.byKey(
+        const ValueKey('item_detail_cta_button'),
+      );
+      expect(sheetCtaFinder, findsOneWidget);
+      final sheetCtaRect = tester.getRect(sheetCtaFinder);
+      final sheetStepperFinder = find.descendant(
+        of: find.byType(BottomSheet),
+        matching: find.byType(EvaQuantityStepper),
+      );
+      final sheetStepperRect = tester.getRect(sheetStepperFinder);
+      expect((sheetStepperRect.right - sheetCtaRect.right).abs(), lessThan(1.0));
+
+      // Verify tapping the bottom Add CTA button is NOT blocked by EvaFloatingNavBar
+      await tester.tap(sheetCtaFinder);
+      await tester.pumpAndSettle();
+      expect(tester.takeException(), isNull);
+      expect(sheetCtaFinder, findsNothing);
+      expect(container.read(cartProvider)['club_1'], 1);
+
+      // Reopen sheet when qty > 0 to verify `[ - 1 + ]` stepper stays flush right too
+      await tester.tap(find.text('Crispy Chicken Club').first);
+      await tester.pumpAndSettle();
+      final activeStepperRect = tester.getRect(sheetStepperFinder);
+      expect(
+        (activeStepperRect.right - sheetCtaRect.right).abs(),
+        lessThan(1.0),
+      );
+      await tester.tap(find.byKey(const ValueKey('item_detail_cta_button')));
+      await tester.pumpAndSettle();
+
+      // 2. Verify scrolling down collapses floating navbar labels (62dp + padding -> 48dp + padding)
+      final expandedNavHeight = tester
+          .getSize(find.byType(EvaFloatingNavBar))
+          .height;
+      await tester.drag(find.byType(CustomScrollView), const Offset(0, -260));
+      await tester.pumpAndSettle();
+      final collapsedNavHeight = tester
+          .getSize(find.byType(EvaFloatingNavBar))
+          .height;
+      expect(collapsedNavHeight, lessThan(expandedNavHeight - 10));
+
+      // Scrolling back up restores floating navbar labels
+      await tester.drag(find.byType(CustomScrollView), const Offset(0, 260));
+      await tester.pumpAndSettle();
+      expect(
+        tester.getSize(find.byType(EvaFloatingNavBar)).height,
+        closeTo(expandedNavHeight, 1.0),
+      );
+
+      // 3. Hold pill & move with 2D vertical + horizontal tug (NuvioMobile jelly physics)
+      final navRect = tester.getRect(find.byType(EvaFloatingNavBar));
+      final holdGesture = await tester.startGesture(
+        Offset(navRect.left + 44, navRect.center.dy),
+      );
+      // Hold in place to trigger press-and-hold pill inflation
+      await tester.pump(const Duration(milliseconds: 140));
+      expect(tester.takeException(), isNull);
+      // Move horizontally + vertically to exercise 2D rubber-band & velocity stretch
+      for (int step = 1; step <= 6; step++) {
+        await holdGesture.moveBy(
+          Offset((navRect.width - 88) / 6, step.isEven ? -6 : 4),
+        );
+        await tester.pump(const Duration(milliseconds: 16));
+      }
+      await holdGesture.up();
+      await tester.pumpAndSettle();
+      expect(tester.takeException(), isNull);
+
+      // Should now be on Settings tab; customize navbar behavior ('Icons only' -> 'Always show')
+      await tester.ensureVisible(find.text('Icons only'));
+      await tester.pumpAndSettle();
+      await tester.tap(find.text('Icons only'));
+      await tester.pumpAndSettle();
+      expect(
+        container.read(appPreferencesProvider).navBarBehavior,
+        EvaNavBarBehavior.compact,
+      );
+      expect(
+        tester.getSize(find.byType(EvaFloatingNavBar)).height,
+        closeTo(collapsedNavHeight, 1.0),
+      );
+
+      await tester.tap(find.text('Always show'));
+      await tester.pumpAndSettle();
+      expect(
+        container.read(appPreferencesProvider).navBarBehavior,
+        EvaNavBarBehavior.expanded,
+      );
+      expect(
+        tester.getSize(find.byType(EvaFloatingNavBar)).height,
+        closeTo(expandedNavHeight, 1.0),
+      );
     },
   );
 }

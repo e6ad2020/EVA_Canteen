@@ -3,6 +3,22 @@ import 'package:material_ui/material_ui.dart';
 
 enum EvaSurfaceMode { daylight, nightShift }
 
+enum EvaNavBarBehavior {
+  adaptive('navbar_adaptive'),
+  expanded('navbar_expanded'),
+  compact('navbar_compact');
+
+  const EvaNavBarBehavior(this.i18nKey);
+  final String i18nKey;
+
+  static EvaNavBarBehavior fromStorageName(String? raw) {
+    return EvaNavBarBehavior.values.firstWhere(
+      (e) => e.name == raw,
+      orElse: () => EvaNavBarBehavior.adaptive,
+    );
+  }
+}
+
 enum EvaAccentPreset {
   lightBlue(
     i18nKey: 'theme_light_blue',

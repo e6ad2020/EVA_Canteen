@@ -17,6 +17,9 @@ class StudentShellScreen extends ConsumerWidget {
   Widget build(BuildContext context, WidgetRef ref) {
     final tokens = EvaTokens.of(context);
     final i18n = ref.watch(i18nProvider);
+    final navBehavior = ref.watch(
+      appPreferencesProvider.select((p) => p.navBarBehavior),
+    );
     final activeOrder = ref.watch(
       canteenStoreProvider.select((s) => s.activeStudentOrder),
     );
@@ -114,43 +117,49 @@ class StudentShellScreen extends ConsumerWidget {
                               Expanded(child: animatedBody),
                             ],
                           )
-                        : Stack(
-                            fit: StackFit.expand,
-                            children: [
-                              animatedBody,
-                              Positioned(
-                                left: 0,
-                                right: 0,
-                                bottom: 0,
-                                child: EvaFloatingNavBar(
-                                  selectedIndex: navigationShell.currentIndex,
-                                  onDestinationSelected: (idx) {
-                                    HapticFeedback.selectionClick();
-                                    navigationShell.goBranch(idx);
-                                  },
-                                  items: [
-                                    EvaFloatingNavItem(
-                                      icon: Icons.restaurant_menu_outlined,
-                                      selectedIcon:
-                                          Icons.restaurant_menu_rounded,
-                                      label: i18n.t('nav_menu'),
-                                    ),
-                                    EvaFloatingNavItem(
-                                      icon: Icons.confirmation_number_outlined,
-                                      selectedIcon:
-                                          Icons.confirmation_number_rounded,
-                                      label: i18n.t('nav_orders'),
-                                      showDotBadge: hasLiveInFlight,
-                                    ),
-                                    EvaFloatingNavItem(
-                                      icon: Icons.tune_outlined,
-                                      selectedIcon: Icons.tune_rounded,
-                                      label: i18n.t('nav_settings'),
-                                    ),
-                                  ],
+                        : EvaNavScrollTracker(
+                            currentIndex: navigationShell.currentIndex,
+                            behavior: navBehavior,
+                            builder: (context, showLabels) => Stack(
+                              fit: StackFit.expand,
+                              children: [
+                                animatedBody,
+                                Positioned(
+                                  left: 0,
+                                  right: 0,
+                                  bottom: 0,
+                                  child: EvaFloatingNavBar(
+                                    selectedIndex: navigationShell.currentIndex,
+                                    showLabels: showLabels,
+                                    onDestinationSelected: (idx) {
+                                      HapticFeedback.selectionClick();
+                                      navigationShell.goBranch(idx);
+                                    },
+                                    items: [
+                                      EvaFloatingNavItem(
+                                        icon: Icons.restaurant_menu_outlined,
+                                        selectedIcon:
+                                            Icons.restaurant_menu_rounded,
+                                        label: i18n.t('nav_menu'),
+                                      ),
+                                      EvaFloatingNavItem(
+                                        icon:
+                                            Icons.confirmation_number_outlined,
+                                        selectedIcon:
+                                            Icons.confirmation_number_rounded,
+                                        label: i18n.t('nav_orders'),
+                                        showDotBadge: hasLiveInFlight,
+                                      ),
+                                      EvaFloatingNavItem(
+                                        icon: Icons.tune_outlined,
+                                        selectedIcon: Icons.tune_rounded,
+                                        label: i18n.t('nav_settings'),
+                                      ),
+                                    ],
+                                  ),
                                 ),
-                              ),
-                            ],
+                              ],
+                            ),
                           ),
                   ),
                 ],

@@ -319,6 +319,27 @@ class EvaTranslator {
       'en': 'Subtle background pattern',
       'ar': 'نقشة خلفية خفيفة',
     },
+    'navbar_behavior_title': {
+      'en': 'Navigation bar labels',
+      'ar': 'عناوين شريط التنقل',
+    },
+    'navbar_behavior_sub': {
+      'en': 'Control whether tab titles disappear while scrolling down.',
+      'ar': 'تحكّم في إخفاء عناوين التبويبات عند التمرير لأسفل.',
+    },
+    'navbar_adaptive': {
+      'en': 'Hide on scroll',
+      'ar': 'إخفاء عند التمرير',
+    },
+    'navbar_expanded': {
+      'en': 'Always show',
+      'ar': 'إظهار دائماً',
+    },
+    'navbar_compact': {
+      'en': 'Icons only',
+      'ar': 'أيقونات فقط',
+    },
+    'done_cta': {'en': 'Done', 'ar': 'تم'},
     'language_label': {'en': 'Language', 'ar': 'اللغة'},
     'server_connection_label': {
       'en': 'Server Endpoint',

@@ -624,26 +624,29 @@ class _AdminCatalogStudioViewState
                   children: [
                     Row(
                       children: [
-                        Flexible(
-                          child: EvaStatusBadge(
-                            label: bundle.isSuggestion
-                                ? i18n.t('meal_ideas_badge')
-                                : i18n.t('discount_badge', {
-                                    'percent': bundle.discountPercent
-                                        .toStringAsFixed(0),
-                                  }),
-                            background: bundle.isSuggestion
-                                ? tokens.brandSoftBg
-                                : tokens.statusDeliveredBg,
-                            foreground: bundle.isSuggestion
-                                ? tokens.brandPrimary
-                                : tokens.statusDeliveredFg,
-                            icon: bundle.isSuggestion
-                                ? Icons.auto_awesome_rounded
-                                : Icons.local_offer_rounded,
+                        Expanded(
+                          child: Align(
+                            alignment: AlignmentDirectional.centerStart,
+                            child: EvaStatusBadge(
+                              label: bundle.isSuggestion
+                                  ? i18n.t('meal_ideas_badge')
+                                  : i18n.t('discount_badge', {
+                                      'percent': bundle.discountPercent
+                                          .toStringAsFixed(0),
+                                    }),
+                              background: bundle.isSuggestion
+                                  ? tokens.brandSoftBg
+                                  : tokens.statusDeliveredBg,
+                              foreground: bundle.isSuggestion
+                                  ? tokens.brandPrimary
+                                  : tokens.statusDeliveredFg,
+                              icon: bundle.isSuggestion
+                                  ? Icons.auto_awesome_rounded
+                                  : Icons.local_offer_rounded,
+                            ),
                           ),
                         ),
-                        const Spacer(),
+                        const SizedBox(width: 8),
                         Switch(
                           value: bundle.active,
                           onChanged: (val) {
@@ -841,6 +844,7 @@ class _AdminCatalogStudioViewState
   }) async {
     await showModalBottomSheet<void>(
       context: context,
+      useRootNavigator: true,
       isScrollControlled: true,
       useSafeArea: true,
       builder: (_) => _ProductEditorSheet(
@@ -856,6 +860,7 @@ class _AdminCatalogStudioViewState
   }) async {
     await showModalBottomSheet<void>(
       context: context,
+      useRootNavigator: true,
       isScrollControlled: true,
       useSafeArea: true,
       builder: (_) => _BundleEditorSheet(existing: existing),

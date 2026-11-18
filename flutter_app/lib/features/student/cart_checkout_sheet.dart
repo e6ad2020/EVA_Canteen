@@ -11,6 +11,7 @@ import '../../design_system/widgets/eva_widgets.dart';
 Future<void> showCartCheckoutSheet(BuildContext context) {
   return showModalBottomSheet<void>(
     context: context,
+    useRootNavigator: true,
     isScrollControlled: true,
     useSafeArea: true,
     constraints: const BoxConstraints(maxWidth: 600),

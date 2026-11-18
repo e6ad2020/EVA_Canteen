@@ -229,6 +229,36 @@ class SharedSettingsView extends ConsumerWidget {
                                   title: Text(i18n.t('doodle_pattern_toggle')),
                                 ),
                               ],
+                              const Divider(height: 28),
+                              Text(
+                                i18n.t('navbar_behavior_title'),
+                                style: Theme.of(context).textTheme.titleMedium,
+                              ),
+                              const SizedBox(height: 4),
+                              Text(
+                                i18n.t('navbar_behavior_sub'),
+                                style: Theme.of(context).textTheme.bodySmall,
+                              ),
+                              const SizedBox(height: 12),
+                              Wrap(
+                                spacing: 8,
+                                runSpacing: 8,
+                                children: [
+                                  for (final behavior
+                                      in EvaNavBarBehavior.values)
+                                    ChoiceChip(
+                                      selected:
+                                          prefs.navBarBehavior == behavior,
+                                      label: Text(i18n.t(behavior.i18nKey)),
+                                      onSelected: (_) {
+                                        HapticFeedback.selectionClick();
+                                        prefsNotifier.setNavBarBehavior(
+                                          behavior,
+                                        );
+                                      },
+                                    ),
+                                ],
+                              ),
                             ],
                           ),
                         ),

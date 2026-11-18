@@ -21,6 +21,7 @@ class AppPreferencesState extends Equatable {
     this.locale = const Locale('en'),
     this.surfaceMode = EvaSurfaceMode.daylight,
     this.accentPreset = EvaAccentPreset.lightBlue,
+    this.navBarBehavior = EvaNavBarBehavior.adaptive,
     this.showDoodlePattern = true,
     this.customServerOrigin,
   });
@@ -28,6 +29,7 @@ class AppPreferencesState extends Equatable {
   final Locale locale;
   final EvaSurfaceMode surfaceMode;
   final EvaAccentPreset accentPreset;
+  final EvaNavBarBehavior navBarBehavior;
   final bool showDoodlePattern;
   final String? customServerOrigin;
 
@@ -35,6 +37,7 @@ class AppPreferencesState extends Equatable {
     Locale? locale,
     EvaSurfaceMode? surfaceMode,
     EvaAccentPreset? accentPreset,
+    EvaNavBarBehavior? navBarBehavior,
     bool? showDoodlePattern,
     String? customServerOrigin,
     bool clearServerOrigin = false,
@@ -43,6 +46,7 @@ class AppPreferencesState extends Equatable {
       locale: locale ?? this.locale,
       surfaceMode: surfaceMode ?? this.surfaceMode,
       accentPreset: accentPreset ?? this.accentPreset,
+      navBarBehavior: navBarBehavior ?? this.navBarBehavior,
       showDoodlePattern: showDoodlePattern ?? this.showDoodlePattern,
       customServerOrigin: clearServerOrigin
           ? null
@@ -55,6 +59,7 @@ class AppPreferencesState extends Equatable {
     locale,
     surfaceMode,
     accentPreset,
+    navBarBehavior,
     showDoodlePattern,
     customServerOrigin,
   ];
@@ -64,6 +69,7 @@ class AppPreferencesNotifier extends Notifier<AppPreferencesState> {
   static const _kLang = 'eva_pref_lang';
   static const _kMode = 'eva_pref_mode';
   static const _kAccent = 'eva_pref_accent';
+  static const _kNavBehavior = 'eva_pref_nav_bar_behavior';
   static const _kDoodle = 'eva_pref_doodle';
   static const _kServer = 'eva_pref_server_origin';
 
@@ -74,6 +80,7 @@ class AppPreferencesNotifier extends Notifier<AppPreferencesState> {
     final modeName = prefs.getString(_kMode) ?? EvaSurfaceMode.daylight.name;
     final accentName =
         prefs.getString(_kAccent) ?? EvaAccentPreset.lightBlue.name;
+    final navName = prefs.getString(_kNavBehavior);
     final doodle = prefs.getBool(_kDoodle) ?? true;
     final server = prefs.getString(_kServer);
 
@@ -82,11 +89,13 @@ class AppPreferencesNotifier extends Notifier<AppPreferencesState> {
       orElse: () => EvaSurfaceMode.daylight,
     );
     final accent = EvaAccentPreset.fromStorageName(accentName);
+    final navBehavior = EvaNavBarBehavior.fromStorageName(navName);
 
     return AppPreferencesState(
       locale: Locale(lang == 'ar' ? 'ar' : 'en'),
       surfaceMode: mode,
       accentPreset: accent,
+      navBarBehavior: navBehavior,
       showDoodlePattern: doodle,
       customServerOrigin: (server == null || server.isEmpty) ? null : server,
     );
@@ -121,6 +130,11 @@ class AppPreferencesNotifier extends Notifier<AppPreferencesState> {
       return;
     }
     state = state.copyWith(accentPreset: accent);
+  }
+
+  void setNavBarBehavior(EvaNavBarBehavior behavior) {
+    ref.read(sharedPrefsProvider).setString(_kNavBehavior, behavior.name);
+    state = state.copyWith(navBarBehavior: behavior);
   }
 
   void setShowDoodlePattern(bool enabled) {

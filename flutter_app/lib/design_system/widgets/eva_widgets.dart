@@ -1,5 +1,6 @@
 import 'dart:math' as math;
 
+import 'package:flutter/scheduler.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:material_ui/material_ui.dart';
@@ -327,21 +328,449 @@ class EvaFloatingNavItem {
   final int? badgeCount;
 }
 
-/// Floating stadium-pill bottom navigation bar inspired by NuvioMobile's
-/// `FloatingNavigationBar` & `JellyTabs` — featuring a volume-preserving
-/// jelly-stretch sliding indicator, radial accent glow, tap + horizontal
-/// thumb-scrubbing gestures, full RTL mirroring, and zero `BackdropFilter`.
+/// Tracks vertical scroll direction across any child scrollable view and drives
+/// [EvaFloatingNavBar] label visibility according to [EvaNavBarBehavior].
+class EvaNavScrollTracker extends StatefulWidget {
+  const EvaNavScrollTracker({
+    super.key,
+    required this.currentIndex,
+    required this.behavior,
+    required this.builder,
+  });
+
+  final int currentIndex;
+  final EvaNavBarBehavior behavior;
+  final Widget Function(BuildContext context, bool showLabels) builder;
+
+  @override
+  State<EvaNavScrollTracker> createState() => _EvaNavScrollTrackerState();
+}
+
+class _EvaNavScrollTrackerState extends State<EvaNavScrollTracker> {
+  static const double _collapseThreshold = 34.0;
+  static const double _expandThreshold = 22.0;
+
+  bool _collapsedByScroll = false;
+  double _accumulatedDelta = 0.0;
+
+  @override
+  void didUpdateWidget(covariant EvaNavScrollTracker oldWidget) {
+    super.didUpdateWidget(oldWidget);
+    if (oldWidget.currentIndex != widget.currentIndex ||
+        oldWidget.behavior != widget.behavior) {
+      _collapsedByScroll = false;
+      _accumulatedDelta = 0.0;
+    }
+  }
+
+  bool _onScrollNotification(ScrollNotification notification) {
+    if (widget.behavior != EvaNavBarBehavior.adaptive) return false;
+    if (notification.metrics.axis != Axis.vertical) return false;
+
+    final pixels = notification.metrics.pixels;
+    final maxExtent = notification.metrics.maxScrollExtent;
+
+    if (pixels <= 14.0) {
+      _accumulatedDelta = 0.0;
+      if (_collapsedByScroll) {
+        setState(() => _collapsedByScroll = false);
+      }
+      return false;
+    }
+
+    if (notification is ScrollUpdateNotification) {
+      final delta = notification.scrollDelta ?? 0.0;
+      if (delta == 0.0) return false;
+      // Ignore iOS/Android overscroll bounce beyond bounds
+      if (pixels < 0.0 || (maxExtent > 0.0 && pixels > maxExtent)) {
+        return false;
+      }
+
+      if ((delta > 0 && _accumulatedDelta < 0) ||
+          (delta < 0 && _accumulatedDelta > 0)) {
+        _accumulatedDelta = delta;
+      } else {
+        _accumulatedDelta += delta;
+      }
+
+      if (_accumulatedDelta > _collapseThreshold &&
+          pixels > 28.0 &&
+          !_collapsedByScroll) {
+        _accumulatedDelta = 0.0;
+        setState(() => _collapsedByScroll = true);
+      } else if (_accumulatedDelta < -_expandThreshold && _collapsedByScroll) {
+        _accumulatedDelta = 0.0;
+        setState(() => _collapsedByScroll = false);
+      }
+    }
+    return false;
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final bool showLabels = switch (widget.behavior) {
+      EvaNavBarBehavior.expanded => true,
+      EvaNavBarBehavior.compact => false,
+      EvaNavBarBehavior.adaptive => !_collapsedByScroll,
+    };
+
+    return NotificationListener<ScrollNotification>(
+      onNotification: _onScrollNotification,
+      child: widget.builder(context, showLabels),
+    );
+  }
+}
+
+/// Analytical critically-damped / underdamped spring ported from NuvioMobile's
+/// `JellySpring.kt` for liquid, alive hold & drag navbar physics.
+class _JellySpring {
+  _JellySpring(this.value, this.stiffness, this.dampingRatio);
+
+  double value;
+  final double stiffness;
+  final double dampingRatio;
+  double velocity = 0.0;
+
+  bool isAtRest(double target) =>
+      (value - target).abs() < 0.0005 && velocity.abs() < 0.002;
+
+  void snapTo(double target) {
+    value = target;
+    velocity = 0.0;
+  }
+
+  void advance(double target, double seconds) {
+    if (isAtRest(target)) {
+      snapTo(target);
+      return;
+    }
+    final displacement = value - target;
+    final frequency = math.sqrt(stiffness);
+    if (dampingRatio >= 0.9999) {
+      final decay = math.exp(-frequency * seconds);
+      final coeff = velocity + frequency * displacement;
+      value = target + (displacement + coeff * seconds) * decay;
+      velocity = (velocity - frequency * coeff * seconds) * decay;
+    } else {
+      final damping = dampingRatio * frequency;
+      final damped = frequency * math.sqrt(1.0 - dampingRatio * dampingRatio);
+      final decay = math.exp(-damping * seconds);
+      final cosine = math.cos(damped * seconds);
+      final sine = math.sin(damped * seconds);
+      final posCoeff = (velocity + damping * displacement) / damped;
+      final velCoeff = (damping * velocity + stiffness * displacement) / damped;
+      value = target + decay * (displacement * cosine + posCoeff * sine);
+      velocity = decay * (velocity * cosine - velCoeff * sine);
+    }
+  }
+}
+
+double _jellyRubberBand(double distance, double dimension) {
+  if (distance == 0.0 || dimension <= 0.0) return 0.0;
+  final damped =
+      (1.0 - 1.0 / (distance.abs() * 0.14 / dimension + 1.0)) * dimension;
+  return distance < 0 ? -damped : damped;
+}
+
+double _jellyPanelOffset(double rawOffset, double width) {
+  if (width <= 0.0 || rawOffset == 0.0) return 0.0;
+  final fraction = (rawOffset / width).clamp(-1.0, 1.0);
+  final x = fraction.abs();
+  var low = 0.0;
+  var high = 1.0;
+  var param = x;
+  for (int i = 0; i < 10; i++) {
+    final bezierX = param * param * (3.0 * (1.0 - param) * 0.58 + param);
+    if (bezierX < x) {
+      low = param;
+    } else {
+      high = param;
+    }
+    param = (low + high) / 2.0;
+  }
+  final eased = param * param * (3.0 * (1.0 - param) + param);
+  return (fraction < 0 ? -4.0 : 4.0) * eased;
+}
+
+class _JellyFrame {
+  const _JellyFrame({
+    required this.position,
+    this.pillScaleX = 1.0,
+    this.pillScaleY = 1.0,
+    this.contentScale = 1.0,
+    this.panelOffset = 0.0,
+    this.trackScale = 1.0,
+    this.trackScaleX = 1.0,
+    this.trackOffsetY = 0.0,
+    this.originX = 0.0,
+    this.glowY = 30.0,
+    this.glowOpacity = 0.0,
+  });
+
+  final double position;
+  final double pillScaleX;
+  final double pillScaleY;
+  final double contentScale;
+  final double panelOffset;
+  final double trackScale;
+  final double trackScaleX;
+  final double trackOffsetY;
+  final double originX;
+  final double glowY;
+  final double glowOpacity;
+}
+
+class _JellyMotion {
+  _JellyMotion(int initialVisualIndex, int count)
+    : _tabCount = count,
+      _position = _JellySpring(
+        math.max(0, initialVisualIndex).toDouble(),
+        1000.0,
+        1.0,
+      ),
+      _velocity = _JellySpring(0.0, 300.0, 0.5),
+      _press = _JellySpring(0.0, 1000.0, 1.0),
+      _scaleX = _JellySpring(1.0, 250.0, 0.6),
+      _scaleY = _JellySpring(1.0, 250.0, 0.7),
+      _panel = _JellySpring(0.0, 300.0, 1.0),
+      _trackY = _JellySpring(
+        0.0,
+        240.0 / 0.9,
+        18.0 / (2.0 * math.sqrt(240.0 * 0.9)),
+      ),
+      _trackX = _JellySpring(
+        1.0,
+        240.0 / 0.9,
+        18.0 / (2.0 * math.sqrt(240.0 * 0.9)),
+      ),
+      _trackPress = _JellySpring(
+        1.0,
+        240.0 / 0.9,
+        18.0 / (2.0 * math.sqrt(240.0 * 0.9)),
+      ),
+      _glow = _JellySpring(
+        0.0,
+        240.0 / 0.9,
+        18.0 / (2.0 * math.sqrt(240.0 * 0.9)),
+      ) {
+    _target = _position.value;
+    frame = _JellyFrame(position: _position.value);
+  }
+
+  static const double inset = 4.0;
+
+  final _JellySpring _position;
+  final _JellySpring _velocity;
+  final _JellySpring _press;
+  final _JellySpring _scaleX;
+  final _JellySpring _scaleY;
+  final _JellySpring _panel;
+  final _JellySpring _trackY;
+  final _JellySpring _trackX;
+  final _JellySpring _trackPress;
+  final _JellySpring _glow;
+
+  double _target = 0.0;
+  double _pressTarget = 0.0;
+  double _shapeTarget = 1.0;
+  bool _releasePending = false;
+  double _downX = 0.0;
+  double _downY = 30.0;
+  double _dragStartTarget = 0.0;
+  double _dragStartPanel = 0.0;
+  double _dragStartY = 0.0;
+  double _movedDistance = 0.0;
+  double _originX = 0.0;
+  double _glowY = 30.0;
+  double _width = 320.0;
+  double _height = 62.0;
+  int _tabCount;
+
+  bool dragging = false;
+  bool running = false;
+  late _JellyFrame frame;
+
+  int get _maxIndex => math.max(0, _tabCount - 1);
+  double get _tabWidth =>
+      math.max(1.0, (_width - inset * 2) / math.max(1, _tabCount));
+
+  int indexAt(double x) =>
+      ((x - inset) / _tabWidth).floor().clamp(0, _maxIndex);
+
+  void resize(double width, double height, int count) {
+    _width = width;
+    _height = height;
+    _tabCount = count;
+    _target = _target.clamp(0.0, _maxIndex.toDouble());
+    if (!dragging) {
+      _originX = _width / 2.0;
+      _glowY = _height / 2.0;
+    }
+    _publish();
+  }
+
+  void snapToRest(int visualIndex) {
+    final clamped = visualIndex.clamp(0, _maxIndex).toDouble();
+    dragging = false;
+    _releasePending = false;
+    _target = clamped;
+    _pressTarget = 0.0;
+    _shapeTarget = 1.0;
+    _position.snapTo(clamped);
+    _velocity.snapTo(0.0);
+    _press.snapTo(0.0);
+    _scaleX.snapTo(1.0);
+    _scaleY.snapTo(1.0);
+    _panel.snapTo(0.0);
+    _trackY.snapTo(0.0);
+    _trackX.snapTo(1.0);
+    _trackPress.snapTo(1.0);
+    _glow.snapTo(0.0);
+    _originX = _width / 2.0;
+    _glowY = _height / 2.0;
+    running = false;
+    _publish();
+  }
+
+  void select(int visualIndex) {
+    dragging = false;
+    if (visualIndex >= 0) {
+      _target = visualIndex.clamp(0, _maxIndex).toDouble();
+    }
+    _releasePending = true;
+    _pressTarget = 0.0;
+    _shapeTarget = 1.0;
+    running = true;
+  }
+
+  void begin(double x, double y) {
+    _downX = x;
+    _downY = y.clamp(0.0, _height);
+    _originX = _downX.clamp(0.0, _width);
+    _glowY = _downY;
+    _dragStartY = _trackY.value;
+    _movedDistance = 0.0;
+    _target = indexAt(_downX).toDouble();
+    _dragStartTarget = _target;
+    _dragStartPanel = _panel.value;
+    dragging = true;
+    _releasePending = false;
+    _pressTarget = 1.0;
+    _shapeTarget = 1.26;
+    _panel.velocity = 0.0;
+    running = true;
+  }
+
+  int drag(double dx, double dy) {
+    if (!dragging) return indexAt(_downX);
+    _target = (_dragStartTarget + dx / _tabWidth).clamp(
+      0.0,
+      _maxIndex.toDouble(),
+    );
+    _panel.snapTo(_dragStartPanel + dx);
+    _trackY.snapTo(_dragStartY + _jellyRubberBand(dy, _height) * 0.25);
+    _trackX.snapTo(1.0 - (dy.abs() / 700.0).clamp(0.0, 1.0) * 0.08);
+    _originX = (_downX + dx).clamp(0.0, _width);
+    _glowY = (_downY + dy * 0.35).clamp(0.0, _height);
+    _movedDistance = math.max(_movedDistance, math.max(dx.abs(), dy.abs()));
+    _publish();
+    return (_target + 0.5).floor().clamp(0, _maxIndex);
+  }
+
+  int finish() {
+    final index = _movedDistance < 6.0
+        ? indexAt(_downX)
+        : (_target + 0.5).floor().clamp(0, _maxIndex);
+    dragging = false;
+    _panel.velocity = 0.0;
+    _target = index.toDouble();
+    _releasePending = true;
+    running = true;
+    return index;
+  }
+
+  void cancel(int selectedVisualIndex) {
+    dragging = false;
+    _panel.velocity = 0.0;
+    select(selectedVisualIndex);
+  }
+
+  void advance(double seconds) {
+    final dt = seconds.clamp(0.0, 0.064);
+    _target = _target.clamp(0.0, _maxIndex.toDouble());
+    _position.advance(_target, dt);
+    _velocity.advance(
+      dragging && _maxIndex > 0 ? _position.velocity / _maxIndex : 0.0,
+      dt,
+    );
+    if (!dragging) _panel.advance(0.0, dt);
+    if (_releasePending &&
+        (_position.value - _target).abs() < math.max(1, _maxIndex) * 0.025) {
+      _releasePending = false;
+      _pressTarget = 0.0;
+      _shapeTarget = 1.0;
+    }
+    _press.advance(_pressTarget, dt);
+    _scaleX.advance(_shapeTarget, dt);
+    _scaleY.advance(_shapeTarget, dt);
+    _trackPress.advance(dragging ? 1.026 : 1.0, dt);
+    _glow.advance(dragging ? 1.0 : 0.0, dt);
+    if (!dragging) {
+      _trackY.advance(0.0, dt);
+      _trackX.advance(1.0, dt);
+      if (_trackX.isAtRest(1.0)) _originX = _width / 2.0;
+    }
+    _publish();
+    running =
+        dragging ||
+        _releasePending ||
+        !_position.isAtRest(_target) ||
+        !_velocity.isAtRest(0.0) ||
+        !_press.isAtRest(0.0) ||
+        !_scaleX.isAtRest(1.0) ||
+        !_scaleY.isAtRest(1.0) ||
+        !_panel.isAtRest(0.0) ||
+        !_trackY.isAtRest(0.0) ||
+        !_trackX.isAtRest(1.0) ||
+        !_trackPress.isAtRest(1.0) ||
+        !_glow.isAtRest(0.0);
+  }
+
+  void _publish() {
+    final speed = _velocity.value / 10.0;
+    frame = _JellyFrame(
+      position: _position.value,
+      pillScaleX: _scaleX.value / (1.0 - (speed * 0.75).clamp(-0.22, 0.22)),
+      pillScaleY: _scaleY.value * (1.0 - (speed * 0.25).clamp(-0.22, 0.22)),
+      contentScale: 1.0 + 0.18 * _press.value,
+      panelOffset: _jellyPanelOffset(_panel.value, _width),
+      trackScale: _trackPress.value,
+      trackScaleX: _trackX.value,
+      trackOffsetY: _trackY.value,
+      originX: _originX,
+      glowY: _glowY,
+      glowOpacity: _glow.value.clamp(0.0, 1.0),
+    );
+  }
+}
+
+/// Floating stadium-pill bottom navigation bar modeled on NuvioMobile's
+/// `FloatingNavigationBar` & `JellyTabs` — featuring real-time hold inflation,
+/// velocity-driven jelly stretch, 2D rubber-band capsule response, scroll-hiding
+/// tab labels, full RTL mirroring, and zero `BackdropFilter`.
 class EvaFloatingNavBar extends StatefulWidget {
   const EvaFloatingNavBar({
     super.key,
     required this.selectedIndex,
     required this.onDestinationSelected,
     required this.items,
+    this.showLabels = true,
   });
 
   final int selectedIndex;
   final ValueChanged<int> onDestinationSelected;
   final List<EvaFloatingNavItem> items;
+  final bool showLabels;
 
   static const double shellWideBreakpoint = 840.0;
 
@@ -357,119 +786,107 @@ class EvaFloatingNavBar extends StatefulWidget {
 
 class _EvaFloatingNavBarState extends State<EvaFloatingNavBar>
     with SingleTickerProviderStateMixin {
-  static const double _pillInset = 4.5;
+  late _JellyMotion _motion;
+  late final Ticker _ticker;
+  Duration? _lastTickElapsed;
+  int? _activePointerId;
+  Offset _pointerDownLocal = Offset.zero;
+  int? _lastHapticVisualIdx;
+  bool? _lastIsRtl;
 
-  late final AnimationController _ctrl;
-  late double _fromLogicalPos;
-  late double _toLogicalPos;
-  double? _dragLogicalPos;
-  int? _lastDragHapticIndex;
+  int _visualIndex(int logicalIndex, int count, bool isRtl) {
+    if (count <= 0) return 0;
+    final clamped = logicalIndex.clamp(0, count - 1);
+    return isRtl ? (count - 1 - clamped) : clamped;
+  }
+
+  int _logicalIndex(int visualIndex, int count, bool isRtl) {
+    if (count <= 0) return 0;
+    final clamped = visualIndex.clamp(0, count - 1);
+    return isRtl ? (count - 1 - clamped) : clamped;
+  }
 
   @override
   void initState() {
     super.initState();
-    final initial = widget.selectedIndex
-        .clamp(0, math.max(0, widget.items.length - 1))
-        .toDouble();
-    _fromLogicalPos = initial;
-    _toLogicalPos = initial;
-    _ctrl = AnimationController(
-      vsync: this,
-      duration: const Duration(milliseconds: 280),
-      value: 1.0,
-    );
+    _motion = _JellyMotion(widget.selectedIndex, widget.items.length);
+    _ticker = createTicker(_onTick);
   }
 
   @override
-  void didUpdateWidget(covariant EvaFloatingNavBar oldWidget) {
-    super.didUpdateWidget(oldWidget);
-    final maxIdx = math.max(0, widget.items.length - 1).toDouble();
-    _fromLogicalPos = _fromLogicalPos.clamp(0.0, maxIdx);
-    _toLogicalPos = _toLogicalPos.clamp(0.0, maxIdx);
-
-    if (oldWidget.selectedIndex != widget.selectedIndex &&
-        _dragLogicalPos == null) {
-      final current = _currentLogicalPosition;
-      _fromLogicalPos = current;
-      _toLogicalPos = widget.selectedIndex.toDouble().clamp(0.0, maxIdx);
-      final disableMotion =
-          MediaQuery.maybeDisableAnimationsOf(context) ?? false;
-      if (disableMotion) {
-        _ctrl.value = 1.0;
-      } else {
-        _ctrl.forward(from: 0.0);
+  void didChangeDependencies() {
+    super.didChangeDependencies();
+    final isRtl = Directionality.of(context) == TextDirection.rtl;
+    final count = widget.items.length;
+    if (_lastIsRtl != isRtl) {
+      _lastIsRtl = isRtl;
+      if (_activePointerId == null) {
+        _motion.snapToRest(_visualIndex(widget.selectedIndex, count, isRtl));
       }
     }
   }
 
   @override
+  void didUpdateWidget(covariant EvaFloatingNavBar oldWidget) {
+    super.didUpdateWidget(oldWidget);
+    final isRtl = _lastIsRtl ?? false;
+    final count = widget.items.length;
+    final visualTarget = _visualIndex(widget.selectedIndex, count, isRtl);
+
+    if (oldWidget.items.length != count && _activePointerId == null) {
+      _motion.snapToRest(visualTarget);
+      _stopTicker();
+      return;
+    }
+
+    if (oldWidget.selectedIndex != widget.selectedIndex &&
+        _activePointerId == null) {
+      final disableMotion =
+          MediaQuery.maybeDisableAnimationsOf(context) ?? false;
+      if (disableMotion) {
+        _motion.snapToRest(visualTarget);
+        _stopTicker();
+      } else {
+        _motion.select(visualTarget);
+        _ensureTickerRunning();
+      }
+    }
+  }
+
+  void _onTick(Duration elapsed) {
+    final prev = _lastTickElapsed;
+    _lastTickElapsed = elapsed;
+    final dt = prev == null
+        ? (1.0 / 60.0)
+        : (elapsed - prev).inMicroseconds / 1000000.0;
+
+    setState(() {
+      _motion.advance(dt);
+    });
+
+    if (!_motion.running && _activePointerId == null) {
+      _stopTicker();
+    }
+  }
+
+  void _ensureTickerRunning() {
+    if (!_ticker.isActive) {
+      _lastTickElapsed = null;
+      _ticker.start();
+    }
+  }
+
+  void _stopTicker() {
+    if (_ticker.isActive) {
+      _ticker.stop();
+    }
+    _lastTickElapsed = null;
+  }
+
+  @override
   void dispose() {
-    _ctrl.dispose();
+    _ticker.dispose();
     super.dispose();
-  }
-
-  double get _currentLogicalPosition {
-    if (_dragLogicalPos != null) return _dragLogicalPos!;
-    final t = Curves.easeOutCubic.transform(_ctrl.value);
-    return _fromLogicalPos + (_toLogicalPos - _fromLogicalPos) * t;
-  }
-
-  double _dxToLogicalPos({
-    required double dx,
-    required double trackWidth,
-    required int count,
-    required bool isRtl,
-  }) {
-    final usableW = math.max(1.0, trackWidth - _pillInset * 2);
-    final tabW = usableW / count;
-    final visualPos = ((dx - _pillInset) / tabW - 0.5).clamp(
-      0.0,
-      (count - 1).toDouble(),
-    );
-    return isRtl ? (count - 1) - visualPos : visualPos;
-  }
-
-  void _updateDrag({
-    required double dx,
-    required double trackWidth,
-    required int count,
-    required bool isRtl,
-  }) {
-    final nextLogical = _dxToLogicalPos(
-      dx: dx,
-      trackWidth: trackWidth,
-      count: count,
-      isRtl: isRtl,
-    );
-    final nearest = nextLogical.round().clamp(0, count - 1);
-    if (_lastDragHapticIndex != null && _lastDragHapticIndex != nearest) {
-      HapticFeedback.selectionClick();
-    }
-    _lastDragHapticIndex = nearest;
-    setState(() {
-      _dragLogicalPos = nextLogical;
-    });
-  }
-
-  void _finishDrag(int count) {
-    final dragged = _dragLogicalPos;
-    if (dragged == null) return;
-    final targetIdx = dragged.round().clamp(0, count - 1);
-    setState(() {
-      _fromLogicalPos = dragged;
-      _toLogicalPos = targetIdx.toDouble();
-      _dragLogicalPos = null;
-      _lastDragHapticIndex = null;
-    });
-    final disableMotion = MediaQuery.maybeDisableAnimationsOf(context) ?? false;
-    if (disableMotion) {
-      _ctrl.value = 1.0;
-    } else {
-      _ctrl.forward(from: 0.0);
-    }
-    if (targetIdx != widget.selectedIndex) {
-      widget.onDestinationSelected(targetIdx);
-    }
   }
 
   @override
@@ -481,12 +898,7 @@ class _EvaFloatingNavBarState extends State<EvaFloatingNavBar>
     final isRtl = Directionality.of(context) == TextDirection.rtl;
     final isDense = count >= 5;
     final screenW = MediaQuery.sizeOf(context).width;
-
-    final double horizontalMargin = isDense
-        ? (screenW < 390 ? 10.0 : 16.0)
-        : (screenW < 390 ? 20.0 : 28.0);
-    final double maxCapsuleWidth = isDense ? 492.0 : 400.0;
-    final double trackHeight = isDense ? 60.0 : 62.0;
+    final disableMotion = MediaQuery.maybeDisableAnimationsOf(context) ?? false;
 
     final capsuleBg = tokens.isNight
         ? Color.alphaBlend(
@@ -506,161 +918,231 @@ class _EvaFloatingNavBarState extends State<EvaFloatingNavBar>
 
     return MediaQuery(
       data: MediaQuery.of(context).copyWith(textScaler: clampedScaler),
-      child: Padding(
-        padding: EdgeInsets.fromLTRB(horizontalMargin, 6, horizontalMargin, 12),
-        child: Align(
-          alignment: Alignment.bottomCenter,
-          heightFactor: 1.0,
-          child: ConstrainedBox(
-            constraints: BoxConstraints(maxWidth: maxCapsuleWidth),
-            child: LayoutBuilder(
-              builder: (context, constraints) {
-                final trackWidth = constraints.maxWidth;
+      child: TweenAnimationBuilder<double>(
+        tween: Tween<double>(end: widget.showLabels ? 1.0 : 0.0),
+        duration: disableMotion
+            ? Duration.zero
+            : const Duration(milliseconds: 220),
+        curve: Curves.easeOutCubic,
+        builder: (context, labelFraction, _) {
+          // NuvioMobile dynamic width & height: capsule sleekly compacts as labels hide
+          final double baseMargin = isDense
+              ? (screenW < 390 ? 10.0 : 16.0)
+              : (screenW < 390 ? 20.0 : 28.0);
+          final double collapsedExtraMargin = isDense ? 14.0 : 26.0;
+          final double horizontalMargin =
+              baseMargin + collapsedExtraMargin * (1.0 - labelFraction);
+          final double maxCapsuleWidth = isDense ? 492.0 : 400.0;
+          final double trackHeight =
+              48.0 + (isDense ? 12.0 : 14.0) * labelFraction;
 
-                return GestureDetector(
-                  behavior: HitTestBehavior.opaque,
-                  onHorizontalDragStart: (details) {
-                    _lastDragHapticIndex = widget.selectedIndex;
-                    _updateDrag(
-                      dx: details.localPosition.dx,
-                      trackWidth: trackWidth,
-                      count: count,
-                      isRtl: isRtl,
-                    );
-                  },
-                  onHorizontalDragUpdate: (details) {
-                    _updateDrag(
-                      dx: details.localPosition.dx,
-                      trackWidth: trackWidth,
-                      count: count,
-                      isRtl: isRtl,
-                    );
-                  },
-                  onHorizontalDragEnd: (_) => _finishDrag(count),
-                  onHorizontalDragCancel: () {
-                    setState(() {
-                      _dragLogicalPos = null;
-                      _lastDragHapticIndex = null;
-                      _fromLogicalPos = widget.selectedIndex.toDouble();
-                      _toLogicalPos = widget.selectedIndex.toDouble();
-                      _ctrl.value = 1.0;
-                    });
-                  },
-                  child: AnimatedBuilder(
-                    animation: _ctrl,
-                    builder: (context, _) {
-                      final rawT = _ctrl.value;
-                      final logicalPos = _currentLogicalPosition;
-                      final visualPos = isRtl
-                          ? (count - 1) - logicalPos
-                          : logicalPos;
+          return Padding(
+            padding: EdgeInsets.fromLTRB(
+              horizontalMargin,
+              6,
+              horizontalMargin,
+              12,
+            ),
+            child: Align(
+              alignment: Alignment.bottomCenter,
+              heightFactor: 1.0,
+              child: ConstrainedBox(
+                constraints: BoxConstraints(maxWidth: maxCapsuleWidth),
+                child: LayoutBuilder(
+                  builder: (context, constraints) {
+                    final trackWidth = constraints.maxWidth;
+                    _motion.resize(trackWidth, trackHeight, count);
+                    final frame = _motion.frame;
+                    final originAlignX = trackWidth > 0
+                        ? ((frame.originX / trackWidth) * 2.0 - 1.0).clamp(
+                            -1.0,
+                            1.0,
+                          )
+                        : 0.0;
 
-                      final flightWave = _dragLogicalPos != null
-                          ? 0.35
-                          : math.sin(rawT * math.pi);
-                      final hopDistance = (_toLogicalPos - _fromLogicalPos)
-                          .abs()
-                          .clamp(0.0, 2.2);
-                      final pillScaleX =
-                          1.0 + 0.13 * flightWave * (0.65 + 0.35 * hopDistance);
-                      final pillScaleY = 1.0 - 0.055 * flightWave;
-                      final trackScale = _dragLogicalPos != null
-                          ? 1.014
-                          : (1.0 + 0.008 * flightWave);
-
-                      return Transform.scale(
-                        scale: trackScale,
-                        child: Container(
-                          height: trackHeight,
-                          decoration: BoxDecoration(
-                            color: capsuleBg,
-                            borderRadius: BorderRadius.circular(999),
-                            border: Border.all(
-                              color: capsuleBorder,
-                              width: math.max(tokens.borderWidth, 1.25),
-                            ),
-                            boxShadow: tokens.isNight
-                                ? [
-                                    BoxShadow(
-                                      color: Colors.black.withValues(
-                                        alpha: 0.44,
-                                      ),
-                                      blurRadius: 22,
-                                      spreadRadius: -2,
-                                      offset: const Offset(0, 9),
-                                    ),
-                                    BoxShadow(
-                                      color: tokens.brandPrimary.withValues(
-                                        alpha: 0.12,
-                                      ),
-                                      blurRadius: 16,
-                                      offset: const Offset(0, 2),
-                                    ),
-                                  ]
-                                : [
-                                    BoxShadow(
-                                      color: tokens.brandPrimary.withValues(
-                                        alpha: tokens.isLiquidGlass
-                                            ? 0.14
-                                            : 0.09,
-                                      ),
-                                      blurRadius: 24,
-                                      spreadRadius: -2,
-                                      offset: const Offset(0, 10),
-                                    ),
-                                    const BoxShadow(
-                                      color: Color(0x120F172A),
-                                      blurRadius: 8,
-                                      offset: Offset(0, 3),
-                                    ),
-                                  ],
+                    return Listener(
+                      behavior: HitTestBehavior.opaque,
+                      onPointerDown: (event) {
+                        if (_activePointerId != null) return;
+                        _activePointerId = event.pointer;
+                        _pointerDownLocal = event.localPosition;
+                        _motion.begin(
+                          event.localPosition.dx,
+                          event.localPosition.dy,
+                        );
+                        _lastHapticVisualIdx = _motion.indexAt(
+                          event.localPosition.dx,
+                        );
+                        HapticFeedback.selectionClick();
+                        if (!disableMotion) {
+                          _ensureTickerRunning();
+                        } else {
+                          setState(() {});
+                        }
+                      },
+                      onPointerMove: (event) {
+                        if (event.pointer != _activePointerId) return;
+                        final delta = event.localPosition - _pointerDownLocal;
+                        final nearestVisual = _motion.drag(delta.dx, delta.dy);
+                        if (_lastHapticVisualIdx != null &&
+                            _lastHapticVisualIdx != nearestVisual) {
+                          HapticFeedback.selectionClick();
+                        }
+                        _lastHapticVisualIdx = nearestVisual;
+                        if (!disableMotion) {
+                          _ensureTickerRunning();
+                        }
+                        setState(() {});
+                      },
+                      onPointerUp: (event) {
+                        if (event.pointer != _activePointerId) return;
+                        _activePointerId = null;
+                        _lastHapticVisualIdx = null;
+                        final visualIdx = _motion.finish();
+                        final logicalIdx = _logicalIndex(
+                          visualIdx,
+                          count,
+                          isRtl,
+                        );
+                        if (disableMotion) {
+                          _motion.snapToRest(visualIdx);
+                          _stopTicker();
+                          setState(() {});
+                        } else {
+                          _ensureTickerRunning();
+                        }
+                        if (logicalIdx != widget.selectedIndex) {
+                          widget.onDestinationSelected(logicalIdx);
+                        }
+                      },
+                      onPointerCancel: (event) {
+                        if (event.pointer != _activePointerId) return;
+                        _activePointerId = null;
+                        _lastHapticVisualIdx = null;
+                        final selectedVisual = _visualIndex(
+                          widget.selectedIndex,
+                          count,
+                          isRtl,
+                        );
+                        if (disableMotion) {
+                          _motion.snapToRest(selectedVisual);
+                          _stopTicker();
+                          setState(() {});
+                        } else {
+                          _motion.cancel(selectedVisual);
+                          _ensureTickerRunning();
+                        }
+                      },
+                      child: Transform.translate(
+                        offset: Offset(frame.panelOffset, frame.trackOffsetY),
+                        child: Transform(
+                          alignment: Alignment(originAlignX, 0.0),
+                          transform: Matrix4.diagonal3Values(
+                            frame.trackScale * frame.trackScaleX,
+                            frame.trackScale,
+                            1.0,
                           ),
-                          clipBehavior: Clip.antiAlias,
-                          child: Stack(
-                            fit: StackFit.expand,
-                            children: [
-                              CustomPaint(
-                                painter: _NuvioJellyPillPainter(
-                                  visualPosition: visualPos,
-                                  count: count,
-                                  inset: _pillInset,
-                                  pillScaleX: pillScaleX,
-                                  pillScaleY: pillScaleY,
-                                  accentColor: tokens.brandPrimary,
-                                  isNight: tokens.isNight,
-                                ),
+                          child: Container(
+                            height: trackHeight,
+                            decoration: BoxDecoration(
+                              color: capsuleBg,
+                              borderRadius: BorderRadius.circular(999),
+                              border: Border.all(
+                                color: capsuleBorder,
+                                width: math.max(tokens.borderWidth, 1.25),
                               ),
-                              Padding(
-                                padding: const EdgeInsets.all(_pillInset),
-                                child: Row(
-                                  children: [
-                                    for (int i = 0; i < count; i++)
-                                      Expanded(
-                                        child: _buildTabItem(
-                                          context: context,
-                                          tokens: tokens,
-                                          item: widget.items[i],
-                                          index: i,
-                                          selectionProgress:
-                                              (1.0 - (logicalPos - i).abs())
-                                                  .clamp(0.0, 1.0),
-                                          isDense: isDense,
+                              boxShadow: tokens.isNight
+                                  ? [
+                                      BoxShadow(
+                                        color: Colors.black.withValues(
+                                          alpha: 0.44,
                                         ),
+                                        blurRadius: 22,
+                                        spreadRadius: -2,
+                                        offset: const Offset(0, 9),
                                       ),
-                                  ],
+                                      BoxShadow(
+                                        color: tokens.brandPrimary.withValues(
+                                          alpha:
+                                              0.12 + 0.14 * frame.glowOpacity,
+                                        ),
+                                        blurRadius:
+                                            16 + 8 * frame.glowOpacity,
+                                        offset: const Offset(0, 2),
+                                      ),
+                                    ]
+                                  : [
+                                      BoxShadow(
+                                        color: tokens.brandPrimary.withValues(
+                                          alpha:
+                                              (tokens.isLiquidGlass
+                                                  ? 0.14
+                                                  : 0.09) +
+                                              0.12 * frame.glowOpacity,
+                                        ),
+                                        blurRadius:
+                                            24 + 8 * frame.glowOpacity,
+                                        spreadRadius: -2,
+                                        offset: const Offset(0, 10),
+                                      ),
+                                      const BoxShadow(
+                                        color: Color(0x120F172A),
+                                        blurRadius: 8,
+                                        offset: Offset(0, 3),
+                                      ),
+                                    ],
+                            ),
+                            clipBehavior: Clip.antiAlias,
+                            child: Stack(
+                              fit: StackFit.expand,
+                              children: [
+                                CustomPaint(
+                                  painter: _NuvioJellyPillPainter(
+                                    frame: frame,
+                                    count: count,
+                                    inset: _JellyMotion.inset,
+                                    accentColor: tokens.brandPrimary,
+                                    isNight: tokens.isNight,
+                                  ),
                                 ),
-                              ),
-                            ],
+                                Padding(
+                                  padding: const EdgeInsets.all(
+                                    _JellyMotion.inset,
+                                  ),
+                                  child: Row(
+                                    children: [
+                                      for (int i = 0; i < count; i++)
+                                        Expanded(
+                                          child: _buildTabItem(
+                                            context: context,
+                                            tokens: tokens,
+                                            item: widget.items[i],
+                                            index: i,
+                                            visualIndex: _visualIndex(
+                                              i,
+                                              count,
+                                              isRtl,
+                                            ),
+                                            frame: frame,
+                                            labelFraction: labelFraction,
+                                            isDense: isDense,
+                                          ),
+                                        ),
+                                    ],
+                                  ),
+                                ),
+                              ],
+                            ),
                           ),
                         ),
-                      );
-                    },
-                  ),
-                );
-              },
+                      ),
+                    );
+                  },
+                ),
+              ),
             ),
-          ),
-        ),
+          );
+        },
       ),
     );
   }
@@ -670,16 +1152,26 @@ class _EvaFloatingNavBarState extends State<EvaFloatingNavBar>
     required EvaTokens tokens,
     required EvaFloatingNavItem item,
     required int index,
-    required double selectionProgress,
+    required int visualIndex,
+    required _JellyFrame frame,
+    required double labelFraction,
     required bool isDense,
   }) {
-    final isSelected = selectionProgress >= 0.5;
+    final coverage = (1.0 - (frame.position - visualIndex).abs()).clamp(
+      0.0,
+      1.0,
+    );
+    final isSelected = coverage >= 0.5;
     final activeFg = tokens.isNight
         ? Color.lerp(tokens.brandPrimary, Colors.white, 0.18)!
         : tokens.brandPrimary;
     final inactiveFg = tokens.textSecondary;
-    final fgColor = Color.lerp(inactiveFg, activeFg, selectionProgress)!;
+    final fgColor = Color.lerp(inactiveFg, activeFg, coverage)!;
     final iconSize = isDense ? 20.0 : 22.0;
+
+    // NuvioMobile contentScale: active item blooms up to ~1.18x while holding the pill
+    final itemScale =
+        1.0 + (0.06 + (frame.contentScale - 1.0)) * coverage;
 
     Widget iconWidget = Icon(
       isSelected ? item.selectedIcon : item.icon,
@@ -707,38 +1199,38 @@ class _EvaFloatingNavBarState extends State<EvaFloatingNavBar>
       selected: index == widget.selectedIndex,
       button: true,
       label: item.label,
-      child: GestureDetector(
-        behavior: HitTestBehavior.opaque,
-        onTap: () {
-          if (index != widget.selectedIndex) {
-            widget.onDestinationSelected(index);
-          }
-        },
-        child: Padding(
-          padding: EdgeInsets.symmetric(horizontal: isDense ? 2.0 : 4.0),
+      child: Padding(
+        padding: EdgeInsets.symmetric(horizontal: isDense ? 2.0 : 4.0),
+        child: Transform.scale(
+          scale: itemScale,
           child: Column(
             mainAxisAlignment: MainAxisAlignment.center,
             children: [
               Transform.translate(
-                offset: Offset(0, -1.0 * selectionProgress),
-                child: Transform.scale(
-                  scale: 1.0 + 0.08 * selectionProgress,
-                  child: iconWidget,
-                ),
+                offset: Offset(0, -1.0 * coverage * labelFraction),
+                child: iconWidget,
               ),
-              SizedBox(height: isDense ? 2.5 : 3.0),
-              Text(
-                item.label,
-                maxLines: 1,
-                softWrap: false,
-                overflow: TextOverflow.ellipsis,
-                textAlign: TextAlign.center,
-                style: Theme.of(context).textTheme.labelSmall?.copyWith(
-                  fontSize: isDense ? 10.5 : 11.5,
-                  height: 1.15,
-                  letterSpacing: isDense ? -0.15 : 0.0,
-                  color: fgColor,
-                  fontWeight: isSelected ? FontWeight.w800 : FontWeight.w600,
+              SizedBox(height: (isDense ? 2.5 : 3.0) * labelFraction),
+              Align(
+                alignment: Alignment.topCenter,
+                heightFactor: labelFraction.clamp(0.0, 1.0),
+                child: Opacity(
+                  opacity: labelFraction.clamp(0.0, 1.0),
+                  child: Text(
+                    item.label,
+                    maxLines: 1,
+                    softWrap: false,
+                    overflow: TextOverflow.ellipsis,
+                    textAlign: TextAlign.center,
+                    style: Theme.of(context).textTheme.labelSmall?.copyWith(
+                      fontSize: isDense ? 10.5 : 11.5,
+                      height: 1.15,
+                      letterSpacing: isDense ? -0.15 : 0.0,
+                      color: fgColor,
+                      fontWeight:
+                          isSelected ? FontWeight.w800 : FontWeight.w600,
+                    ),
+                  ),
                 ),
               ),
             ],
@@ -751,20 +1243,16 @@ class _EvaFloatingNavBarState extends State<EvaFloatingNavBar>
 
 class _NuvioJellyPillPainter extends CustomPainter {
   const _NuvioJellyPillPainter({
-    required this.visualPosition,
+    required this.frame,
     required this.count,
     required this.inset,
-    required this.pillScaleX,
-    required this.pillScaleY,
     required this.accentColor,
     required this.isNight,
   });
 
-  final double visualPosition;
+  final _JellyFrame frame;
   final int count;
   final double inset;
-  final double pillScaleX;
-  final double pillScaleY;
   final Color accentColor;
   final bool isNight;
 
@@ -776,65 +1264,94 @@ class _NuvioJellyPillPainter extends CustomPainter {
 
     final tabWidth = (size.width - inset * 2) / count;
     final itemHeight = size.height - inset * 2;
-    final centerX = inset + (visualPosition + 0.5) * tabWidth;
+    final centerX = inset + (frame.position + 0.5) * tabWidth;
     final centerY = size.height / 2;
 
-    // 1. Subtle radial ambient glow behind active pill (modeled on NuvioMobile's drawJellyGlow)
-    final glowRadius = math.max(tabWidth * 1.45, 92.0);
-    final glowCenter = Offset(centerX, centerY);
+    // 1. Ambient pill glow + dynamic finger-hold spotlight glow (NuvioMobile drawJellyGlow)
+    final holdBoost = frame.glowOpacity;
+    final glowRadius = math.max(tabWidth * (1.45 + 0.55 * holdBoost), 96.0);
+    final glowCenter = Offset(
+      centerX + (frame.originX - centerX) * 0.35 * holdBoost,
+      centerY + (frame.glowY - centerY) * 0.35 * holdBoost,
+    );
+    final baseGlowAlpha =
+        (isNight ? 0.20 : 0.11) + (isNight ? 0.14 : 0.10) * holdBoost;
     final glowPaint = Paint()
       ..shader = RadialGradient(
         colors: [
-          accentColor.withValues(alpha: isNight ? 0.20 : 0.11),
-          accentColor.withValues(alpha: isNight ? 0.07 : 0.04),
+          accentColor.withValues(alpha: baseGlowAlpha),
+          accentColor.withValues(alpha: baseGlowAlpha * 0.42),
           accentColor.withValues(alpha: 0.0),
         ],
-        stops: const [0.0, 0.48, 1.0],
+        stops: const [0.0, 0.46, 1.0],
       ).createShader(Rect.fromCircle(center: glowCenter, radius: glowRadius));
     canvas.drawRect(Offset.zero & size, glowPaint);
 
-    // 2. Volume-preserving jelly stadium pill
-    final rawLeft = centerX - (tabWidth * pillScaleX) / 2;
-    final rawRight = centerX + (tabWidth * pillScaleX) / 2;
-    final clampedLeft = rawLeft.clamp(inset, size.width - inset);
-    final clampedRight = rawRight.clamp(inset, size.width - inset);
-    final halfH = (itemHeight * pillScaleY) / 2;
+    // 2. Volume-preserving & hold-inflating jelly stadium pill (NuvioMobile jellyPillPath)
+    final halfW = (tabWidth * frame.pillScaleX) / 2;
+    final halfH = (itemHeight * frame.pillScaleY) / 2;
+    final baseRadius = math.min(tabWidth, itemHeight) / 2;
 
     final pillRect = Rect.fromLTRB(
-      clampedLeft,
+      centerX - halfW,
       centerY - halfH,
-      clampedRight,
+      centerX + halfW,
       centerY + halfH,
     );
-    final pillRRect = RRect.fromRectAndRadius(
+    final pillRRect = RRect.fromRectAndCorners(
       pillRect,
-      Radius.circular(pillRect.height / 2),
+      topLeft: Radius.elliptical(
+        baseRadius * frame.pillScaleX,
+        baseRadius * frame.pillScaleY,
+      ),
+      topRight: Radius.elliptical(
+        baseRadius * frame.pillScaleX,
+        baseRadius * frame.pillScaleY,
+      ),
+      bottomLeft: Radius.elliptical(
+        baseRadius * frame.pillScaleX,
+        baseRadius * frame.pillScaleY,
+      ),
+      bottomRight: Radius.elliptical(
+        baseRadius * frame.pillScaleX,
+        baseRadius * frame.pillScaleY,
+      ),
     );
 
+    final topAlpha =
+        (isNight ? 0.28 : 0.16) + (isNight ? 0.09 : 0.06) * holdBoost;
+    final bottomAlpha =
+        (isNight ? 0.16 : 0.09) + (isNight ? 0.06 : 0.04) * holdBoost;
     final fillPaint = Paint()
       ..shader = LinearGradient(
         begin: Alignment.topCenter,
         end: Alignment.bottomCenter,
         colors: [
-          accentColor.withValues(alpha: isNight ? 0.28 : 0.16),
-          accentColor.withValues(alpha: isNight ? 0.16 : 0.09),
+          accentColor.withValues(alpha: topAlpha),
+          accentColor.withValues(alpha: bottomAlpha),
         ],
       ).createShader(pillRect);
     canvas.drawRRect(pillRRect, fillPaint);
 
     final borderPaint = Paint()
       ..style = PaintingStyle.stroke
-      ..strokeWidth = 1.1
-      ..color = accentColor.withValues(alpha: isNight ? 0.44 : 0.24);
+      ..strokeWidth = 1.15 + 0.35 * holdBoost
+      ..color = accentColor.withValues(
+        alpha: (isNight ? 0.44 : 0.25) + 0.14 * holdBoost,
+      );
     canvas.drawRRect(pillRRect, borderPaint);
   }
 
   @override
   bool shouldRepaint(covariant _NuvioJellyPillPainter oldDelegate) {
-    return oldDelegate.visualPosition != visualPosition ||
+    final a = oldDelegate.frame;
+    final b = frame;
+    return a.position != b.position ||
+        a.pillScaleX != b.pillScaleX ||
+        a.pillScaleY != b.pillScaleY ||
+        a.glowOpacity != b.glowOpacity ||
+        a.originX != b.originX ||
         oldDelegate.count != count ||
-        oldDelegate.pillScaleX != pillScaleX ||
-        oldDelegate.pillScaleY != pillScaleY ||
         oldDelegate.accentColor != accentColor ||
         oldDelegate.isNight != isNight;
   }
@@ -1337,11 +1854,16 @@ class EvaQuantityStepper extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final tokens = EvaTokens.of(context);
-    final height = compact ? 34.0 : 40.0;
+    final height = compact ? 36.0 : 40.0;
+    final emptyFg = disabled ? tokens.textSecondary : tokens.brandPrimary;
 
     return AnimatedSwitcher(
       duration: const Duration(milliseconds: 180),
       switchInCurve: Curves.easeOutBack,
+      layoutBuilder: (currentChild, previousChildren) => Stack(
+        alignment: fullWidth ? Alignment.center : AlignmentDirectional.centerEnd,
+        children: [...previousChildren, ?currentChild],
+      ),
       transitionBuilder: (child, anim) =>
           ScaleTransition(scale: anim, child: child),
       child: quantity <= 0
@@ -1349,98 +1871,145 @@ class EvaQuantityStepper extends StatelessWidget {
               key: const ValueKey('stepper_empty'),
               width: fullWidth ? double.infinity : null,
               height: height,
-              child: FilledButton.tonalIcon(
-                onPressed: disabled
-                    ? null
-                    : () {
-                        HapticFeedback.selectionClick();
-                        onIncrement();
-                      },
-                style: FilledButton.styleFrom(
-                  backgroundColor: disabled
-                      ? tokens.surfaceSubtle
-                      : tokens.brandSoftBg,
-                  foregroundColor: disabled
-                      ? tokens.textSecondary
-                      : tokens.brandPrimary,
-                  minimumSize: Size(compact ? 64 : 84, height),
-                  padding: EdgeInsets.symmetric(horizontal: compact ? 10 : 14),
-                  shape: RoundedRectangleBorder(
-                    borderRadius: BorderRadius.circular(999),
-                    side: BorderSide(
-                      color: disabled
-                          ? tokens.borderSubtle
-                          : tokens.brandPrimary.withValues(alpha: 0.25),
-                    ),
+              child: Material(
+                color: disabled ? tokens.surfaceSubtle : tokens.brandSoftBg,
+                shape: StadiumBorder(
+                  side: BorderSide(
+                    color: disabled
+                        ? tokens.borderSubtle
+                        : tokens.brandPrimary.withValues(alpha: 0.28),
+                    width: 1.15,
                   ),
                 ),
-                icon: Icon(Icons.add_rounded, size: compact ? 16 : 18),
-                label: Text(
-                  addLabel,
-                  maxLines: 1,
-                  overflow: TextOverflow.ellipsis,
-                  style: Theme.of(context).textTheme.labelMedium?.copyWith(
-                    color: disabled
-                        ? tokens.textSecondary
-                        : tokens.brandPrimary,
-                    fontWeight: FontWeight.w700,
+                clipBehavior: Clip.antiAlias,
+                child: InkWell(
+                  customBorder: const StadiumBorder(),
+                  onTap: disabled
+                      ? null
+                      : () {
+                          HapticFeedback.selectionClick();
+                          onIncrement();
+                        },
+                  child: ConstrainedBox(
+                    constraints: BoxConstraints(
+                      minWidth: fullWidth
+                          ? double.infinity
+                          : (compact ? 82.0 : 104.0),
+                      minHeight: height,
+                    ),
+                    child: Padding(
+                      padding: EdgeInsets.symmetric(
+                        horizontal: compact ? 12 : 16,
+                      ),
+                      child: Row(
+                        mainAxisSize:
+                            fullWidth ? MainAxisSize.max : MainAxisSize.min,
+                        mainAxisAlignment: MainAxisAlignment.center,
+                        crossAxisAlignment: CrossAxisAlignment.center,
+                        children: [
+                          Icon(
+                            Icons.add_rounded,
+                            size: compact ? 17 : 18,
+                            color: emptyFg,
+                          ),
+                          const SizedBox(width: 5),
+                          Flexible(
+                            child: Text(
+                              addLabel,
+                              maxLines: 1,
+                              overflow: TextOverflow.ellipsis,
+                              strutStyle: const StrutStyle(
+                                forceStrutHeight: true,
+                                height: 1.0,
+                                leading: 0,
+                              ),
+                              style: Theme.of(context).textTheme.labelMedium
+                                  ?.copyWith(
+                                    color: emptyFg,
+                                    fontWeight: FontWeight.w800,
+                                    height: 1.0,
+                                  ),
+                            ),
+                          ),
+                        ],
+                      ),
+                    ),
                   ),
                 ),
               ),
             )
-          : Container(
+          : SizedBox(
               key: const ValueKey('stepper_active'),
               width: fullWidth ? double.infinity : null,
               height: height,
-              decoration: BoxDecoration(
+              child: Material(
                 color: tokens.brandPrimary,
-                borderRadius: BorderRadius.circular(999),
-              ),
-              child: Row(
-                mainAxisSize: fullWidth ? MainAxisSize.max : MainAxisSize.min,
-                mainAxisAlignment: fullWidth
-                    ? MainAxisAlignment.spaceBetween
-                    : MainAxisAlignment.center,
-                children: [
-                  _StepperIconBtn(
-                    icon: quantity == 1
-                        ? Icons.delete_outline_rounded
-                        : Icons.remove_rounded,
-                    color: tokens.brandOnPrimary,
-                    size: height,
-                    onTap: () {
-                      HapticFeedback.selectionClick();
-                      onDecrement();
-                    },
+                shape: const StadiumBorder(),
+                clipBehavior: Clip.antiAlias,
+                child: ConstrainedBox(
+                  constraints: BoxConstraints(
+                    minWidth: fullWidth
+                        ? double.infinity
+                        : (compact ? 98.0 : 114.0),
                   ),
-                  Padding(
-                    padding: const EdgeInsets.symmetric(horizontal: 5),
-                    child: AnimatedSwitcher(
-                      duration: const Duration(milliseconds: 140),
-                      child: Text(
-                        '$quantity',
-                        key: ValueKey<int>(quantity),
-                        style: Theme.of(context).textTheme.labelLarge?.copyWith(
-                          color: tokens.brandOnPrimary,
-                          fontFeatures: EvaThemeBuilder.tabularNums,
+                  child: Row(
+                    mainAxisSize:
+                        fullWidth ? MainAxisSize.max : MainAxisSize.min,
+                    mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                    crossAxisAlignment: CrossAxisAlignment.center,
+                    children: [
+                      _StepperIconBtn(
+                        icon: quantity == 1
+                            ? Icons.delete_outline_rounded
+                            : Icons.remove_rounded,
+                        color: tokens.brandOnPrimary,
+                        size: height,
+                        onTap: () {
+                          HapticFeedback.selectionClick();
+                          onDecrement();
+                        },
+                      ),
+                      ConstrainedBox(
+                        constraints: const BoxConstraints(minWidth: 26),
+                        child: Center(
+                          child: AnimatedSwitcher(
+                            duration: const Duration(milliseconds: 140),
+                            child: Text(
+                              '$quantity',
+                              key: ValueKey<int>(quantity),
+                              textAlign: TextAlign.center,
+                              strutStyle: const StrutStyle(
+                                forceStrutHeight: true,
+                                height: 1.0,
+                                leading: 0,
+                              ),
+                              style: Theme.of(context).textTheme.labelLarge
+                                  ?.copyWith(
+                                    color: tokens.brandOnPrimary,
+                                    fontWeight: FontWeight.w800,
+                                    height: 1.0,
+                                    fontFeatures: EvaThemeBuilder.tabularNums,
+                                  ),
+                            ),
+                          ),
                         ),
                       ),
-                    ),
+                      _StepperIconBtn(
+                        icon: Icons.add_rounded,
+                        color: maxReached
+                            ? tokens.brandOnPrimary.withValues(alpha: 0.38)
+                            : tokens.brandOnPrimary,
+                        size: height,
+                        onTap: maxReached
+                            ? null
+                            : () {
+                                HapticFeedback.selectionClick();
+                                onIncrement();
+                              },
+                      ),
+                    ],
                   ),
-                  _StepperIconBtn(
-                    icon: Icons.add_rounded,
-                    color: maxReached
-                        ? tokens.brandOnPrimary.withValues(alpha: 0.38)
-                        : tokens.brandOnPrimary,
-                    size: height,
-                    onTap: maxReached
-                        ? null
-                        : () {
-                            HapticFeedback.selectionClick();
-                            onIncrement();
-                          },
-                  ),
-                ],
+                ),
               ),
             ),
     );
@@ -1464,11 +2033,11 @@ class _StepperIconBtn extends StatelessWidget {
   Widget build(BuildContext context) {
     return InkWell(
       onTap: onTap,
-      borderRadius: BorderRadius.circular(999),
+      customBorder: const CircleBorder(),
       child: SizedBox(
         width: size,
         height: size,
-        child: Icon(icon, size: 17, color: color),
+        child: Center(child: Icon(icon, size: 17.5, color: color)),
       ),
     );
   }

@@ -482,7 +482,7 @@ class _StudentMenuViewState extends ConsumerState<StudentMenuView> {
                             ? 1
                             : (gridW < 620 ? 2 : (gridW < 920 ? 3 : 4));
                         final double spacing = cols <= 2 ? 10 : 14;
-                        final double cardHeight = cols <= 2 ? 258 : 276;
+                        final double cardHeight = cols <= 2 ? 262 : 280;
 
                         final navClearance = EvaFloatingNavBar.bottomClearance(
                           context,
@@ -688,6 +688,7 @@ class _StudentMenuViewState extends ConsumerState<StudentMenuView> {
   void _showItemDetailSheet(BuildContext context, ProductItem product) {
     showModalBottomSheet<void>(
       context: context,
+      useRootNavigator: true,
       isScrollControlled: true,
       useSafeArea: true,
       constraints: const BoxConstraints(maxWidth: 540),
@@ -936,115 +937,130 @@ class _MenuProductCard extends ConsumerWidget {
     final cartNotifier = ref.read(cartProvider.notifier);
 
     return EvaSurfaceCard(
-      onTap: onOpenDetails,
       padding: EdgeInsets.all(isCompactGrid ? 9 : 11),
       borderRadius: 18,
       borderColor: qtyInCart > 0
           ? tokens.brandPrimary.withValues(alpha: 0.72)
           : null,
       child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
+        crossAxisAlignment: CrossAxisAlignment.stretch,
         children: [
-          Stack(
-            children: [
-              SizedBox(
-                height: isCompactGrid ? 108 : 122,
-                width: double.infinity,
-                child: EvaProductImage(
-                  imageUrl: product.image,
-                  borderRadius: 13,
+          Expanded(
+            child: Material(
+              type: MaterialType.transparency,
+              child: InkWell(
+                borderRadius: BorderRadius.circular(13),
+                onTap: onOpenDetails,
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Stack(
+                      children: [
+                        SizedBox(
+                          height: isCompactGrid ? 108 : 122,
+                          width: double.infinity,
+                          child: EvaProductImage(
+                            imageUrl: product.image,
+                            borderRadius: 13,
+                          ),
+                        ),
+                        if (product.isOutOfStock)
+                          Positioned.fill(
+                            child: Container(
+                              decoration: BoxDecoration(
+                                color: Colors.black.withValues(alpha: 0.48),
+                                borderRadius: BorderRadius.circular(13),
+                              ),
+                              alignment: Alignment.center,
+                              child: EvaStatusBadge(
+                                label: i18n.t('out_of_stock'),
+                                background: tokens.statusClosedBg,
+                                foreground: tokens.statusClosedFg,
+                              ),
+                            ),
+                          )
+                        else if (product.isLowStock)
+                          PositionedDirectional(
+                            top: 7,
+                            start: 7,
+                            child: EvaStatusBadge(
+                              label: i18n.t('low_stock_left', {
+                                'count': '${product.quantity}',
+                              }),
+                              background: tokens.statusPendingBg,
+                              foreground: tokens.statusPendingFg,
+                            ),
+                          ),
+                        if (qtyInCart > 0 && !product.isOutOfStock)
+                          PositionedDirectional(
+                            top: 7,
+                            end: 7,
+                            child: AnimatedSwitcher(
+                              duration: const Duration(milliseconds: 160),
+                              transitionBuilder: (child, anim) =>
+                                  ScaleTransition(scale: anim, child: child),
+                              child: Container(
+                                key: ValueKey<int>(qtyInCart),
+                                padding: const EdgeInsets.symmetric(
+                                  horizontal: 8,
+                                  vertical: 3,
+                                ),
+                                decoration: BoxDecoration(
+                                  color: tokens.brandPrimary,
+                                  borderRadius: BorderRadius.circular(999),
+                                ),
+                                child: Text(
+                                  '×$qtyInCart',
+                                  style: Theme.of(context).textTheme.labelSmall
+                                      ?.copyWith(
+                                        color: tokens.brandOnPrimary,
+                                        fontWeight: FontWeight.w800,
+                                        fontFeatures:
+                                            EvaThemeBuilder.tabularNums,
+                                      ),
+                                ),
+                              ),
+                            ),
+                          ),
+                      ],
+                    ),
+                    const SizedBox(height: 8),
+                    Text(
+                      i18n.t(product.nameKey),
+                      maxLines: 1,
+                      overflow: TextOverflow.ellipsis,
+                      style: Theme.of(context).textTheme.titleSmall?.copyWith(
+                        fontWeight: FontWeight.w800,
+                        fontSize: isCompactGrid ? 14 : 15,
+                      ),
+                    ),
+                    const SizedBox(height: 2),
+                    Text(
+                      i18n.t(product.descriptionKey),
+                      maxLines: 1,
+                      overflow: TextOverflow.ellipsis,
+                      style: Theme.of(context).textTheme.bodySmall?.copyWith(
+                        fontSize: isCompactGrid ? 11.5 : 12.5,
+                      ),
+                    ),
+                    const Spacer(),
+                    Text(
+                      i18n.formatPrice(product.price),
+                      maxLines: 1,
+                      overflow: TextOverflow.ellipsis,
+                      style: Theme.of(context).textTheme.titleMedium?.copyWith(
+                        color: tokens.brandPrimary,
+                        fontWeight: FontWeight.w800,
+                        fontSize: isCompactGrid ? 14.5 : 15.5,
+                        fontFeatures: EvaThemeBuilder.tabularNums,
+                      ),
+                    ),
+                  ],
                 ),
               ),
-              if (product.isOutOfStock)
-                Positioned.fill(
-                  child: Container(
-                    decoration: BoxDecoration(
-                      color: Colors.black.withValues(alpha: 0.48),
-                      borderRadius: BorderRadius.circular(13),
-                    ),
-                    alignment: Alignment.center,
-                    child: EvaStatusBadge(
-                      label: i18n.t('out_of_stock'),
-                      background: tokens.statusClosedBg,
-                      foreground: tokens.statusClosedFg,
-                    ),
-                  ),
-                )
-              else if (product.isLowStock)
-                PositionedDirectional(
-                  top: 7,
-                  start: 7,
-                  child: EvaStatusBadge(
-                    label: i18n.t('low_stock_left', {
-                      'count': '${product.quantity}',
-                    }),
-                    background: tokens.statusPendingBg,
-                    foreground: tokens.statusPendingFg,
-                  ),
-                ),
-              if (qtyInCart > 0 && !product.isOutOfStock)
-                PositionedDirectional(
-                  top: 7,
-                  end: 7,
-                  child: AnimatedSwitcher(
-                    duration: const Duration(milliseconds: 160),
-                    transitionBuilder: (child, anim) =>
-                        ScaleTransition(scale: anim, child: child),
-                    child: Container(
-                      key: ValueKey<int>(qtyInCart),
-                      padding: const EdgeInsets.symmetric(
-                        horizontal: 8,
-                        vertical: 3,
-                      ),
-                      decoration: BoxDecoration(
-                        color: tokens.brandPrimary,
-                        borderRadius: BorderRadius.circular(999),
-                      ),
-                      child: Text(
-                        '×$qtyInCart',
-                        style: Theme.of(context).textTheme.labelSmall?.copyWith(
-                          color: tokens.brandOnPrimary,
-                          fontWeight: FontWeight.w800,
-                          fontFeatures: EvaThemeBuilder.tabularNums,
-                        ),
-                      ),
-                    ),
-                  ),
-                ),
-            ],
-          ),
-          const SizedBox(height: 8),
-          Text(
-            i18n.t(product.nameKey),
-            maxLines: 1,
-            overflow: TextOverflow.ellipsis,
-            style: Theme.of(context).textTheme.titleSmall?.copyWith(
-              fontWeight: FontWeight.w800,
-              fontSize: isCompactGrid ? 14 : 15,
             ),
           ),
-          const SizedBox(height: 2),
-          Text(
-            i18n.t(product.descriptionKey),
-            maxLines: 1,
-            overflow: TextOverflow.ellipsis,
-            style: Theme.of(context).textTheme.bodySmall?.copyWith(
-              fontSize: isCompactGrid ? 11.5 : 12.5,
-            ),
-          ),
-          const SizedBox(height: 5),
-          Text(
-            i18n.formatPrice(product.price),
-            maxLines: 1,
-            overflow: TextOverflow.ellipsis,
-            style: Theme.of(context).textTheme.titleMedium?.copyWith(
-              color: tokens.brandPrimary,
-              fontWeight: FontWeight.w800,
-              fontSize: isCompactGrid ? 14.5 : 15.5,
-              fontFeatures: EvaThemeBuilder.tabularNums,
-            ),
-          ),
-          const Spacer(),
+          const SizedBox(height: 7),
           EvaQuantityStepper(
             quantity: qtyInCart,
             addLabel: i18n.t('add_button'),
@@ -1078,8 +1094,10 @@ class _ItemDetailBottomSheet extends ConsumerWidget {
 
     if (product == null) return const SizedBox.shrink();
 
+    final bottomSafe = MediaQuery.viewPaddingOf(context).bottom;
+
     return SingleChildScrollView(
-      padding: const EdgeInsets.fromLTRB(20, 12, 20, 24),
+      padding: EdgeInsets.fromLTRB(20, 12, 20, 24 + bottomSafe),
       child: Column(
         mainAxisSize: MainAxisSize.min,
         crossAxisAlignment: CrossAxisAlignment.stretch,
@@ -1128,25 +1146,29 @@ class _ItemDetailBottomSheet extends ConsumerWidget {
           ),
           const SizedBox(height: 16),
           Row(
+            crossAxisAlignment: CrossAxisAlignment.center,
             children: [
-              Flexible(
-                child: EvaStatusBadge(
-                  label: product.isOutOfStock
-                      ? i18n.t('out_of_stock')
-                      : (product.isUnlimited
-                            ? i18n.t('unlimited_stock')
-                            : i18n.t('low_stock_left', {
-                                'count': '${product.quantity}',
-                              })),
-                  background: product.isOutOfStock
-                      ? tokens.statusClosedBg
-                      : tokens.statusDeliveredBg,
-                  foreground: product.isOutOfStock
-                      ? tokens.statusClosedFg
-                      : tokens.statusDeliveredFg,
+              Expanded(
+                child: Align(
+                  alignment: AlignmentDirectional.centerStart,
+                  child: EvaStatusBadge(
+                    label: product.isOutOfStock
+                        ? i18n.t('out_of_stock')
+                        : (product.isUnlimited
+                              ? i18n.t('unlimited_stock')
+                              : i18n.t('low_stock_left', {
+                                  'count': '${product.quantity}',
+                                })),
+                    background: product.isOutOfStock
+                        ? tokens.statusClosedBg
+                        : tokens.statusDeliveredBg,
+                    foreground: product.isOutOfStock
+                        ? tokens.statusClosedFg
+                        : tokens.statusDeliveredFg,
+                  ),
                 ),
               ),
-              const Spacer(),
+              const SizedBox(width: 12),
               EvaQuantityStepper(
                 quantity: qtyInCart,
                 addLabel: i18n.t('add_button'),
@@ -1159,17 +1181,23 @@ class _ItemDetailBottomSheet extends ConsumerWidget {
             ],
           ),
           const SizedBox(height: 20),
-          EvaPressable(
+          SizedBox(
+            width: double.infinity,
+            height: 50,
             child: FilledButton(
-              onPressed: () {
-                if (qtyInCart == 0 && !product.isOutOfStock) {
-                  cartNotifier.increment(product);
-                }
-                Navigator.pop(context);
-              },
+              key: const ValueKey('item_detail_cta_button'),
+              onPressed: product.isOutOfStock
+                  ? null
+                  : () {
+                      HapticFeedback.lightImpact();
+                      if (qtyInCart == 0) {
+                        cartNotifier.increment(product);
+                      }
+                      Navigator.of(context).pop();
+                    },
               child: Text(
                 qtyInCart > 0
-                    ? '${i18n.t('review_order_cta')} ($qtyInCart)'
+                    ? '${i18n.t('done_cta')} • ${i18n.formatPrice(product.price * qtyInCart)}'
                     : '${i18n.t('add_button')} • ${i18n.formatPrice(product.price)}',
               ),
             ),

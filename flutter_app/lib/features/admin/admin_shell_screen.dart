@@ -17,6 +17,9 @@ class AdminShellScreen extends ConsumerWidget {
   Widget build(BuildContext context, WidgetRef ref) {
     final tokens = EvaTokens.of(context);
     final i18n = ref.watch(i18nProvider);
+    final navBehavior = ref.watch(
+      appPreferencesProvider.select((p) => p.navBarBehavior),
+    );
     final isOpen = ref.watch(
       canteenStoreProvider.select((s) => s.isCanteenOpen),
     );
@@ -210,53 +213,58 @@ class AdminShellScreen extends ConsumerWidget {
                               Expanded(child: animatedBody),
                             ],
                           )
-                        : Stack(
-                            fit: StackFit.expand,
-                            children: [
-                              animatedBody,
-                              Positioned(
-                                left: 0,
-                                right: 0,
-                                bottom: 0,
-                                child: EvaFloatingNavBar(
-                                  selectedIndex: navigationShell.currentIndex,
-                                  onDestinationSelected: (idx) {
-                                    HapticFeedback.selectionClick();
-                                    navigationShell.goBranch(idx);
-                                  },
-                                  items: [
-                                    EvaFloatingNavItem(
-                                      icon: Icons.kitchen_outlined,
-                                      selectedIcon: Icons.kitchen_rounded,
-                                      label: i18n.t('admin_kds_tab'),
-                                      badgeCount: activeKdsCount,
-                                    ),
-                                    EvaFloatingNavItem(
-                                      icon: Icons.inventory_2_outlined,
-                                      selectedIcon: Icons.inventory_2_rounded,
-                                      label: i18n.t('admin_catalog_tab'),
-                                    ),
-                                    EvaFloatingNavItem(
-                                      icon: Icons.insights_outlined,
-                                      selectedIcon: Icons.insights_rounded,
-                                      label: i18n.t('admin_analytics_tab'),
-                                    ),
-                                    EvaFloatingNavItem(
-                                      icon:
-                                          Icons.account_balance_wallet_outlined,
-                                      selectedIcon:
-                                          Icons.account_balance_wallet_rounded,
-                                      label: i18n.t('admin_ops_tab'),
-                                    ),
-                                    EvaFloatingNavItem(
-                                      icon: Icons.tune_outlined,
-                                      selectedIcon: Icons.tune_rounded,
-                                      label: i18n.t('nav_settings'),
-                                    ),
-                                  ],
+                        : EvaNavScrollTracker(
+                            currentIndex: navigationShell.currentIndex,
+                            behavior: navBehavior,
+                            builder: (context, showLabels) => Stack(
+                              fit: StackFit.expand,
+                              children: [
+                                animatedBody,
+                                Positioned(
+                                  left: 0,
+                                  right: 0,
+                                  bottom: 0,
+                                  child: EvaFloatingNavBar(
+                                    selectedIndex: navigationShell.currentIndex,
+                                    showLabels: showLabels,
+                                    onDestinationSelected: (idx) {
+                                      HapticFeedback.selectionClick();
+                                      navigationShell.goBranch(idx);
+                                    },
+                                    items: [
+                                      EvaFloatingNavItem(
+                                        icon: Icons.kitchen_outlined,
+                                        selectedIcon: Icons.kitchen_rounded,
+                                        label: i18n.t('admin_kds_tab'),
+                                        badgeCount: activeKdsCount,
+                                      ),
+                                      EvaFloatingNavItem(
+                                        icon: Icons.inventory_2_outlined,
+                                        selectedIcon: Icons.inventory_2_rounded,
+                                        label: i18n.t('admin_catalog_tab'),
+                                      ),
+                                      EvaFloatingNavItem(
+                                        icon: Icons.insights_outlined,
+                                        selectedIcon: Icons.insights_rounded,
+                                        label: i18n.t('admin_analytics_tab'),
+                                      ),
+                                      EvaFloatingNavItem(
+                                        icon: Icons
+                                            .account_balance_wallet_outlined,
+                                        selectedIcon: Icons
+                                            .account_balance_wallet_rounded,
+                                        label: i18n.t('admin_ops_tab'),
+                                      ),
+                                      EvaFloatingNavItem(
+                                        icon: Icons.tune_outlined,
+                                        selectedIcon: Icons.tune_rounded,
+                                        label: i18n.t('nav_settings'),
+                                      ),
+                                    ],
+                                  ),
                                 ),
-                              ),
-                            ],
+                              ],
+                            ),
                           ),
                   ),
                 ],
