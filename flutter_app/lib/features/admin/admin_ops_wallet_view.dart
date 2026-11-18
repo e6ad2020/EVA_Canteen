@@ -1,3 +1,5 @@
+import 'dart:async';
+
 import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:intl/intl.dart' hide TextDirection;
@@ -17,7 +19,11 @@ class AdminOpsWalletView extends ConsumerStatefulWidget {
 }
 
 class _AdminOpsWalletViewState extends ConsumerState<AdminOpsWalletView> {
+  static const int _walletPageSize = 5;
+
   String _walletQuery = '';
+  int _walletPage = 0;
+  Timer? _walletSearchDebounce;
   final _walletSearchCtrl = TextEditingController();
   late final TextEditingController _currEnCtrl;
   late final TextEditingController _currArCtrl;
@@ -39,13 +45,25 @@ class _AdminOpsWalletViewState extends ConsumerState<AdminOpsWalletView> {
 
     Future.microtask(() {
       if (mounted) {
-        ref.read(canteenStoreProvider.notifier).requestWallets();
+        _fetchWalletsPage(0);
       }
     });
   }
 
+  void _fetchWalletsPage(int page, {String? queryOverride}) {
+    final safePage = page < 0 ? 0 : page;
+    final query = (queryOverride ?? _walletQuery).trim();
+    setState(() => _walletPage = safePage);
+    ref.read(canteenStoreProvider.notifier).requestWallets(
+      query: query,
+      limit: _walletPageSize,
+      offset: safePage * _walletPageSize,
+    );
+  }
+
   @override
   void dispose() {
+    _walletSearchDebounce?.cancel();
     _walletSearchCtrl.dispose();
     _currEnCtrl.dispose();
     _currArCtrl.dispose();
@@ -333,11 +351,24 @@ class _AdminOpsWalletViewState extends ConsumerState<AdminOpsWalletView> {
     final i18n = ref.watch(i18nProvider);
     final store = ref.watch(canteenStoreProvider);
     final wallets = store.walletsSnapshot;
-
-    final filteredUsers = wallets.users.where((u) {
-      if (_walletQuery.trim().isEmpty) return true;
-      return u.email.toLowerCase().contains(_walletQuery.trim().toLowerCase());
-    }).toList(growable: false);
+    final totalMatched = wallets.totalUsers;
+    final totalAccounts = wallets.totalAccounts > 0
+        ? wallets.totalAccounts
+        : totalMatched;
+    final totalPages = totalMatched == 0
+        ? 1
+        : ((totalMatched + _walletPageSize - 1) ~/ _walletPageSize);
+    final currentPage = (wallets.offset ~/ _walletPageSize).clamp(
+      0,
+      totalPages - 1,
+    );
+    final visibleUsers = wallets.users
+        .take(_walletPageSize)
+        .toList(growable: false);
+    final rangeStart = totalMatched == 0 ? 0 : wallets.offset + 1;
+    final rangeEnd = totalMatched == 0
+        ? 0
+        : wallets.offset + visibleUsers.length;
 
     return EvaFloatingHeaderScaffold(
       initialHeaderHeight: 68.0,
@@ -356,8 +387,7 @@ class _AdminOpsWalletViewState extends ConsumerState<AdminOpsWalletView> {
             ),
             IconButton.filledTonal(
               tooltip: 'Refresh',
-              onPressed: () =>
-                  ref.read(canteenStoreProvider.notifier).requestWallets(),
+              onPressed: () => _fetchWalletsPage(_walletPage),
               icon: const Icon(Icons.refresh_rounded, size: 20),
             ),
           ],
@@ -446,7 +476,7 @@ class _AdminOpsWalletViewState extends ConsumerState<AdminOpsWalletView> {
                                   const SizedBox(width: 8),
                                   EvaStatusBadge(
                                     label: i18n.t('wallet_accounts_count', {
-                                      'count': '${wallets.users.length}',
+                                      'count': '$totalAccounts',
                                     }),
                                     background: tokens.brandSoftBg,
                                     foreground: tokens.brandPrimary,
@@ -456,8 +486,28 @@ class _AdminOpsWalletViewState extends ConsumerState<AdminOpsWalletView> {
                               const SizedBox(height: 12),
                               TextField(
                                 controller: _walletSearchCtrl,
-                                onChanged: (v) =>
-                                    setState(() => _walletQuery = v),
+                                onChanged: (v) {
+                                  setState(() {
+                                    _walletQuery = v;
+                                    _walletPage = 0;
+                                  });
+                                  _walletSearchDebounce?.cancel();
+                                  _walletSearchDebounce = Timer(
+                                    const Duration(milliseconds: 250),
+                                    () {
+                                      if (mounted) {
+                                        _fetchWalletsPage(
+                                          0,
+                                          queryOverride: v,
+                                        );
+                                      }
+                                    },
+                                  );
+                                },
+                                onSubmitted: (v) {
+                                  _walletSearchDebounce?.cancel();
+                                  _fetchWalletsPage(0, queryOverride: v);
+                                },
                                 decoration: InputDecoration(
                                   hintText: i18n.t('wallet_search_hint'),
                                   prefixIcon: const Icon(
@@ -468,8 +518,13 @@ class _AdminOpsWalletViewState extends ConsumerState<AdminOpsWalletView> {
                                       ? null
                                       : IconButton(
                                           onPressed: () {
+                                            _walletSearchDebounce?.cancel();
                                             _walletSearchCtrl.clear();
                                             setState(() => _walletQuery = '');
+                                            _fetchWalletsPage(
+                                              0,
+                                              queryOverride: '',
+                                            );
                                           },
                                           icon: const Icon(
                                             Icons.close_rounded,
@@ -479,7 +534,7 @@ class _AdminOpsWalletViewState extends ConsumerState<AdminOpsWalletView> {
                                 ),
                               ),
                               const SizedBox(height: 14),
-                              if (filteredUsers.isEmpty)
+                              if (visibleUsers.isEmpty)
                                 Padding(
                                   padding: const EdgeInsets.symmetric(
                                     vertical: 16,
@@ -492,7 +547,7 @@ class _AdminOpsWalletViewState extends ConsumerState<AdminOpsWalletView> {
                                   ),
                                 )
                               else
-                                for (final u in filteredUsers)
+                                for (final u in visibleUsers)
                                   Padding(
                                     padding: const EdgeInsets.only(bottom: 10),
                                     child: _CustomerWalletRow(
@@ -508,6 +563,72 @@ class _AdminOpsWalletViewState extends ConsumerState<AdminOpsWalletView> {
                                     ),
                                   ),
 
+                              if (totalMatched > _walletPageSize ||
+                                  currentPage > 0) ...[
+                                const SizedBox(height: 4),
+                                Row(
+                                  children: [
+                                    Expanded(
+                                      child: Text(
+                                        i18n.isRtl
+                                            ? 'عرض $rangeStart–$rangeEnd من $totalMatched'
+                                            : 'Showing $rangeStart–$rangeEnd of $totalMatched',
+                                        style: Theme.of(
+                                          context,
+                                        ).textTheme.bodySmall,
+                                      ),
+                                    ),
+                                    IconButton.outlined(
+                                      tooltip: i18n.isRtl ? 'السابق' : 'Previous',
+                                      visualDensity: VisualDensity.compact,
+                                      onPressed: currentPage > 0
+                                          ? () => _fetchWalletsPage(
+                                              currentPage - 1,
+                                            )
+                                          : null,
+                                      icon: Icon(
+                                        i18n.isRtl
+                                            ? Icons.chevron_right_rounded
+                                            : Icons.chevron_left_rounded,
+                                        size: 20,
+                                      ),
+                                    ),
+                                    Padding(
+                                      padding: const EdgeInsets.symmetric(
+                                        horizontal: 10,
+                                      ),
+                                      child: Text(
+                                        '${currentPage + 1} / $totalPages',
+                                        style: Theme.of(context)
+                                            .textTheme
+                                            .labelMedium
+                                            ?.copyWith(
+                                              fontFeatures:
+                                                  EvaThemeBuilder.tabularNums,
+                                            ),
+                                      ),
+                                    ),
+                                    IconButton.outlined(
+                                      tooltip: i18n.isRtl ? 'التالي' : 'Next',
+                                      visualDensity: VisualDensity.compact,
+                                      onPressed:
+                                          wallets.hasMore ||
+                                              currentPage + 1 < totalPages
+                                          ? () => _fetchWalletsPage(
+                                              currentPage + 1,
+                                            )
+                                          : null,
+                                      icon: Icon(
+                                        i18n.isRtl
+                                            ? Icons.chevron_left_rounded
+                                            : Icons.chevron_right_rounded,
+                                        size: 20,
+                                      ),
+                                    ),
+                                  ],
+                                ),
+                              ],
+
                               if (wallets.recentTransactions.isNotEmpty) ...[
                                 const SizedBox(height: 14),
                                 Divider(color: tokens.borderSubtle),
@@ -520,7 +641,7 @@ class _AdminOpsWalletViewState extends ConsumerState<AdminOpsWalletView> {
                                 ),
                                 const SizedBox(height: 8),
                                 for (final tx
-                                    in wallets.recentTransactions.take(8))
+                                    in wallets.recentTransactions.take(5))
                                   Padding(
                                     padding: const EdgeInsets.only(bottom: 6),
                                     child: Row(

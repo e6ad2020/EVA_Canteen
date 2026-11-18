@@ -787,9 +787,54 @@ class CanteenStoreNotifier extends Notifier<CanteenStoreState> {
 
       case 'admin_wallets_data':
         if (payload is Map) {
+          final isBroadcastRefresh = payload['isBroadcastRefresh'] == true;
+          final cur = state.walletsSnapshot;
+          if (isBroadcastRefresh &&
+              (cur.offset > 0 || cur.query.isNotEmpty || cur.users.isNotEmpty)) {
+            break;
+          }
           state = state.copyWith(
             walletsSnapshot: AdminWalletsSnapshot.fromJson(
               Map<String, dynamic>.from(payload),
+            ),
+          );
+        }
+        break;
+
+      case 'admin_wallet_entry_updated':
+        if (payload is Map) {
+          final rawUser = payload['user'];
+          final updatedUser = rawUser is Map
+              ? WalletUserSummary.fromJson(Map<String, dynamic>.from(rawUser))
+              : null;
+          final rawTxs = payload['recentTransactions'];
+          final parsedTxs = rawTxs is List
+              ? rawTxs
+                    .whereType<Map>()
+                    .map(
+                      (e) => WalletTransactionItem.fromJson(
+                        Map<String, dynamic>.from(e),
+                      ),
+                    )
+                    .toList(growable: false)
+              : null;
+
+          final cur = state.walletsSnapshot;
+          final updatedUsers = updatedUser == null
+              ? cur.users
+              : cur.users
+                    .map(
+                      (u) => u.email.toLowerCase() ==
+                              updatedUser.email.toLowerCase()
+                          ? updatedUser
+                          : u,
+                    )
+                    .toList(growable: false);
+
+          state = state.copyWith(
+            walletsSnapshot: cur.copyWith(
+              users: updatedUsers,
+              recentTransactions: parsedTxs ?? cur.recentTransactions,
             ),
           );
         }
@@ -979,8 +1024,12 @@ class CanteenStoreNotifier extends Notifier<CanteenStoreState> {
     });
   }
 
-  void requestWallets() {
-    ref.read(socketClientProvider).send('admin_get_users_wallets');
+  void requestWallets({String query = '', int limit = 5, int offset = 0}) {
+    ref.read(socketClientProvider).send('admin_get_users_wallets', {
+      'query': query.trim(),
+      'limit': limit,
+      'offset': offset < 0 ? 0 : offset,
+    });
   }
 
   void adjustStudentWallet({

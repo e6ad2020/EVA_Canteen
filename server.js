@@ -2016,51 +2016,122 @@ async function handleAdminPaymentMethodsUpdated(ws, clientInfo, payload) {
     broadcast('payment_methods_updated', nextMethods);
 }
 
-async function getAdminWalletsSnapshot() {
+function formatWalletUserRow(u) {
+    return {
+        email: u.email,
+        profilePic: u.profile_pic || 'pic2',
+        balance: Number((u.balance || 0).toFixed(2)),
+        createdAt: u.created_at,
+        orderCount: u.order_count || 0,
+        totalSpent: Number((u.total_spent || 0).toFixed(2))
+    };
+}
+
+function formatWalletTxRow(tx) {
+    return {
+        id: tx.id,
+        email: tx.user_email,
+        delta: Number((tx.delta || 0).toFixed(2)),
+        balanceAfter: Number((tx.balance_after || 0).toFixed(2)),
+        reason: tx.reason || '',
+        actor: tx.actor || 'admin',
+        timestamp: tx.timestamp
+    };
+}
+
+async function getRecentWalletTransactions(limit = 30) {
+    const recentTransactions = await db.query(
+        `SELECT id, user_email, delta, balance_after, reason, actor, timestamp
+         FROM wallet_transactions
+         ORDER BY id DESC
+         LIMIT ?`,
+        [limit]
+    );
+    return recentTransactions.map(formatWalletTxRow);
+}
+
+async function getWalletUserSummary(email) {
+    const row = await db.get(
+        `SELECT u.email, u.profile_pic, u.balance, u.created_at,
+                COUNT(o.id) AS order_count,
+                COALESCE(SUM(o.total_amount), 0) AS total_spent
+         FROM users u
+         LEFT JOIN orders o ON LOWER(o.user_email) = LOWER(u.email)
+         WHERE u.email = ?
+         GROUP BY u.email`,
+        [email]
+    );
+    return row ? formatWalletUserRow(row) : null;
+}
+
+async function getAdminWalletsSnapshot(options = {}) {
+    const rawQuery = typeof options.query === 'string' ? options.query.trim().slice(0, 120) : '';
+    const hasLimit = options.limit !== undefined && options.limit !== null;
+    const rawLimit = Number(options.limit);
+    const limit = hasLimit && Number.isFinite(rawLimit)
+        ? Math.min(Math.max(Math.trunc(rawLimit), 1), 50)
+        : 5;
+    const rawOffset = Number(options.offset);
+    const offset = Number.isFinite(rawOffset) && rawOffset > 0 ? Math.trunc(rawOffset) : 0;
+
+    const totalAccountsRow = await db.get('SELECT COUNT(*) AS count FROM users');
+    const totalAccounts = Number(totalAccountsRow?.count || 0);
+
+    let whereClause = '';
+    const filterParams = [];
+    if (rawQuery.length > 0) {
+        const escapedQuery = rawQuery.toLowerCase().replace(/[\\%_]/g, '\\$&');
+        whereClause = "WHERE LOWER(u.email) LIKE ? ESCAPE '\\'";
+        filterParams.push(`%${escapedQuery}%`);
+    }
+
+    const filteredCountRow = whereClause
+        ? await db.get(`SELECT COUNT(*) AS count FROM users u ${whereClause}`, filterParams)
+        : totalAccountsRow;
+    const totalUsers = Number(filteredCountRow?.count || 0);
+
+    const safeOffset = offset >= totalUsers && totalUsers > 0
+        ? Math.max(0, Math.floor((totalUsers - 1) / limit) * limit)
+        : offset;
+
     const users = await db.query(
         `SELECT u.email, u.profile_pic, u.balance, u.created_at,
                 COUNT(o.id) AS order_count,
                 COALESCE(SUM(o.total_amount), 0) AS total_spent
          FROM users u
          LEFT JOIN orders o ON LOWER(o.user_email) = LOWER(u.email)
+         ${whereClause}
          GROUP BY u.email
-         ORDER BY u.created_at DESC, u.email ASC`
+         ORDER BY u.created_at DESC, u.email ASC
+         LIMIT ? OFFSET ?`,
+        [...filterParams, limit, safeOffset]
     );
 
-    const recentTransactions = await db.query(
-        `SELECT id, user_email, delta, balance_after, reason, actor, timestamp
-         FROM wallet_transactions
-         ORDER BY id DESC
-         LIMIT 60`
-    );
+    const recentTransactions = await getRecentWalletTransactions(30);
 
     return {
-        users: users.map((u) => ({
-            email: u.email,
-            profilePic: u.profile_pic || 'pic2',
-            balance: Number((u.balance || 0).toFixed(2)),
-            createdAt: u.created_at,
-            orderCount: u.order_count || 0,
-            totalSpent: Number((u.total_spent || 0).toFixed(2))
-        })),
-        recentTransactions: recentTransactions.map((tx) => ({
-            id: tx.id,
-            email: tx.user_email,
-            delta: Number((tx.delta || 0).toFixed(2)),
-            balanceAfter: Number((tx.balance_after || 0).toFixed(2)),
-            reason: tx.reason || '',
-            actor: tx.actor || 'admin',
-            timestamp: tx.timestamp
-        }))
+        users: users.map(formatWalletUserRow),
+        totalUsers,
+        totalAccounts,
+        limit,
+        offset: safeOffset,
+        hasMore: safeOffset + users.length < totalUsers,
+        query: rawQuery,
+        isBroadcastRefresh: options.isBroadcastRefresh === true,
+        recentTransactions
     };
 }
 
-async function handleAdminGetUsersWallets(ws, clientInfo) {
+async function handleAdminGetUsersWallets(ws, clientInfo, payload) {
     if (!clientInfo.isManagement) {
         return;
     }
 
-    const snapshot = await getAdminWalletsSnapshot();
+    const snapshot = await getAdminWalletsSnapshot({
+        query: payload && typeof payload === 'object' ? payload.query : '',
+        limit: payload && typeof payload === 'object' && payload.limit !== undefined ? payload.limit : 5,
+        offset: payload && typeof payload === 'object' ? payload.offset : 0
+    });
     sendMessage(ws, 'admin_wallets_data', snapshot);
 }
 
@@ -2113,7 +2184,17 @@ async function handleAdminAdjustWallet(ws, clientInfo, payload) {
         throw err;
     }
 
-    const snapshot = await getAdminWalletsSnapshot();
+    const [updatedUser, recentTransactions, snapshot] = await Promise.all([
+        getWalletUserSummary(email),
+        getRecentWalletTransactions(30),
+        getAdminWalletsSnapshot({ limit: 5, offset: 0, isBroadcastRefresh: true })
+    ]);
+    if (updatedUser) {
+        broadcastToManagement('admin_wallet_entry_updated', {
+            user: updatedUser,
+            recentTransactions
+        });
+    }
     broadcastToManagement('admin_wallets_data', snapshot);
     sendToUser(email, 'wallet_balance_updated', {
         email,
@@ -2237,7 +2318,8 @@ const messageHandlers = {
     admin_bundle_deleted: async ({ clientInfo, payload }) => handleAdminBundleDeleted(clientInfo, payload),
     admin_payment_methods_updated: async ({ ws, clientInfo, payload }) =>
         handleAdminPaymentMethodsUpdated(ws, clientInfo, payload),
-    admin_get_users_wallets: async ({ ws, clientInfo }) => handleAdminGetUsersWallets(ws, clientInfo),
+    admin_get_users_wallets: async ({ ws, clientInfo, payload }) =>
+        handleAdminGetUsersWallets(ws, clientInfo, payload),
     admin_adjust_wallet: async ({ ws, clientInfo, payload }) => handleAdminAdjustWallet(ws, clientInfo, payload)
 };
 

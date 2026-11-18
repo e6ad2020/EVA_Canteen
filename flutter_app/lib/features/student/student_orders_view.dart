@@ -111,22 +111,17 @@ class StudentOrdersView extends ConsumerWidget {
       headerBuilder: (context, isScrolled) => EvaGlassBar(
         isScrolled: isScrolled,
         padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
-        child: Center(
-          child: ConstrainedBox(
-            constraints: const BoxConstraints(maxWidth: 720),
-            child: Row(
-              children: [
-                Expanded(
-                  child: Text(
-                    i18n.t('nav_orders'),
-                    maxLines: 1,
-                    overflow: TextOverflow.ellipsis,
-                    style: Theme.of(context).textTheme.headlineSmall,
-                  ),
-                ),
-              ],
+        child: Row(
+          children: [
+            Expanded(
+              child: Text(
+                i18n.t('nav_orders'),
+                maxLines: 1,
+                overflow: TextOverflow.ellipsis,
+                style: Theme.of(context).textTheme.headlineSmall,
+              ),
             ),
-          ),
+          ],
         ),
       ),
       bodyBuilder: (context, topClearance, _) => ListView(

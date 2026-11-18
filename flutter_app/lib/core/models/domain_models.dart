@@ -748,21 +748,65 @@ class AdminWalletsSnapshot extends Equatable {
   const AdminWalletsSnapshot({
     this.users = const [],
     this.recentTransactions = const [],
+    this.totalUsers = 0,
+    this.totalAccounts = 0,
+    this.limit = 5,
+    this.offset = 0,
+    this.hasMore = false,
+    this.query = '',
   });
 
   final List<WalletUserSummary> users;
   final List<WalletTransactionItem> recentTransactions;
+  final int totalUsers;
+  final int totalAccounts;
+  final int limit;
+  final int offset;
+  final bool hasMore;
+  final String query;
+
+  AdminWalletsSnapshot copyWith({
+    List<WalletUserSummary>? users,
+    List<WalletTransactionItem>? recentTransactions,
+    int? totalUsers,
+    int? totalAccounts,
+    int? limit,
+    int? offset,
+    bool? hasMore,
+    String? query,
+  }) {
+    return AdminWalletsSnapshot(
+      users: users ?? this.users,
+      recentTransactions: recentTransactions ?? this.recentTransactions,
+      totalUsers: totalUsers ?? this.totalUsers,
+      totalAccounts: totalAccounts ?? this.totalAccounts,
+      limit: limit ?? this.limit,
+      offset: offset ?? this.offset,
+      hasMore: hasMore ?? this.hasMore,
+      query: query ?? this.query,
+    );
+  }
 
   factory AdminWalletsSnapshot.fromJson(Map<String, dynamic> json) {
+    final parsedUsers =
+        (json['users'] as List?)
+            ?.whereType<Map>()
+            .map(
+              (e) => WalletUserSummary.fromJson(Map<String, dynamic>.from(e)),
+            )
+            .toList(growable: false) ??
+        const <WalletUserSummary>[];
+    final parsedTotalUsers =
+        (json['totalUsers'] as num?)?.toInt() ?? parsedUsers.length;
+    final parsedTotalAccounts =
+        (json['totalAccounts'] as num?)?.toInt() ?? parsedTotalUsers;
+    final parsedLimit = (json['limit'] as num?)?.toInt() ?? 5;
+    final parsedOffset = (json['offset'] as num?)?.toInt() ?? 0;
+
     return AdminWalletsSnapshot(
-      users: (json['users'] as List?)
-              ?.whereType<Map>()
-              .map(
-                (e) => WalletUserSummary.fromJson(Map<String, dynamic>.from(e)),
-              )
-              .toList(growable: false) ??
-          const [],
-      recentTransactions: (json['recentTransactions'] as List?)
+      users: parsedUsers,
+      recentTransactions:
+          (json['recentTransactions'] as List?)
               ?.whereType<Map>()
               .map(
                 (e) => WalletTransactionItem.fromJson(
@@ -771,11 +815,28 @@ class AdminWalletsSnapshot extends Equatable {
               )
               .toList(growable: false) ??
           const [],
+      totalUsers: parsedTotalUsers,
+      totalAccounts: parsedTotalAccounts,
+      limit: parsedLimit,
+      offset: parsedOffset,
+      hasMore:
+          (json['hasMore'] as bool?) ??
+          (parsedOffset + parsedUsers.length < parsedTotalUsers),
+      query: (json['query'] as String?) ?? '',
     );
   }
 
   @override
-  List<Object?> get props => [users, recentTransactions];
+  List<Object?> get props => [
+    users,
+    recentTransactions,
+    totalUsers,
+    totalAccounts,
+    limit,
+    offset,
+    hasMore,
+    query,
+  ];
 }
 
 class AppliedBundleDiscount extends Equatable {
