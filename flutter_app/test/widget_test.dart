@@ -103,12 +103,11 @@ void main() {
       );
       await tester.pumpAndSettle();
 
-      // Verify English LTR on Welcome screen with modern retail copy
-      expect(find.text('Order ahead, skip the wait.'), findsOneWidget);
+      // Verify English LTR on Welcome screen with simple Logo + Name header
+      expect(find.text('EVA Canteen'), findsOneWidget);
+      expect(find.text('Order ahead, skip the wait.'), findsNothing);
       expect(
-        Directionality.of(
-          tester.element(find.text('Order ahead, skip the wait.')),
-        ),
+        Directionality.of(tester.element(find.text('EVA Canteen'))),
         TextDirection.ltr,
       );
 
@@ -116,14 +115,9 @@ void main() {
       await tester.tap(find.text('عربي'));
       await tester.pumpAndSettle();
 
+      expect(find.text('كانتين إيفا'), findsOneWidget);
       expect(
-        find.text('اطلب مسبقاً، واستلم بدون انتظار.'),
-        findsOneWidget,
-      );
-      expect(
-        Directionality.of(
-          tester.element(find.text('اطلب مسبقاً، واستلم بدون انتظار.')),
-        ),
+        Directionality.of(tester.element(find.text('كانتين إيفا'))),
         TextDirection.rtl,
       );
 

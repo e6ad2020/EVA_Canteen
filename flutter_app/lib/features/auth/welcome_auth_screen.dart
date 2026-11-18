@@ -116,8 +116,7 @@ class _WelcomeAuthScreenState extends ConsumerState<WelcomeAuthScreen> {
               Expanded(
                 child: LayoutBuilder(
                   builder: (context, viewport) {
-                    final isWide = viewport.maxWidth >= 820;
-                    final stageMaxWidth = isWide ? 1040.0 : 460.0;
+                    final isWide = viewport.maxWidth >= 768;
                     final horizontalPad = viewport.maxWidth < 380 ? 14.0 : 20.0;
 
                     return SingleChildScrollView(
@@ -135,9 +134,7 @@ class _WelcomeAuthScreenState extends ConsumerState<WelcomeAuthScreen> {
                         ),
                         child: Center(
                           child: ConstrainedBox(
-                            constraints: BoxConstraints(
-                              maxWidth: stageMaxWidth,
-                            ),
+                            constraints: const BoxConstraints(maxWidth: 460),
                             child: Column(
                               mainAxisAlignment: MainAxisAlignment.center,
                               crossAxisAlignment: CrossAxisAlignment.stretch,
@@ -167,67 +164,30 @@ class _WelcomeAuthScreenState extends ConsumerState<WelcomeAuthScreen> {
                                     ],
                                   ),
                                 ),
-                                SizedBox(height: isWide ? 18 : 14),
+                                SizedBox(height: isWide ? 24 : 18),
 
-                                // Main Editorial Stage: Asymmetric 2-column split on desktop/tablet,
-                                // cohesive stacked composition on mobile.
-                                if (isWide)
-                                  Row(
-                                    crossAxisAlignment:
-                                        CrossAxisAlignment.start,
-                                    children: [
-                                      Expanded(
-                                        flex: 11,
-                                        child: EvaReveal(
-                                          index: 1,
-                                          child: _HeroPosterCard(
-                                            tokens: tokens,
-                                            t: i18n.t,
-                                            isWide: true,
-                                            showGuestAction: !_isAdminMode,
-                                            onBrowseGuest: _enterGuestMenu,
-                                          ),
-                                        ),
-                                      ),
-                                      const SizedBox(width: 24),
-                                      Expanded(
-                                        flex: 10,
-                                        child: EvaReveal(
-                                          index: 2,
-                                          child: _buildAuthColumn(
-                                            context,
-                                            tokens,
-                                            i18n.t,
-                                            busy,
-                                            isWide: true,
-                                          ),
-                                        ),
-                                      ),
-                                    ],
-                                  )
-                                else ...[
-                                  EvaReveal(
-                                    index: 1,
-                                    child: _HeroPosterCard(
-                                      tokens: tokens,
-                                      t: i18n.t,
-                                      isWide: false,
-                                      showGuestAction: !_isAdminMode,
-                                      onBrowseGuest: _enterGuestMenu,
-                                    ),
+                                // Simple centered Brand Logo + Name underneath
+                                EvaReveal(
+                                  index: 1,
+                                  child: _SimpleBrandHeader(
+                                    canteenName: i18n.t('canteen_name'),
+                                    tokens: tokens,
+                                    isWide: isWide,
                                   ),
-                                  const SizedBox(height: 16),
-                                  EvaReveal(
-                                    index: 2,
-                                    child: _buildAuthColumn(
-                                      context,
-                                      tokens,
-                                      i18n.t,
-                                      busy,
-                                      isWide: false,
-                                    ),
+                                ),
+                                SizedBox(height: isWide ? 24 : 20),
+
+                                // Centered Auth Card
+                                EvaReveal(
+                                  index: 2,
+                                  child: _buildAuthColumn(
+                                    context,
+                                    tokens,
+                                    i18n.t,
+                                    busy,
+                                    isWide: isWide,
                                   ),
-                                ],
+                                ),
                               ],
                             ),
                           ),
@@ -546,6 +506,27 @@ class _WelcomeAuthScreenState extends ConsumerState<WelcomeAuthScreen> {
                       ),
                     ),
                   ),
+
+                  if (!_isAdminMode) ...[
+                    const SizedBox(height: 10),
+                    EvaPressable(
+                      child: SizedBox(
+                        height: 46,
+                        child: OutlinedButton.icon(
+                          onPressed: busy ? null : _enterGuestMenu,
+                          icon: const Icon(
+                            Icons.restaurant_menu_rounded,
+                            size: 18,
+                          ),
+                          label: Text(
+                            t('browse_menu_guest'),
+                            maxLines: 1,
+                            overflow: TextOverflow.ellipsis,
+                          ),
+                        ),
+                      ),
+                    ),
+                  ],
                 ],
               ),
             ),
@@ -585,271 +566,46 @@ class _WelcomeAuthScreenState extends ConsumerState<WelcomeAuthScreen> {
   }
 }
 
-/// Editorial brand showcase poster card with deep high-contrast surface,
-/// subtle geometric line motif, feature chips, and instant Guest Menu CTA.
-class _HeroPosterCard extends StatelessWidget {
-  const _HeroPosterCard({
+/// Clean, minimal brand lockup: just the centered logo with the canteen name
+/// directly underneath it.
+class _SimpleBrandHeader extends StatelessWidget {
+  const _SimpleBrandHeader({
+    required this.canteenName,
     required this.tokens,
-    required this.t,
     required this.isWide,
-    required this.showGuestAction,
-    required this.onBrowseGuest,
   });
 
+  final String canteenName;
   final EvaTokens tokens;
-  final String Function(String, [Map<String, String>?]) t;
   final bool isWide;
-  final bool showGuestAction;
-  final VoidCallback onBrowseGuest;
 
   @override
   Widget build(BuildContext context) {
-    // Compute a rich, deep anchor color from brandPrimary so crisp white
-    // editorial display type always maintains AAA contrast in every theme.
-    final baseHue = tokens.isNight
-        ? Color.lerp(tokens.brandPrimary, const Color(0xFF0F172A), 0.58)!
-        : (tokens.brandPrimary.computeLuminance() > 0.35
-              ? Color.lerp(tokens.brandPrimary, const Color(0xFF0B1220), 0.45)!
-              : tokens.brandPrimary);
-    final deepEnd = Color.lerp(baseHue, const Color(0xFF070B14), 0.46)!;
-
-    return Container(
-      decoration: BoxDecoration(
-        borderRadius: BorderRadius.circular(24),
-        gradient: LinearGradient(
-          begin: Alignment.topLeft,
-          end: Alignment.bottomRight,
-          colors: [baseHue, deepEnd],
-        ),
-        border: Border.all(
-          color: Colors.white.withValues(alpha: 0.14),
-          width: 1.2,
-        ),
-        boxShadow: tokens.isNight
-            ? null
-            : [
-                BoxShadow(
-                  color: deepEnd.withValues(alpha: 0.20),
-                  blurRadius: 22,
-                  offset: const Offset(0, 10),
-                ),
-              ],
-      ),
-      clipBehavior: Clip.hardEdge,
-      child: Stack(
-        children: [
-          const Positioned.fill(
-            child: RepaintBoundary(
-              child: CustomPaint(painter: _HeroMotifPainter()),
-            ),
+    return Column(
+      mainAxisSize: MainAxisSize.min,
+      children: [
+        EvaBrandLogo(size: isWide ? 84 : 74),
+        const SizedBox(height: 12),
+        Text(
+          canteenName,
+          textAlign: TextAlign.center,
+          maxLines: 2,
+          overflow: TextOverflow.ellipsis,
+          style: Theme.of(context).textTheme.headlineSmall?.copyWith(
+            color: tokens.textPrimary,
+            fontSize: isWide ? 28 : 24,
+            fontWeight: FontWeight.w800,
+            letterSpacing: -0.3,
+            shadows: (!tokens.isNight && tokens.isLiquidGlass)
+                ? const [
+                    Shadow(color: Color(0xE6FFFFFF), blurRadius: 10),
+                  ]
+                : null,
           ),
-          Padding(
-            padding: EdgeInsets.all(isWide ? 32 : 20),
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                // Brand Identity Lockup inside Poster (replaces legacy top bar)
-                Row(
-                  children: [
-                    EvaBrandLogo(size: isWide ? 52 : 44),
-                    const SizedBox(width: 12),
-                    Expanded(
-                      child: Column(
-                        crossAxisAlignment: CrossAxisAlignment.start,
-                        children: [
-                          Text(
-                            t('canteen_name'),
-                            maxLines: 1,
-                            overflow: TextOverflow.ellipsis,
-                            style: Theme.of(context).textTheme.titleLarge
-                                ?.copyWith(
-                                  color: Colors.white,
-                                  fontWeight: FontWeight.w800,
-                                ),
-                          ),
-                          const SizedBox(height: 2),
-                          Text(
-                            t('welcome_eyebrow'),
-                            maxLines: 1,
-                            overflow: TextOverflow.ellipsis,
-                            style: Theme.of(context).textTheme.labelMedium
-                                ?.copyWith(
-                                  color: Colors.white.withValues(alpha: 0.78),
-                                  fontWeight: FontWeight.w600,
-                                ),
-                          ),
-                        ],
-                      ),
-                    ),
-                  ],
-                ),
-                SizedBox(height: isWide ? 26 : 18),
-
-                // Editorial Display Headline
-                Text(
-                  t('welcome_headline'),
-                  style: Theme.of(context).textTheme.headlineMedium?.copyWith(
-                    color: Colors.white,
-                    fontSize: isWide ? 34 : 24,
-                    fontWeight: FontWeight.w800,
-                    height: 1.15,
-                    letterSpacing: -0.5,
-                  ),
-                ),
-                const SizedBox(height: 10),
-                Text(
-                  t('welcome_subtitle'),
-                  style: Theme.of(context).textTheme.bodyMedium?.copyWith(
-                    color: Colors.white.withValues(alpha: 0.84),
-                    fontSize: isWide ? 15 : 13.5,
-                    height: 1.45,
-                  ),
-                ),
-                SizedBox(height: isWide ? 22 : 14),
-
-                // Scannable Value Chips
-                Wrap(
-                  spacing: 8,
-                  runSpacing: 8,
-                  children: [
-                    _HeroFeaturePill(
-                      icon: Icons.confirmation_number_outlined,
-                      label: t('welcome_feat_fast'),
-                    ),
-                    _HeroFeaturePill(
-                      icon: Icons.account_balance_wallet_outlined,
-                      label: t('welcome_feat_pay'),
-                    ),
-                    _HeroFeaturePill(
-                      icon: Icons.local_offer_outlined,
-                      label: t('welcome_feat_deals'),
-                    ),
-                  ],
-                ),
-
-                if (showGuestAction) ...[
-                  SizedBox(height: isWide ? 28 : 18),
-                  EvaPressable(
-                    child: Material(
-                      color: Colors.white,
-                      borderRadius: BorderRadius.circular(14),
-                      clipBehavior: Clip.hardEdge,
-                      child: InkWell(
-                        onTap: onBrowseGuest,
-                        child: Padding(
-                          padding: const EdgeInsets.symmetric(
-                            horizontal: 16,
-                            vertical: 13,
-                          ),
-                          child: Row(
-                            children: [
-                              Icon(
-                                Icons.restaurant_menu_rounded,
-                                size: 19,
-                                color: deepEnd,
-                              ),
-                              const SizedBox(width: 10),
-                              Expanded(
-                                child: Text(
-                                  t('browse_menu_guest'),
-                                  maxLines: 1,
-                                  overflow: TextOverflow.ellipsis,
-                                  style: Theme.of(context).textTheme.labelLarge
-                                      ?.copyWith(
-                                        color: deepEnd,
-                                        fontWeight: FontWeight.w800,
-                                      ),
-                                ),
-                              ),
-                              const SizedBox(width: 8),
-                              Container(
-                                width: 26,
-                                height: 26,
-                                decoration: BoxDecoration(
-                                  color: baseHue.withValues(alpha: 0.12),
-                                  borderRadius: BorderRadius.circular(8),
-                                ),
-                                child: Icon(
-                                  Icons.arrow_forward_rounded,
-                                  size: 16,
-                                  color: deepEnd,
-                                ),
-                              ),
-                            ],
-                          ),
-                        ),
-                      ),
-                    ),
-                  ),
-                ],
-              ],
-            ),
-          ),
-        ],
-      ),
+        ),
+      ],
     );
   }
-}
-
-class _HeroFeaturePill extends StatelessWidget {
-  const _HeroFeaturePill({required this.icon, required this.label});
-
-  final IconData icon;
-  final String label;
-
-  @override
-  Widget build(BuildContext context) {
-    return Container(
-      padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
-      decoration: BoxDecoration(
-        color: Colors.white.withValues(alpha: 0.12),
-        borderRadius: BorderRadius.circular(999),
-        border: Border.all(color: Colors.white.withValues(alpha: 0.18)),
-      ),
-      child: Row(
-        mainAxisSize: MainAxisSize.min,
-        children: [
-          Icon(icon, size: 14, color: Colors.white.withValues(alpha: 0.92)),
-          const SizedBox(width: 6),
-          Flexible(
-            child: Text(
-              label,
-              maxLines: 1,
-              overflow: TextOverflow.ellipsis,
-              style: Theme.of(context).textTheme.labelSmall?.copyWith(
-                color: Colors.white.withValues(alpha: 0.95),
-                fontWeight: FontWeight.w700,
-              ),
-            ),
-          ),
-        ],
-      ),
-    );
-  }
-}
-
-class _HeroMotifPainter extends CustomPainter {
-  const _HeroMotifPainter();
-
-  @override
-  void paint(Canvas canvas, Size size) {
-    final stroke = Paint()
-      ..color = Colors.white.withValues(alpha: 0.07)
-      ..style = PaintingStyle.stroke
-      ..strokeWidth = 1.2;
-
-    final glow = Paint()
-      ..color = Colors.white.withValues(alpha: 0.045)
-      ..style = PaintingStyle.fill;
-
-    final topRight = Offset(size.width * 0.92, size.height * 0.12);
-    canvas.drawCircle(topRight, size.shortestSide * 0.34, glow);
-    canvas.drawCircle(topRight, size.shortestSide * 0.46, stroke);
-    canvas.drawCircle(topRight, size.shortestSide * 0.62, stroke);
-  }
-
-  @override
-  bool shouldRepaint(covariant _HeroMotifPainter oldDelegate) => false;
 }
 
 class _AvatarChoiceTile extends StatelessWidget {
