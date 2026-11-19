@@ -21,7 +21,7 @@ class StudentMenuView extends ConsumerStatefulWidget {
 class _StudentMenuViewState extends ConsumerState<StudentMenuView>
     with TickerProviderStateMixin {
   static const int _waveSlots = 6;
-  static const Cubic _expoOut = Cubic(0.16, 1.0, 0.3, 1.0);
+  static const Cubic _expoOut = Cubic(0.22, 1.0, 0.36, 1.0);
   static const Cubic _combosExpoOut = Cubic(0.22, 1.0, 0.36, 1.0);
 
   final _searchCtrl = TextEditingController();
@@ -50,12 +50,12 @@ class _StudentMenuViewState extends ConsumerState<StudentMenuView>
     super.initState();
     _gridTransitionCtrl = AnimationController(
       vsync: this,
-      duration: const Duration(milliseconds: 290),
+      duration: const Duration(milliseconds: 480),
       value: 1.0,
     );
     _gridOpacityCurve = CurvedAnimation(
       parent: _gridTransitionCtrl,
-      curve: const Interval(0.0, 0.56, curve: Curves.easeOutCubic),
+      curve: const Interval(0.0, 0.65, curve: Curves.easeOutCubic),
     );
     _gridOpacity = Tween<double>(
       begin: 0.18,
@@ -63,8 +63,8 @@ class _StudentMenuViewState extends ConsumerState<StudentMenuView>
     ).animate(_gridOpacityCurve);
 
     _slotCurves = List<CurvedAnimation>.generate(_waveSlots, (slot) {
-      final start = (slot * 0.044).clamp(0.0, 0.22);
-      final end = (0.72 + slot * 0.056).clamp(0.72, 1.0);
+      final start = (slot * 0.06).clamp(0.0, 0.30);
+      final end = (0.68 + slot * 0.064).clamp(0.68, 1.0);
       return CurvedAnimation(
         parent: _gridTransitionCtrl,
         curve: Interval(start, end, curve: _expoOut),
@@ -87,7 +87,7 @@ class _StudentMenuViewState extends ConsumerState<StudentMenuView>
 
     _combosCtrl = AnimationController(
       vsync: this,
-      duration: const Duration(milliseconds: 250),
+      duration: const Duration(milliseconds: 380),
     );
     _combosSizeCurve = CurvedAnimation(
       parent: _combosCtrl,
@@ -195,7 +195,7 @@ class _StudentMenuViewState extends ConsumerState<StudentMenuView>
       if ((targetOffset - position.pixels).abs() > 12.0) {
         _categoryScrollCtrl.animateTo(
           targetOffset,
-          duration: const Duration(milliseconds: 180),
+          duration: const Duration(milliseconds: 280),
           curve: Curves.easeOutCubic,
         );
       }
@@ -1086,7 +1086,7 @@ class _CategoryFilterChip extends StatelessWidget {
   final bool selected;
   final VoidCallback onTap;
 
-  static const Cubic _chipCurve = Cubic(0.16, 1.0, 0.3, 1.0);
+  static const Cubic _chipCurve = Cubic(0.22, 1.0, 0.36, 1.0);
 
   @override
   Widget build(BuildContext context) {
@@ -1107,7 +1107,7 @@ class _CategoryFilterChip extends StatelessWidget {
         },
         borderRadius: BorderRadius.circular(999),
         child: AnimatedContainer(
-          duration: const Duration(milliseconds: 220),
+          duration: const Duration(milliseconds: 300),
           curve: _chipCurve,
           padding: EdgeInsets.symmetric(
             horizontal: selected ? 14 : 15,
@@ -1139,7 +1139,7 @@ class _CategoryFilterChip extends StatelessWidget {
                   padding: const EdgeInsetsDirectional.only(end: 6),
                   child: TweenAnimationBuilder<double>(
                     tween: Tween<double>(begin: 0.0, end: 1.0),
-                    duration: const Duration(milliseconds: 220),
+                    duration: const Duration(milliseconds: 300),
                     curve: Curves.easeOutBack,
                     builder: (context, scale, dot) => Transform.scale(
                       scale: scale,
@@ -1156,7 +1156,7 @@ class _CategoryFilterChip extends StatelessWidget {
                   ),
                 ),
               AnimatedDefaultTextStyle(
-                duration: const Duration(milliseconds: 180),
+                duration: const Duration(milliseconds: 260),
                 curve: Curves.easeOutCubic,
                 style: labelStyle,
                 child: Text(label),

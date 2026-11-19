@@ -1186,6 +1186,10 @@ void main() {
         scrollable: find.byType(Scrollable).first,
       );
       await tester.pumpAndSettle();
+      expect(
+        find.text('EVA International Applied Technology School'),
+        findsNothing,
+      );
       await tester.tap(aboutBtn);
       await tester.pumpAndSettle();
 

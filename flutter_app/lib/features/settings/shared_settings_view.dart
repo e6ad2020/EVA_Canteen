@@ -425,26 +425,13 @@ class _SharedSettingsViewState extends ConsumerState<SharedSettingsView> {
                                   const EvaBrandLogo(size: 36),
                                   const SizedBox(width: 12),
                                   Expanded(
-                                    child: Column(
-                                      crossAxisAlignment:
-                                          CrossAxisAlignment.start,
-                                      children: [
-                                        Text(
-                                          i18n.t('canteen_name'),
-                                          style: Theme.of(
-                                            context,
-                                          ).textTheme.titleMedium,
-                                        ),
-                                        const SizedBox(height: 2),
-                                        Text(
-                                          i18n.t('about_project_school_badge'),
-                                          maxLines: 1,
-                                          overflow: TextOverflow.ellipsis,
-                                          style: Theme.of(
-                                            context,
-                                          ).textTheme.bodySmall,
-                                        ),
-                                      ],
+                                    child: Text(
+                                      i18n.t('canteen_name'),
+                                      maxLines: 1,
+                                      overflow: TextOverflow.ellipsis,
+                                      style: Theme.of(
+                                        context,
+                                      ).textTheme.titleMedium,
                                     ),
                                   ),
                                 ],
