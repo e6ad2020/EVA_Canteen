@@ -1,3 +1,5 @@
+import 'dart:async';
+
 import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
@@ -12,11 +14,40 @@ import '../../core/state/canteen_providers.dart';
 import '../../design_system/eva_theme.dart';
 import '../../design_system/widgets/eva_widgets.dart';
 
-class SharedSettingsView extends ConsumerWidget {
+class SharedSettingsView extends ConsumerStatefulWidget {
   const SharedSettingsView({super.key});
 
   @override
-  Widget build(BuildContext context, WidgetRef ref) {
+  ConsumerState<SharedSettingsView> createState() => _SharedSettingsViewState();
+}
+
+class _SharedSettingsViewState extends ConsumerState<SharedSettingsView> {
+  static const String _kProjectTeamImageUrl =
+      'https://i.postimg.cc/jdTC3Sq2/Whats-App-Image-2024-12-10-at-13-31-40-da111f53.jpg';
+  static const double _kProjectTeamImageWidth = 280.0;
+  static const double _kProjectTeamImageBorder = 1.8;
+  static const double _kProjectTeamImageInnerWidth =
+      _kProjectTeamImageWidth - (_kProjectTeamImageBorder * 2);
+
+  bool _didPrecacheProjectImage = false;
+
+  @override
+  void didChangeDependencies() {
+    super.didChangeDependencies();
+    if (!_didPrecacheProjectImage) {
+      _didPrecacheProjectImage = true;
+      unawaited(
+        EvaImageCache.precacheUrl(
+          context,
+          url: _kProjectTeamImageUrl,
+          logicalWidth: _kProjectTeamImageInnerWidth,
+        ),
+      );
+    }
+  }
+
+  @override
+  Widget build(BuildContext context) {
     final prefs = ref.watch(appPreferencesProvider);
     final prefsNotifier = ref.read(appPreferencesProvider.notifier);
     final user = ref.watch(canteenStoreProvider.select((s) => s.currentUser));
@@ -469,8 +500,26 @@ class SharedSettingsView extends ConsumerWidget {
     );
   }
 
-  static const String _kProjectTeamImageUrl =
-      'https://i.postimg.cc/jdTC3Sq2/Whats-App-Image-2024-12-10-at-13-31-40-da111f53.jpg';
+  Widget _buildPopupTransition(
+    BuildContext ctx,
+    Animation<double> animation,
+    Animation<double> _,
+    Widget child,
+  ) {
+    final curved = animation.drive(CurveTween(curve: Curves.easeOutCubic));
+    final scale = curved.drive(Tween<double>(begin: 0.94, end: 1.0));
+    return SafeArea(
+      child: Center(
+        child: Padding(
+          padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 24),
+          child: FadeTransition(
+            opacity: curved,
+            child: ScaleTransition(scale: scale, child: child),
+          ),
+        ),
+      ),
+    );
+  }
 
   void _showAboutProjectDialog(
     BuildContext context,
@@ -483,194 +532,197 @@ class SharedSettingsView extends ConsumerWidget {
       barrierLabel: i18n.t('about_project_title'),
       barrierColor: Colors.black.withValues(alpha: 0.56),
       transitionDuration: const Duration(milliseconds: 220),
-      transitionBuilder: (ctx, animation, _, child) {
-        final curved = CurvedAnimation(
-          parent: animation,
-          curve: Curves.easeOutCubic,
-          reverseCurve: Curves.easeInCubic,
-        );
-        return FadeTransition(
-          opacity: curved,
-          child: ScaleTransition(
-            scale: Tween<double>(begin: 0.94, end: 1.0).animate(curved),
-            child: child,
-          ),
-        );
-      },
+      transitionBuilder: _buildPopupTransition,
       pageBuilder: (dialogCtx, _, _) {
         final theme = Theme.of(dialogCtx);
-        return SafeArea(
-          child: Center(
-            child: Padding(
-              padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 24),
-              child: ConstrainedBox(
-                constraints: const BoxConstraints(maxWidth: 420),
-                child: Material(
-                  color: tokens.surfaceElevated,
-                  surfaceTintColor: Colors.transparent,
-                  elevation: 16,
-                  shape: RoundedRectangleBorder(
-                    borderRadius: BorderRadius.circular(20),
-                    side: BorderSide(
-                      color: tokens.borderSubtle,
-                      width: tokens.borderWidth,
+        return RepaintBoundary(
+          key: const ValueKey('about_project_dialog_boundary'),
+          child: ConstrainedBox(
+            constraints: const BoxConstraints(maxWidth: 420),
+            child: Material(
+              color: tokens.surfaceElevated,
+              surfaceTintColor: Colors.transparent,
+              elevation: 16,
+              shape: RoundedRectangleBorder(
+                borderRadius: BorderRadius.circular(20),
+                side: BorderSide(
+                  color: tokens.borderSubtle,
+                  width: tokens.borderWidth,
+                ),
+              ),
+              child: SingleChildScrollView(
+                padding: const EdgeInsets.fromLTRB(24, 22, 24, 20),
+                child: Column(
+                  mainAxisSize: MainAxisSize.min,
+                  crossAxisAlignment: CrossAxisAlignment.stretch,
+                  children: [
+                    Text(
+                      i18n.t('about_project_title'),
+                      textAlign: TextAlign.center,
+                      style: theme.textTheme.titleLarge?.copyWith(
+                        fontWeight: FontWeight.w700,
+                      ),
                     ),
-                  ),
-                  child: SingleChildScrollView(
-                    padding: const EdgeInsets.fromLTRB(24, 22, 24, 20),
-                    child: Column(
-                      mainAxisSize: MainAxisSize.min,
-                      crossAxisAlignment: CrossAxisAlignment.stretch,
-                      children: [
-                        Text(
-                          i18n.t('about_project_title'),
-                          textAlign: TextAlign.center,
-                          style: theme.textTheme.titleLarge?.copyWith(
-                            fontWeight: FontWeight.w700,
-                          ),
-                        ),
-                        const SizedBox(height: 16),
-                        Center(
-                          child: Container(
-                            width: 280,
-                            height: 176,
-                            decoration: BoxDecoration(
-                              color: tokens.surfaceSubtle,
-                              borderRadius: BorderRadius.circular(14),
-                              border: Border.all(
-                                color: tokens.borderSubtle,
-                                width: 1.8,
-                              ),
-                              boxShadow: [
-                                BoxShadow(
-                                  color: Colors.black.withValues(
-                                    alpha: tokens.isNight ? 0.35 : 0.12,
-                                  ),
-                                  blurRadius: 14,
-                                  offset: const Offset(0, 6),
-                                ),
-                              ],
+                    const SizedBox(height: 16),
+                    Center(
+                      child: SizedBox(
+                        width: _kProjectTeamImageWidth,
+                        height: 176,
+                        child: DecoratedBox(
+                          decoration: BoxDecoration(
+                            color: tokens.surfaceSubtle,
+                            borderRadius: BorderRadius.circular(14),
+                            border: Border.all(
+                              color: tokens.borderSubtle,
+                              width: _kProjectTeamImageBorder,
                             ),
-                            clipBehavior: Clip.antiAlias,
-                            child: EvaCachedImage(
-                              url: _kProjectTeamImageUrl,
-                              fit: BoxFit.cover,
-                              placeholderBuilder: (_) => Center(
-                                child: CircularProgressIndicator(
-                                  strokeWidth: 2.2,
-                                  color: tokens.brandPrimary,
+                            boxShadow: [
+                              BoxShadow(
+                                color: Colors.black.withValues(
+                                  alpha: tokens.isNight ? 0.35 : 0.12,
                                 ),
-                              ),
-                              errorBuilder: (_) => Container(
-                                decoration: BoxDecoration(
-                                  gradient: LinearGradient(
-                                    begin: Alignment.topLeft,
-                                    end: Alignment.bottomRight,
-                                    colors: [
-                                      tokens.brandSoftBg,
-                                      tokens.surfaceSubtle,
-                                    ],
-                                  ),
-                                ),
-                                padding: const EdgeInsets.all(16),
-                                child: Column(
-                                  mainAxisAlignment: MainAxisAlignment.center,
-                                  children: [
-                                    const EvaBrandLogo(size: 60),
-                                    const SizedBox(height: 10),
-                                    Text(
-                                      i18n.t('about_project_school_badge'),
-                                      textAlign: TextAlign.center,
-                                      maxLines: 2,
-                                      overflow: TextOverflow.ellipsis,
-                                      style: theme.textTheme.labelMedium
-                                          ?.copyWith(
-                                            color: tokens.textSecondary,
-                                            fontWeight: FontWeight.w700,
-                                          ),
-                                    ),
-                                  ],
-                                ),
-                              ),
-                            ),
-                          ),
-                        ),
-                        const SizedBox(height: 18),
-                        Text(
-                          i18n.t('about_project_description'),
-                          textAlign: TextAlign.center,
-                          style: theme.textTheme.bodyMedium?.copyWith(
-                            color: tokens.textPrimary,
-                            height: 1.55,
-                          ),
-                        ),
-                        const SizedBox(height: 22),
-                        SizedBox(
-                          height: 44,
-                          child: Stack(
-                            alignment: Alignment.center,
-                            children: [
-                              Padding(
-                                padding: const EdgeInsets.symmetric(
-                                  horizontal: 52,
-                                ),
-                                child: ConstrainedBox(
-                                  constraints: const BoxConstraints(
-                                    minWidth: 120,
-                                  ),
-                                  child: FilledButton(
-                                    key: const ValueKey(
-                                      'about_project_close_button',
-                                    ),
-                                    onPressed: () => Navigator.pop(dialogCtx),
-                                    child: Text(i18n.t('ok_button')),
-                                  ),
-                                ),
-                              ),
-                              Align(
-                                alignment: AlignmentDirectional.centerEnd,
-                                child: Tooltip(
-                                  message: i18n.t('copyright_title'),
-                                  child: InkWell(
-                                    key: const ValueKey(
-                                      'copyright_info_button',
-                                    ),
-                                    onTap: () {
-                                      HapticFeedback.selectionClick();
-                                      Navigator.pop(dialogCtx);
-                                      _showCopyrightDialog(
-                                        context,
-                                        i18n,
-                                        tokens,
-                                      );
-                                    },
-                                    borderRadius: BorderRadius.circular(999),
-                                    child: Container(
-                                      width: 38,
-                                      height: 38,
-                                      decoration: BoxDecoration(
-                                        color: tokens.surfaceSubtle,
-                                        shape: BoxShape.circle,
-                                        border: Border.all(
-                                          color: tokens.borderSubtle,
-                                          width: 1.5,
-                                        ),
-                                      ),
-                                      child: Icon(
-                                        Icons.copyright_rounded,
-                                        size: 19,
-                                        color: tokens.textPrimary,
-                                      ),
-                                    ),
-                                  ),
-                                ),
+                                blurRadius: 14,
+                                offset: const Offset(0, 6),
                               ),
                             ],
                           ),
+                          child: Padding(
+                            padding: const EdgeInsets.all(
+                              _kProjectTeamImageBorder,
+                            ),
+                            child: ClipRRect(
+                              key: const ValueKey('about_project_photo_clip'),
+                              borderRadius: BorderRadius.circular(
+                                14 - _kProjectTeamImageBorder,
+                              ),
+                              child: EvaCachedImage(
+                                url: _kProjectTeamImageUrl,
+                                fit: BoxFit.cover,
+                                placeholderBuilder: (_) => DecoratedBox(
+                                  decoration: BoxDecoration(
+                                    gradient: LinearGradient(
+                                      begin: Alignment.topLeft,
+                                      end: Alignment.bottomRight,
+                                      colors: [
+                                        tokens.brandSoftBg,
+                                        tokens.surfaceSubtle,
+                                      ],
+                                    ),
+                                  ),
+                                  child: Center(
+                                    child: Icon(
+                                      Icons.groups_rounded,
+                                      size: 40,
+                                      color: tokens.brandPrimary.withValues(
+                                        alpha: 0.35,
+                                      ),
+                                    ),
+                                  ),
+                                ),
+                                errorBuilder: (_) => DecoratedBox(
+                                  decoration: BoxDecoration(
+                                    gradient: LinearGradient(
+                                      begin: Alignment.topLeft,
+                                      end: Alignment.bottomRight,
+                                      colors: [
+                                        tokens.brandSoftBg,
+                                        tokens.surfaceSubtle,
+                                      ],
+                                    ),
+                                  ),
+                                  child: Padding(
+                                    padding: const EdgeInsets.all(16),
+                                    child: Column(
+                                      mainAxisAlignment:
+                                          MainAxisAlignment.center,
+                                      children: [
+                                        const EvaBrandLogo(size: 60),
+                                        const SizedBox(height: 10),
+                                        Text(
+                                          i18n.t('about_project_school_badge'),
+                                          textAlign: TextAlign.center,
+                                          maxLines: 2,
+                                          overflow: TextOverflow.ellipsis,
+                                          style: theme.textTheme.labelMedium
+                                              ?.copyWith(
+                                                color: tokens.textSecondary,
+                                                fontWeight: FontWeight.w700,
+                                              ),
+                                        ),
+                                      ],
+                                    ),
+                                  ),
+                                ),
+                              ),
+                            ),
+                          ),
                         ),
-                      ],
+                      ),
                     ),
-                  ),
+                    const SizedBox(height: 18),
+                    Text(
+                      i18n.t('about_project_description'),
+                      textAlign: TextAlign.center,
+                      style: theme.textTheme.bodyMedium?.copyWith(
+                        color: tokens.textPrimary,
+                        height: 1.55,
+                      ),
+                    ),
+                    const SizedBox(height: 22),
+                    SizedBox(
+                      height: 44,
+                      child: Stack(
+                        alignment: Alignment.center,
+                        children: [
+                          Padding(
+                            padding: const EdgeInsets.symmetric(horizontal: 52),
+                            child: ConstrainedBox(
+                              constraints: const BoxConstraints(minWidth: 120),
+                              child: FilledButton(
+                                key: const ValueKey(
+                                  'about_project_close_button',
+                                ),
+                                onPressed: () => Navigator.pop(dialogCtx),
+                                child: Text(i18n.t('ok_button')),
+                              ),
+                            ),
+                          ),
+                          Align(
+                            alignment: AlignmentDirectional.centerEnd,
+                            child: Tooltip(
+                              message: i18n.t('copyright_title'),
+                              child: InkWell(
+                                key: const ValueKey('copyright_info_button'),
+                                onTap: () {
+                                  HapticFeedback.selectionClick();
+                                  Navigator.pop(dialogCtx);
+                                  _showCopyrightDialog(context, i18n, tokens);
+                                },
+                                borderRadius: BorderRadius.circular(999),
+                                child: Container(
+                                  width: 38,
+                                  height: 38,
+                                  decoration: BoxDecoration(
+                                    color: tokens.surfaceSubtle,
+                                    shape: BoxShape.circle,
+                                    border: Border.all(
+                                      color: tokens.borderSubtle,
+                                      width: 1.5,
+                                    ),
+                                  ),
+                                  child: Icon(
+                                    Icons.copyright_rounded,
+                                    size: 19,
+                                    color: tokens.textPrimary,
+                                  ),
+                                ),
+                              ),
+                            ),
+                          ),
+                        ],
+                      ),
+                    ),
+                  ],
                 ),
               ),
             ),
@@ -691,128 +743,111 @@ class SharedSettingsView extends ConsumerWidget {
       barrierLabel: i18n.t('copyright_title'),
       barrierColor: Colors.black.withValues(alpha: 0.56),
       transitionDuration: const Duration(milliseconds: 220),
-      transitionBuilder: (ctx, animation, _, child) {
-        final curved = CurvedAnimation(
-          parent: animation,
-          curve: Curves.easeOutCubic,
-          reverseCurve: Curves.easeInCubic,
-        );
-        return FadeTransition(
-          opacity: curved,
-          child: ScaleTransition(
-            scale: Tween<double>(begin: 0.94, end: 1.0).animate(curved),
-            child: child,
-          ),
-        );
-      },
+      transitionBuilder: _buildPopupTransition,
       pageBuilder: (dialogCtx, _, _) {
         final theme = Theme.of(dialogCtx);
-        return SafeArea(
-          child: Center(
-            child: Padding(
-              padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 24),
-              child: ConstrainedBox(
-                constraints: const BoxConstraints(maxWidth: 440),
-                child: Material(
-                  color: tokens.surfaceElevated,
-                  surfaceTintColor: Colors.transparent,
-                  elevation: 16,
-                  shape: RoundedRectangleBorder(
-                    borderRadius: BorderRadius.circular(20),
-                    side: BorderSide(
-                      color: tokens.borderSubtle,
-                      width: tokens.borderWidth,
+        return RepaintBoundary(
+          key: const ValueKey('copyright_dialog_boundary'),
+          child: ConstrainedBox(
+            constraints: const BoxConstraints(maxWidth: 440),
+            child: Material(
+              color: tokens.surfaceElevated,
+              surfaceTintColor: Colors.transparent,
+              elevation: 16,
+              shape: RoundedRectangleBorder(
+                borderRadius: BorderRadius.circular(20),
+                side: BorderSide(
+                  color: tokens.borderSubtle,
+                  width: tokens.borderWidth,
+                ),
+              ),
+              child: Padding(
+                padding: const EdgeInsets.fromLTRB(24, 22, 24, 20),
+                child: Column(
+                  mainAxisSize: MainAxisSize.min,
+                  crossAxisAlignment: CrossAxisAlignment.stretch,
+                  children: [
+                    Text(
+                      i18n.t('copyright_title'),
+                      textAlign: TextAlign.center,
+                      style: theme.textTheme.titleLarge?.copyWith(
+                        fontWeight: FontWeight.w700,
+                      ),
                     ),
-                  ),
-                  child: Padding(
-                    padding: const EdgeInsets.fromLTRB(24, 22, 24, 20),
-                    child: Column(
-                      mainAxisSize: MainAxisSize.min,
-                      crossAxisAlignment: CrossAxisAlignment.stretch,
-                      children: [
-                        Text(
-                          i18n.t('copyright_title'),
-                          textAlign: TextAlign.center,
-                          style: theme.textTheme.titleLarge?.copyWith(
-                            fontWeight: FontWeight.w700,
-                          ),
-                        ),
-                        const SizedBox(height: 14),
-                        ConstrainedBox(
-                          constraints: const BoxConstraints(maxHeight: 360),
-                          child: SingleChildScrollView(
-                            child: Column(
-                              crossAxisAlignment: CrossAxisAlignment.stretch,
-                              children: [
-                                _CopyrightSectionHeading(
-                                  title: i18n.t('copyright_info_title'),
-                                  tokens: tokens,
-                                ),
-                                Text(
-                                  i18n.t('copyright_info_text'),
-                                  style: theme.textTheme.bodySmall?.copyWith(
-                                    color: tokens.textSecondary,
-                                    height: 1.55,
-                                  ),
-                                ),
-                                const SizedBox(height: 14),
-                                _CopyrightSectionHeading(
-                                  title: i18n.t('license_info_title'),
-                                  tokens: tokens,
-                                ),
-                                Text(
-                                  i18n.t('license_info_text'),
-                                  style: theme.textTheme.bodySmall?.copyWith(
-                                    color: tokens.textSecondary,
-                                    height: 1.55,
-                                  ),
-                                ),
-                                const SizedBox(height: 14),
-                                _CopyrightSectionHeading(
-                                  title: i18n.t('gpl_license_title'),
-                                  tokens: tokens,
-                                ),
-                                Text(
-                                  i18n.t('gpl_license_text_1'),
-                                  style: theme.textTheme.bodySmall?.copyWith(
-                                    color: tokens.textSecondary,
-                                    height: 1.55,
-                                  ),
-                                ),
-                                const SizedBox(height: 10),
-                                Text(
-                                  i18n.t('gpl_license_text_2'),
-                                  style: theme.textTheme.bodySmall?.copyWith(
-                                    color: tokens.textSecondary,
-                                    height: 1.55,
-                                  ),
-                                ),
-                                const SizedBox(height: 10),
-                                SelectableText(
-                                  i18n.t('gpl_license_text_3'),
-                                  style: theme.textTheme.bodySmall?.copyWith(
-                                    color: tokens.textSecondary,
-                                    height: 1.55,
-                                  ),
-                                ),
-                              ],
+                    const SizedBox(height: 14),
+                    ConstrainedBox(
+                      constraints: const BoxConstraints(maxHeight: 360),
+                      child: SingleChildScrollView(
+                        child: Column(
+                          crossAxisAlignment: CrossAxisAlignment.stretch,
+                          children: [
+                            _CopyrightSectionHeading(
+                              title: i18n.t('copyright_info_title'),
+                              tokens: tokens,
                             ),
-                          ),
-                        ),
-                        const SizedBox(height: 18),
-                        Center(
-                          child: ConstrainedBox(
-                            constraints: const BoxConstraints(minWidth: 120),
-                            child: FilledButton(
-                              key: const ValueKey('copyright_close_button'),
-                              onPressed: () => Navigator.pop(dialogCtx),
-                              child: Text(i18n.t('ok_button')),
+                            Text(
+                              i18n.t('copyright_info_text'),
+                              style: theme.textTheme.bodySmall?.copyWith(
+                                color: tokens.textSecondary,
+                                height: 1.55,
+                              ),
                             ),
-                          ),
+                            const SizedBox(height: 14),
+                            _CopyrightSectionHeading(
+                              title: i18n.t('license_info_title'),
+                              tokens: tokens,
+                            ),
+                            Text(
+                              i18n.t('license_info_text'),
+                              style: theme.textTheme.bodySmall?.copyWith(
+                                color: tokens.textSecondary,
+                                height: 1.55,
+                              ),
+                            ),
+                            const SizedBox(height: 14),
+                            _CopyrightSectionHeading(
+                              title: i18n.t('gpl_license_title'),
+                              tokens: tokens,
+                            ),
+                            Text(
+                              i18n.t('gpl_license_text_1'),
+                              style: theme.textTheme.bodySmall?.copyWith(
+                                color: tokens.textSecondary,
+                                height: 1.55,
+                              ),
+                            ),
+                            const SizedBox(height: 10),
+                            Text(
+                              i18n.t('gpl_license_text_2'),
+                              style: theme.textTheme.bodySmall?.copyWith(
+                                color: tokens.textSecondary,
+                                height: 1.55,
+                              ),
+                            ),
+                            const SizedBox(height: 10),
+                            SelectableText(
+                              i18n.t('gpl_license_text_3'),
+                              style: theme.textTheme.bodySmall?.copyWith(
+                                color: tokens.textSecondary,
+                                height: 1.55,
+                              ),
+                            ),
+                          ],
                         ),
-                      ],
+                      ),
                     ),
-                  ),
+                    const SizedBox(height: 18),
+                    Center(
+                      child: ConstrainedBox(
+                        constraints: const BoxConstraints(minWidth: 120),
+                        child: FilledButton(
+                          key: const ValueKey('copyright_close_button'),
+                          onPressed: () => Navigator.pop(dialogCtx),
+                          child: Text(i18n.t('ok_button')),
+                        ),
+                      ),
+                    ),
+                  ],
                 ),
               ),
             ),

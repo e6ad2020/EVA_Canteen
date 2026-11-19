@@ -96,6 +96,62 @@ class EvaImageCache {
       return null;
     }
   }
+
+  /// Builds the exact [ImageProvider] (including quantized [ResizeImage]) that
+  /// [EvaCachedImage] resolves for [url] at [logicalWidth] and
+  /// [devicePixelRatio], ensuring pre-warmed entries hit Flutter's [ImageCache].
+  static ImageProvider? resolveImageProvider({
+    required String url,
+    required double logicalWidth,
+    required double devicePixelRatio,
+    BaseCacheManager? cacheManager,
+  }) {
+    final trimmed = url.trim();
+    if (trimmed.isEmpty) return null;
+
+    final memWidth = quantizeCacheWidth(logicalWidth, devicePixelRatio);
+    if (trimmed.startsWith('data:')) {
+      final bytes = decodeDataUri(trimmed);
+      if (bytes == null) return null;
+      return ResizeImage.resizeIfNeeded(memWidth, null, MemoryImage(bytes));
+    }
+
+    final effectiveManager = cacheManager ?? diskCacheManager;
+    final ImageProvider baseProvider = effectiveManager == null
+        ? NetworkImage(trimmed)
+        : CachedNetworkImageProvider(
+            trimmed,
+            cacheManager: effectiveManager,
+            maxWidth: maxDiskCacheWidth,
+          );
+    return ResizeImage.resizeIfNeeded(memWidth, null, baseProvider);
+  }
+
+  /// Non-blockingly pre-warms [url] into Flutter's [ImageCache] (and disk cache
+  /// on native platforms) using the exact quantized width bucket that
+  /// [EvaCachedImage] will request. Skipped in headless `flutter test` bindings
+  /// to avoid live network I/O.
+  static Future<void> precacheUrl(
+    BuildContext context, {
+    required String url,
+    required double logicalWidth,
+    BaseCacheManager? cacheManager,
+  }) async {
+    if (_isWidgetTestBinding) return;
+    final dpr = MediaQuery.devicePixelRatioOf(context);
+    final provider = resolveImageProvider(
+      url: url,
+      logicalWidth: logicalWidth,
+      devicePixelRatio: dpr,
+      cacheManager: cacheManager,
+    );
+    if (provider == null) return;
+    try {
+      await precacheImage(provider, context, onError: (_, _) {});
+    } catch (_) {
+      // Ignore offline/network pre-warm errors cleanly.
+    }
+  }
 }
 
 /// Drop-in cached network/data-URI image widget with quantized RAM sizing,

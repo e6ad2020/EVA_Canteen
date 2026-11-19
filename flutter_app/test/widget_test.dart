@@ -1204,10 +1204,77 @@ void main() {
         findsOneWidget,
       );
 
+      // Verify RepaintBoundary inside ScaleTransition/FadeTransition, SafeArea outside,
+      // ClipRRect (no ClipPath), and no spinning CircularProgressIndicator
+      final aboutBoundary = find.byKey(
+        const ValueKey('about_project_dialog_boundary'),
+      );
+      expect(aboutBoundary, findsOneWidget);
+      expect(
+        find.ancestor(
+          of: aboutBoundary,
+          matching: find.byType(ScaleTransition),
+        ),
+        findsWidgets,
+      );
+      expect(
+        find.ancestor(of: aboutBoundary, matching: find.byType(SafeArea)),
+        findsWidgets,
+      );
+      expect(
+        find.descendant(of: aboutBoundary, matching: find.byType(SafeArea)),
+        findsNothing,
+      );
+      final photoClip = find.byKey(const ValueKey('about_project_photo_clip'));
+      expect(photoClip, findsOneWidget);
+      expect(tester.widget(photoClip), isA<ClipRRect>());
+      expect(
+        find.ancestor(of: photoClip, matching: find.byType(ClipPath)),
+        findsNothing,
+      );
+      expect(
+        find.descendant(
+          of: aboutBoundary,
+          matching: find.byType(CircularProgressIndicator),
+        ),
+        findsNothing,
+      );
+
+      // Verify exact ImageProvider key match for pre-warming
+      final prewarmProvider = EvaImageCache.resolveImageProvider(
+        url: 'https://example.com/team.jpg',
+        logicalWidth: 276.4,
+        devicePixelRatio: 3.0,
+      );
+      final dialogProvider = ResizeImage.resizeIfNeeded(
+        960,
+        null,
+        const NetworkImage('https://example.com/team.jpg'),
+      );
+      expect(prewarmProvider, equals(dialogProvider));
+
       // Tap copyright icon -> closes About modal & opens License & Copyright modal
       await tester.tap(find.byKey(const ValueKey('copyright_info_button')));
       await tester.pumpAndSettle();
       expect(find.text('License & Copyright'), findsOneWidget);
+      final copyrightBoundary = find.byKey(
+        const ValueKey('copyright_dialog_boundary'),
+      );
+      expect(copyrightBoundary, findsOneWidget);
+      expect(
+        find.ancestor(
+          of: copyrightBoundary,
+          matching: find.byType(ScaleTransition),
+        ),
+        findsWidgets,
+      );
+      expect(
+        find.descendant(
+          of: copyrightBoundary,
+          matching: find.byType(SafeArea),
+        ),
+        findsNothing,
+      );
       expect(
         find.textContaining('Copyright (C) 2025 EVA International School'),
         findsOneWidget,
