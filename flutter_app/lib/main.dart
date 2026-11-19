@@ -11,6 +11,7 @@ import 'core/media/eva_image_cache.dart';
 import 'core/notifications/notification_providers.dart';
 import 'core/state/canteen_providers.dart';
 import 'design_system/eva_theme.dart';
+import 'features/splash/eva_splash_overlay.dart';
 
 Future<void> main() async {
   WidgetsFlutterBinding.ensureInitialized();
@@ -27,7 +28,9 @@ Future<void> main() async {
 }
 
 class EvaCanteenApp extends ConsumerWidget {
-  const EvaCanteenApp({super.key});
+  const EvaCanteenApp({super.key, this.forceShowSplashInTests = false});
+
+  final bool forceShowSplashInTests;
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
@@ -55,6 +58,10 @@ class EvaCanteenApp extends ConsumerWidget {
         GlobalCupertinoLocalizations.delegate,
       ],
       routerConfig: router,
+      builder: (context, child) => EvaSplashOverlay(
+        forceShowInTests: forceShowSplashInTests,
+        child: child ?? const SizedBox.shrink(),
+      ),
     );
   }
 }

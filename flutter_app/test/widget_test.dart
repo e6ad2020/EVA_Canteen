@@ -1734,6 +1734,122 @@ void main() {
       expect(tester.takeException(), isNull);
     },
   );
+
+  testWidgets(
+    'EvaSplashOverlay plays pure logo-only animation with zero text and unmounts completely on finish',
+    (tester) async {
+      await tester.binding.setSurfaceSize(const Size(360, 800));
+      addTearDown(() => tester.binding.setSurfaceSize(null));
+
+      SharedPreferences.setMockInitialValues({});
+      final prefs = await SharedPreferences.getInstance();
+      final socket = _RecordingSocketClient();
+
+      await tester.pumpWidget(
+        ProviderScope(
+          overrides: [
+            sharedPrefsProvider.overrideWithValue(prefs),
+            socketClientProvider.overrideWithValue(socket),
+          ],
+          child: const EvaCanteenApp(forceShowSplashInTests: true),
+        ),
+      );
+      await tester.pump();
+      await tester.pump(const Duration(milliseconds: 220));
+
+      final overlayFinder = find.byKey(const ValueKey('eva_splash_overlay'));
+      expect(overlayFinder, findsOneWidget);
+      // Verify 100% pure visual logo animation with ZERO Text widgets inside splash
+      expect(
+        find.descendant(of: overlayFinder, matching: find.byType(Text)),
+        findsNothing,
+      );
+
+      // Pump through all 4 choreography phases + handoff
+      await tester.pump(const Duration(milliseconds: 500));
+      await tester.pump(const Duration(milliseconds: 800));
+      await tester.pumpAndSettle();
+
+      // Overlay must completely unmount after finishing
+      expect(overlayFinder, findsNothing);
+      expect(find.text('Welcome back'), findsOneWidget);
+      expect(tester.takeException(), isNull);
+    },
+  );
+
+  testWidgets(
+    'EvaSplashOverlay supports tap-to-skip, Reduce Motion bypass, and cold-start deep-link bypass',
+    (tester) async {
+      await tester.binding.setSurfaceSize(const Size(360, 800));
+      addTearDown(() => tester.binding.setSurfaceSize(null));
+
+      SharedPreferences.setMockInitialValues({});
+      final prefs = await SharedPreferences.getInstance();
+      final socket = _RecordingSocketClient();
+
+      // 1. Tap-to-skip dismisses quickly
+      await tester.pumpWidget(
+        ProviderScope(
+          overrides: [
+            sharedPrefsProvider.overrideWithValue(prefs),
+            socketClientProvider.overrideWithValue(socket),
+          ],
+          child: const EvaCanteenApp(forceShowSplashInTests: true),
+        ),
+      );
+      await tester.pump();
+      await tester.pump(const Duration(milliseconds: 200));
+
+      final overlayFinder = find.byKey(const ValueKey('eva_splash_overlay'));
+      expect(overlayFinder, findsOneWidget);
+
+      await tester.tap(overlayFinder);
+      await tester.pump(const Duration(milliseconds: 260));
+      await tester.pumpAndSettle();
+      expect(overlayFinder, findsNothing);
+
+      // 2. Reduce Motion (disableAnimations: true) bypasses immediately
+      tester.platformDispatcher.accessibilityFeaturesTestValue =
+          const FakeAccessibilityFeatures(disableAnimations: true);
+      addTearDown(
+        tester.platformDispatcher.clearAccessibilityFeaturesTestValue,
+      );
+      await tester.pumpWidget(
+        ProviderScope(
+          key: const ValueKey('reduce_motion_scope'),
+          overrides: [
+            sharedPrefsProvider.overrideWithValue(prefs),
+            socketClientProvider.overrideWithValue(socket),
+          ],
+          child: const EvaCanteenApp(forceShowSplashInTests: true),
+        ),
+      );
+      await tester.pump();
+      expect(overlayFinder, findsNothing);
+      tester.platformDispatcher.clearAccessibilityFeaturesTestValue();
+
+      // 3. Cold-start notification deep link bypasses splash immediately
+      final deepLinkContainer = ProviderContainer(
+        overrides: [
+          sharedPrefsProvider.overrideWithValue(prefs),
+          socketClientProvider.overrideWithValue(socket),
+        ],
+      );
+      addTearDown(deepLinkContainer.dispose);
+      deepLinkContainer
+          .read(pendingDeepLinkProvider.notifier)
+          .setPending('/orders?orderId=ORD-77-1700000001');
+
+      await tester.pumpWidget(
+        UncontrolledProviderScope(
+          container: deepLinkContainer,
+          child: const EvaCanteenApp(forceShowSplashInTests: true),
+        ),
+      );
+      await tester.pump();
+      expect(overlayFinder, findsNothing);
+    },
+  );
 }
 
 class _RecordingSocketClient extends EvaSocketClient {

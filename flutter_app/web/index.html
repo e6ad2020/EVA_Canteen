@@ -31,16 +31,84 @@
 
   <title>EVA Canteen — كانتين إيفا</title>
   <link rel="manifest" href="manifest.json">
+
+  <style>
+    :root {
+      --eva-splash-bg: #F4F8FF;
+      --eva-splash-glow: rgba(13, 71, 161, 0.16);
+    }
+    @media (prefers-color-scheme: dark) {
+      :root {
+        --eva-splash-bg: #0F172A;
+        --eva-splash-glow: rgba(92, 225, 230, 0.18);
+      }
+    }
+    html, body {
+      margin: 0;
+      padding: 0;
+      width: 100%;
+      height: 100%;
+      background-color: var(--eva-splash-bg);
+      overflow: hidden;
+    }
+    #eva-web-splash {
+      position: fixed;
+      inset: 0;
+      z-index: 99999;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      background:
+        radial-gradient(circle at 50% 50%, var(--eva-splash-glow) 0%, transparent 56%),
+        var(--eva-splash-bg);
+      opacity: 1;
+      transition: opacity 280ms cubic-bezier(0.22, 1, 0.36, 1);
+      pointer-events: auto;
+    }
+    #eva-web-splash.eva-splash-hiding {
+      opacity: 0;
+      pointer-events: none;
+    }
+    #eva-web-splash img {
+      width: min(192px, 46vw);
+      height: auto;
+      user-select: none;
+      -webkit-user-drag: none;
+      animation: evaSplashBreathe 1.4s ease-in-out infinite alternate;
+    }
+    @keyframes evaSplashBreathe {
+      from { transform: scale(0.96); opacity: 0.92; }
+      to   { transform: scale(1.03); opacity: 1; }
+    }
+    @media (prefers-reduced-motion: reduce) {
+      #eva-web-splash img { animation: none; }
+      #eva-web-splash { transition: none; }
+    }
+  </style>
 </head>
 <body>
-  <!--
-    You can customize the "flutter_bootstrap.js" script.
-    This is useful to provide a custom configuration to the Flutter loader
-    or to give the user feedback during the initialization process.
-
-    For more details:
-    * https://docs.flutter.dev/platform-integration/web/initialization
-  -->
+  <div id="eva-web-splash" aria-hidden="true">
+    <img src="icons/splash-logo.png" alt="">
+  </div>
+  <script>
+    (function () {
+      var dismissed = false;
+      function dismissSplash() {
+        if (dismissed) return;
+        dismissed = true;
+        var el = document.getElementById('eva-web-splash');
+        if (!el) return;
+        el.classList.add('eva-splash-hiding');
+        window.setTimeout(function () {
+          if (el && el.parentNode) {
+            el.parentNode.removeChild(el);
+          }
+        }, 320);
+      }
+      window.addEventListener('flutter-first-frame', dismissSplash, { once: true });
+      window.setTimeout(dismissSplash, 7000);
+    })();
+  </script>
   <script src="flutter_bootstrap.js" async></script>
 </body>
 </html>
