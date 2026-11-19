@@ -4,6 +4,7 @@ import 'package:go_router/go_router.dart';
 import 'package:material_ui/material_ui.dart';
 
 import '../../core/localization/eva_i18n.dart';
+import '../../core/media/eva_image_cache.dart';
 import '../../core/models/domain_models.dart';
 import '../../core/notifications/notification_providers.dart';
 import '../../core/notifications/notification_service.dart';
@@ -551,19 +552,16 @@ class SharedSettingsView extends ConsumerWidget {
                               ],
                             ),
                             clipBehavior: Clip.antiAlias,
-                            child: Image.network(
-                              _kProjectTeamImageUrl,
+                            child: EvaCachedImage(
+                              url: _kProjectTeamImageUrl,
                               fit: BoxFit.cover,
-                              loadingBuilder: (context, child, progress) {
-                                if (progress == null) return child;
-                                return Center(
-                                  child: CircularProgressIndicator(
-                                    strokeWidth: 2.2,
-                                    color: tokens.brandPrimary,
-                                  ),
-                                );
-                              },
-                              errorBuilder: (_, _, _) => Container(
+                              placeholderBuilder: (_) => Center(
+                                child: CircularProgressIndicator(
+                                  strokeWidth: 2.2,
+                                  color: tokens.brandPrimary,
+                                ),
+                              ),
+                              errorBuilder: (_) => Container(
                                 decoration: BoxDecoration(
                                   gradient: LinearGradient(
                                     begin: Alignment.topLeft,

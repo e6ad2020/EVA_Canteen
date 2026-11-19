@@ -262,7 +262,10 @@ app.post('/api/upload-image', (req, res) => {
     res.json({ url: `/uploads/${filename}` });
 });
 
-app.use('/uploads', express.static(UPLOADS_DIR));
+app.use('/uploads', express.static(UPLOADS_DIR, {
+    maxAge: '30d',
+    immutable: true
+}));
 app.use('/releases', express.static(path.join(__dirname, 'releases'), {
     setHeaders: (res, filePath) => {
         if (filePath.endsWith('.apk')) {

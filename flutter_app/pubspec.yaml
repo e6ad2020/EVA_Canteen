@@ -1,7 +1,7 @@
 name: eva_canteen
 description: "EVA Canteen — Modern Bilingual Digital Ordering, Live Pickup Pass & Kitchen Display System."
 publish_to: 'none'
-version: 2.0.0+2012
+version: 2.0.0+2013
 
 environment:
   sdk: ^3.14.0
@@ -26,6 +26,8 @@ dependencies:
   firebase_core: ^5.2.0
   firebase_messaging: ^17.1.0
   flutter_local_notifications: ^23.0.3
+  cached_network_image: ^3.4.1
+  flutter_cache_manager: ^3.4.1
 
 dev_dependencies:
   flutter_test:

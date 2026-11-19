@@ -6,6 +6,7 @@ import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:material_ui/material_ui.dart';
 
+import '../../core/media/eva_image_cache.dart';
 import '../../core/models/domain_models.dart';
 import '../../core/network/eva_socket_client.dart';
 import '../../core/state/canteen_providers.dart';
@@ -45,6 +46,11 @@ class EvaScaffoldBackground extends StatelessWidget {
                           final isDesktop = constraints.maxWidth >= 768;
                           final assetPath =
                               '$wallpaperFolder/${isDesktop ? "desktop.png" : "phone.png"}';
+                          final dpr = MediaQuery.devicePixelRatioOf(context);
+                          final wallpaperCacheWidth =
+                              (constraints.maxWidth * dpr)
+                                  .round()
+                                  .clamp(360, 1920);
                           return Stack(
                             fit: StackFit.expand,
                             children: [
@@ -52,6 +58,7 @@ class EvaScaffoldBackground extends StatelessWidget {
                                 assetPath,
                                 fit: BoxFit.cover,
                                 alignment: Alignment.center,
+                                cacheWidth: wallpaperCacheWidth,
                                 gaplessPlayback: true,
                                 filterQuality: FilterQuality.medium,
                                 errorBuilder: (_, _, _) =>
@@ -2112,28 +2119,24 @@ class EvaProductImage extends ConsumerWidget {
     if (resolved.isEmpty) {
       content = _fallbackPlaceholder(tokens);
     } else {
-      content = Image.network(
-        resolved,
+      content = EvaCachedImage(
+        url: resolved,
         fit: BoxFit.cover,
-        gaplessPlayback: true,
         filterQuality: FilterQuality.medium,
-        errorBuilder: (_, _, _) => _fallbackPlaceholder(tokens),
-        loadingBuilder: (context, child, progress) {
-          if (progress == null) return child;
-          return ColoredBox(
-            color: tokens.surfaceSubtle,
-            child: Center(
-              child: SizedBox(
-                width: 20,
-                height: 20,
-                child: CircularProgressIndicator(
-                  strokeWidth: 2,
-                  color: tokens.brandPrimary,
-                ),
+        errorBuilder: (_) => _fallbackPlaceholder(tokens),
+        placeholderBuilder: (_) => ColoredBox(
+          color: tokens.surfaceSubtle,
+          child: Center(
+            child: SizedBox(
+              width: 20,
+              height: 20,
+              child: CircularProgressIndicator(
+                strokeWidth: 2,
+                color: tokens.brandPrimary,
               ),
             ),
-          );
-        },
+          ),
+        ),
       );
     }
 

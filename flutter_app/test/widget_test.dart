@@ -1,5 +1,6 @@
 import 'dart:async';
 
+import 'package:eva_canteen/core/media/eva_image_cache.dart';
 import 'package:eva_canteen/core/models/domain_models.dart';
 import 'package:eva_canteen/core/network/eva_socket_client.dart';
 import 'package:eva_canteen/core/notifications/notification_providers.dart';
@@ -1645,6 +1646,92 @@ void main() {
       await tester.tap(find.text('Settings'));
       await tester.pumpAndSettle();
       expect(find.text('Light Blue'), findsOneWidget);
+    },
+  );
+
+  testWidgets(
+    'EvaImageCache quantizes RAM cache widths, caches data URIs, and preserves Menu images across tab switches',
+    (tester) async {
+      // 1. Quantized bucket checks
+      expect(EvaImageCache.quantizeCacheWidth(28, 3.0), 160);
+      expect(EvaImageCache.quantizeCacheWidth(160, 2.5), 480);
+      expect(EvaImageCache.quantizeCacheWidth(360, 3.0), 960);
+      expect(EvaImageCache.quantizeCacheWidth(double.infinity, 2.0), 480);
+
+      // 2. Memory cache configuration
+      EvaImageCache.configureMemoryCache();
+      expect(PaintingBinding.instance.imageCache.maximumSize, 300);
+      expect(PaintingBinding.instance.imageCache.maximumSizeBytes, 150 << 20);
+
+      // 3. Cached data-URI decoding returns identical Uint8List reference on repeat calls
+      const tinyPngDataUri =
+          'data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAADUlEQVR42mP8z8BQDwAEhQGAhKmMIQAAAABJRU5ErkJggg==';
+      final decoded1 = EvaImageCache.decodeDataUri(tinyPngDataUri);
+      final decoded2 = EvaImageCache.decodeDataUri(tinyPngDataUri);
+      expect(decoded1, isNotNull);
+      expect(identical(decoded1, decoded2), isTrue);
+      expect(EvaImageCache.decodeDataUri('data:image/png;base64,!!!'), isNull);
+
+      // 4. Widget test: Menu -> Orders -> Settings -> Menu keeps Menu images rendered with zero spinner
+      await tester.binding.setSurfaceSize(const Size(360, 800));
+      addTearDown(() => tester.binding.setSurfaceSize(null));
+
+      SharedPreferences.setMockInitialValues({
+        'eva_saved_session_v2':
+            '{"email":"student@eva.edu","role":"student","profilePic":"pic2","balance":90,"token":"jwt-img-cache"}',
+      });
+      final prefs = await SharedPreferences.getInstance();
+      final socket = _RecordingSocketClient();
+
+      final container = ProviderContainer(
+        overrides: [
+          sharedPrefsProvider.overrideWithValue(prefs),
+          socketClientProvider.overrideWithValue(socket),
+        ],
+      );
+      addTearDown(container.dispose);
+
+      await tester.pumpWidget(
+        UncontrolledProviderScope(
+          container: container,
+          child: const EvaCanteenApp(),
+        ),
+      );
+      await tester.pumpAndSettle();
+
+      socket.injectTestEvent('initial_translations', {
+        'item_cached_burger': {'en': 'Classic Burger', 'ar': 'برجر كلاسيك'},
+        'desc_cached_burger': {'en': 'Grilled beef patty', 'ar': 'لحم مشوي'},
+      });
+      socket.injectTestEvent('initial_products', [
+        {
+          'id': 'p_cached_1',
+          'name_key': 'item_cached_burger',
+          'description_key': 'desc_cached_burger',
+          'price': 60,
+          'quantity': 12,
+          'image': tinyPngDataUri,
+          'category': 'sandwiches',
+        },
+      ]);
+      await tester.pumpAndSettle();
+
+      expect(find.text('Classic Burger'), findsOneWidget);
+      expect(find.byType(EvaCachedImage), findsOneWidget);
+      expect(find.byType(CircularProgressIndicator), findsNothing);
+
+      // Navigate away to Orders, then Settings, then back to Menu
+      await tester.tap(find.text('Orders'));
+      await tester.pumpAndSettle();
+      await tester.tap(find.text('Settings'));
+      await tester.pumpAndSettle();
+      await tester.tap(find.text('Menu'));
+      await tester.pumpAndSettle();
+
+      expect(find.text('Classic Burger'), findsOneWidget);
+      expect(find.byType(EvaCachedImage), findsOneWidget);
+      expect(find.byType(CircularProgressIndicator), findsNothing);
+      expect(tester.takeException(), isNull);
     },
   );
 }

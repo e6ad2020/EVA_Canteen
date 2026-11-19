@@ -7,12 +7,14 @@ import 'package:material_ui/material_ui.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 
 import 'app/app_router.dart';
+import 'core/media/eva_image_cache.dart';
 import 'core/notifications/notification_providers.dart';
 import 'core/state/canteen_providers.dart';
 import 'design_system/eva_theme.dart';
 
 Future<void> main() async {
   WidgetsFlutterBinding.ensureInitialized();
+  EvaImageCache.configureMemoryCache();
   SystemChrome.setEnabledSystemUIMode(SystemUiMode.edgeToEdge);
   final prefs = await SharedPreferences.getInstance();
 
