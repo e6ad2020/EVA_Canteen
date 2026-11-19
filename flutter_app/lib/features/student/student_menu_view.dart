@@ -18,17 +18,90 @@ class StudentMenuView extends ConsumerStatefulWidget {
   ConsumerState<StudentMenuView> createState() => _StudentMenuViewState();
 }
 
-class _StudentMenuViewState extends ConsumerState<StudentMenuView> {
+class _StudentMenuViewState extends ConsumerState<StudentMenuView>
+    with TickerProviderStateMixin {
   final _searchCtrl = TextEditingController();
   final _categoryScrollCtrl = ScrollController();
   final Map<String, GlobalKey> _chipKeys = {};
   String _searchQuery = '';
   String? _selectedCategoryKey;
-  int _categorySwitchTick = 0;
   double _categorySlideDir = 1.0;
+
+  late final AnimationController _gridTransitionCtrl;
+  late final CurvedAnimation _gridCurve;
+  late final Animation<double> _gridOpacity;
+  late final Animation<Offset> _slideFromRight;
+  late final Animation<Offset> _slideFromLeft;
+
+  late final AnimationController _combosCtrl;
+  late final CurvedAnimation _combosCurve;
+  bool _combosInitialized = false;
+  bool _lastShowCombos = false;
+
+  @override
+  void initState() {
+    super.initState();
+    _gridTransitionCtrl = AnimationController(
+      vsync: this,
+      duration: const Duration(milliseconds: 175),
+      value: 1.0,
+    );
+    _gridCurve = CurvedAnimation(
+      parent: _gridTransitionCtrl,
+      curve: Curves.easeOutCubic,
+    );
+    _gridOpacity = Tween<double>(begin: 0.35, end: 1.0).animate(_gridCurve);
+    _slideFromRight = Tween<Offset>(
+      begin: const Offset(0.055, 0.0),
+      end: Offset.zero,
+    ).animate(_gridCurve);
+    _slideFromLeft = Tween<Offset>(
+      begin: const Offset(-0.055, 0.0),
+      end: Offset.zero,
+    ).animate(_gridCurve);
+
+    _combosCtrl = AnimationController(
+      vsync: this,
+      duration: const Duration(milliseconds: 175),
+    );
+    _combosCurve = CurvedAnimation(
+      parent: _combosCtrl,
+      curve: Curves.easeOutCubic,
+    );
+    _combosCtrl.addStatusListener(_handleCombosStatus);
+  }
+
+  void _handleCombosStatus(AnimationStatus status) {
+    if (status == AnimationStatus.dismissed && mounted) {
+      setState(() {});
+    }
+  }
+
+  void _syncCombosVisibility(bool showCombos, bool disableMotion) {
+    if (!_combosInitialized) {
+      _combosInitialized = true;
+      _lastShowCombos = showCombos;
+      _combosCtrl.value = showCombos ? 1.0 : 0.0;
+      return;
+    }
+    if (showCombos == _lastShowCombos) return;
+    _lastShowCombos = showCombos;
+    if (disableMotion) {
+      _combosCtrl.value = showCombos ? 1.0 : 0.0;
+    } else if (showCombos) {
+      _combosCtrl.forward();
+    } else {
+      _combosCtrl.reverse();
+    }
+  }
 
   @override
   void dispose() {
+    _combosCtrl.removeStatusListener(_handleCombosStatus);
+    _combosCurve.dispose();
+    _combosCtrl.dispose();
+    _gridCurve.dispose();
+    _gridTransitionCtrl.dispose();
     _searchCtrl.dispose();
     _categoryScrollCtrl.dispose();
     super.dispose();
@@ -43,12 +116,18 @@ class _StudentMenuViewState extends ConsumerState<StudentMenuView> {
     final oldIdx = orderedKeys.indexOf(_selectedCategoryKey);
     final newIdx = orderedKeys.indexOf(nextKey);
     final logicalDir = newIdx >= oldIdx ? 1.0 : -1.0;
+    final disableMotion = MediaQuery.maybeDisableAnimationsOf(context) ?? false;
 
     setState(() {
       _selectedCategoryKey = nextKey;
       _categorySlideDir = logicalDir;
-      _categorySwitchTick++;
     });
+
+    if (disableMotion) {
+      _gridTransitionCtrl.value = 1.0;
+    } else {
+      _gridTransitionCtrl.forward(from: 0.0);
+    }
 
     WidgetsBinding.instance.addPostFrameCallback((_) {
       if (!mounted || !_categoryScrollCtrl.hasClients) return;
@@ -63,6 +142,12 @@ class _StudentMenuViewState extends ConsumerState<StudentMenuView> {
       final chipLeftInViewport = chipBox
           .localToGlobal(Offset.zero, ancestor: listBox)
           .dx;
+      final chipRightInViewport = chipLeftInViewport + chipBox.size.width;
+      const edgeComfortMargin = 8.0;
+      if (chipLeftInViewport >= edgeComfortMargin &&
+          chipRightInViewport <= listBox.size.width - edgeComfortMargin) {
+        return;
+      }
       final desiredDelta =
           (chipLeftInViewport + chipBox.size.width / 2) -
           (listBox.size.width / 2);
@@ -70,10 +155,10 @@ class _StudentMenuViewState extends ConsumerState<StudentMenuView> {
         0.0,
         position.maxScrollExtent,
       );
-      if ((targetOffset - position.pixels).abs() > 2.0) {
+      if ((targetOffset - position.pixels).abs() > 12.0) {
         _categoryScrollCtrl.animateTo(
           targetOffset,
-          duration: const Duration(milliseconds: 260),
+          duration: const Duration(milliseconds: 180),
           curve: Curves.easeOutCubic,
         );
       }
@@ -124,6 +209,18 @@ class _StudentMenuViewState extends ConsumerState<StudentMenuView> {
         _searchQuery.trim().isEmpty &&
         _selectedCategoryKey == null &&
         activeBundles.isNotEmpty;
+    final disableMotion = MediaQuery.maybeDisableAnimationsOf(context) ?? false;
+    _syncCombosVisibility(
+      showCombos,
+      disableMotion || activeBundles.isEmpty,
+    );
+    final renderCombos =
+        activeBundles.isNotEmpty && (showCombos || !_combosCtrl.isDismissed);
+
+    final isRtl = Directionality.of(context) == TextDirection.rtl;
+    final visualDir = isRtl ? -_categorySlideDir : _categorySlideDir;
+    final activeSlide = visualDir >= 0 ? _slideFromRight : _slideFromLeft;
+
     final isGuest = user == null || user.role == UserRole.guest;
     final showWalletInHeader =
         !isGuest &&
@@ -233,9 +330,24 @@ class _StudentMenuViewState extends ConsumerState<StudentMenuView> {
       bodyBuilder: (context, topClearance, _) => Stack(
         fit: StackFit.expand,
         children: [
-          CustomScrollView(
-            physics: const ClampingScrollPhysics(),
-            slivers: [
+          LayoutBuilder(
+            builder: (context, viewportConstraints) {
+              final totalW = viewportConstraints.maxWidth;
+              final sidePad = totalW < 420
+                  ? 12.0
+                  : math.max(16.0, (totalW - 1180) / 2);
+              final gridW = math.max(220.0, totalW - sidePad * 2);
+
+              final int cols = gridW < 260
+                  ? 1
+                  : (gridW < 620 ? 2 : (gridW < 920 ? 3 : 4));
+              final double spacing = cols <= 2 ? 10 : 14;
+              final double cardHeight = cols <= 2 ? 262 : 280;
+              final navClearance = EvaFloatingNavBar.bottomClearance(context);
+
+              return CustomScrollView(
+                physics: const ClampingScrollPhysics(),
+                slivers: [
               SliverToBoxAdapter(
                 child: Padding(
                   padding: EdgeInsets.fromLTRB(12, topClearance + 4, 12, 6),
@@ -410,166 +522,170 @@ class _StudentMenuViewState extends ConsumerState<StudentMenuView> {
                 ),
               ),
 
-              // Smoothly collapsing/expanding Featured Combos & Deals Carousel
-              SliverToBoxAdapter(
-                child: AnimatedSize(
-                  duration: const Duration(milliseconds: 260),
-                  curve: Curves.easeOutCubic,
-                  alignment: Alignment.topCenter,
-                  child: !showCombos
-                      ? const SizedBox(width: double.infinity)
-                      : Center(
-                          child: ConstrainedBox(
-                            constraints: const BoxConstraints(maxWidth: 1180),
-                            child: Column(
-                              crossAxisAlignment: CrossAxisAlignment.start,
-                              children: [
-                                Padding(
-                                  padding: const EdgeInsets.fromLTRB(
-                                    12,
-                                    8,
-                                    12,
-                                    8,
-                                  ),
-                                  child: Row(
-                                    children: [
-                                      Icon(
-                                        Icons.local_fire_department_rounded,
-                                        size: 20,
-                                        color: tokens.accentAppetite,
+                  // Smoothly collapsing/expanding Featured Combos & Deals Carousel
+                  SliverToBoxAdapter(
+                    child: !renderCombos
+                        ? const SizedBox.shrink()
+                        : IgnorePointer(
+                            ignoring: !showCombos,
+                            child: FadeTransition(
+                              opacity: _combosCurve,
+                              child: SizeTransition(
+                                sizeFactor: _combosCurve,
+                                alignment: Alignment.topCenter,
+                                child: RepaintBoundary(
+                                  child: Center(
+                                    child: ConstrainedBox(
+                                      constraints: const BoxConstraints(
+                                        maxWidth: 1180,
                                       ),
-                                      const SizedBox(width: 6),
-                                      Expanded(
-                                        child: Text(
-                                          i18n.t('smart_combos_title'),
-                                          maxLines: 1,
-                                          overflow: TextOverflow.ellipsis,
-                                          style: Theme.of(
-                                            context,
-                                          ).textTheme.titleLarge,
-                                        ),
+                                      child: Column(
+                                        crossAxisAlignment:
+                                            CrossAxisAlignment.start,
+                                        children: [
+                                          Padding(
+                                            padding: const EdgeInsets.fromLTRB(
+                                              12,
+                                              8,
+                                              12,
+                                              8,
+                                            ),
+                                            child: Row(
+                                              children: [
+                                                Icon(
+                                                  Icons
+                                                      .local_fire_department_rounded,
+                                                  size: 20,
+                                                  color: tokens.accentAppetite,
+                                                ),
+                                                const SizedBox(width: 6),
+                                                Expanded(
+                                                  child: Text(
+                                                    i18n.t(
+                                                      'smart_combos_title',
+                                                    ),
+                                                    maxLines: 1,
+                                                    overflow:
+                                                        TextOverflow.ellipsis,
+                                                    style: Theme.of(
+                                                      context,
+                                                    ).textTheme.titleLarge,
+                                                  ),
+                                                ),
+                                              ],
+                                            ),
+                                          ),
+                                          SizedBox(
+                                            height: 170,
+                                            child: ListView.separated(
+                                              padding:
+                                                  const EdgeInsets.symmetric(
+                                                    horizontal: 12,
+                                                  ),
+                                              scrollDirection: Axis.horizontal,
+                                              addRepaintBoundaries: false,
+                                              itemCount: activeBundles.length,
+                                              separatorBuilder: (_, _) =>
+                                                  const SizedBox(width: 12),
+                                              itemBuilder: (context, idx) =>
+                                                  _SmartBundleCard(
+                                                    key: ValueKey<String>(
+                                                      activeBundles[idx].id,
+                                                    ),
+                                                    bundle: activeBundles[idx],
+                                                  ),
+                                            ),
+                                          ),
+                                        ],
                                       ),
-                                    ],
-                                  ),
-                                ),
-                                SizedBox(
-                                  height: 170,
-                                  child: ListView.separated(
-                                    padding: const EdgeInsets.symmetric(
-                                      horizontal: 12,
                                     ),
-                                    scrollDirection: Axis.horizontal,
-                                    itemCount: activeBundles.length,
-                                    separatorBuilder: (_, _) =>
-                                        const SizedBox(width: 12),
-                                    itemBuilder: (context, idx) {
-                                      return EvaReveal(
-                                        index: idx,
-                                        child: _SmartBundleCard(
-                                          bundle: activeBundles[idx],
-                                        ),
-                                      );
-                                    },
                                   ),
                                 ),
+                              ),
+                            ),
+                          ),
+                  ),
+
+                  // Category Filter Chips with Auto-Centering & Animated Active State
+                  SliverToBoxAdapter(
+                    child: RepaintBoundary(
+                      child: Center(
+                        child: ConstrainedBox(
+                          constraints: const BoxConstraints(maxWidth: 1180),
+                          child: SizedBox(
+                            height: 54,
+                            child: ListView(
+                              controller: _categoryScrollCtrl,
+                              padding: const EdgeInsets.fromLTRB(12, 8, 12, 6),
+                              scrollDirection: Axis.horizontal,
+                              children: [
+                                _CategoryFilterChip(
+                                  key: _chipKeyFor(null),
+                                  label: i18n.t('all_categories'),
+                                  selected: _selectedCategoryKey == null,
+                                  onTap: () =>
+                                      _selectCategory(null, visibleCategories),
+                                ),
+                                for (final cat in visibleCategories) ...[
+                                  const SizedBox(width: 8),
+                                  _CategoryFilterChip(
+                                    key: _chipKeyFor(cat.key),
+                                    label: i18n.t(cat.nameKey),
+                                    selected: _selectedCategoryKey == cat.key,
+                                    onTap: () => _selectCategory(
+                                      cat.key,
+                                      visibleCategories,
+                                    ),
+                                  ),
+                                ],
                               ],
                             ),
                           ),
                         ),
-                ),
-              ),
-
-              // Category Filter Chips with Auto-Centering & Animated Active State
-              SliverToBoxAdapter(
-                child: Center(
-                  child: ConstrainedBox(
-                    constraints: const BoxConstraints(maxWidth: 1180),
-                    child: SizedBox(
-                      height: 54,
-                      child: ListView(
-                        controller: _categoryScrollCtrl,
-                        padding: const EdgeInsets.fromLTRB(12, 8, 12, 6),
-                        scrollDirection: Axis.horizontal,
-                        children: [
-                          _CategoryFilterChip(
-                            key: _chipKeyFor(null),
-                            label: i18n.t('all_categories'),
-                            selected: _selectedCategoryKey == null,
-                            onTap: () =>
-                                _selectCategory(null, visibleCategories),
-                          ),
-                          for (final cat in visibleCategories) ...[
-                            const SizedBox(width: 8),
-                            _CategoryFilterChip(
-                              key: _chipKeyFor(cat.key),
-                              label: i18n.t(cat.nameKey),
-                              selected: _selectedCategoryKey == cat.key,
-                              onTap: () =>
-                                  _selectCategory(cat.key, visibleCategories),
-                            ),
-                          ],
-                        ],
                       ),
                     ),
                   ),
-                ),
-              ),
 
-              // True Multi-Column Product Grid with Directional Category Transitions
-              SliverLayoutBuilder(
-                builder: (context, constraints) {
-                  final totalW = constraints.crossAxisExtent;
-                  final sidePad = totalW < 420
-                      ? 12.0
-                      : math.max(16.0, (totalW - 1180) / 2);
-                  final gridW = math.max(220.0, totalW - sidePad * 2);
-
-                  final int cols = gridW < 260
-                      ? 1
-                      : (gridW < 620 ? 2 : (gridW < 920 ? 3 : 4));
-                  final double spacing = cols <= 2 ? 10 : 14;
-                  final double cardHeight = cols <= 2 ? 262 : 280;
-
-                  final navClearance = EvaFloatingNavBar.bottomClearance(
-                    context,
-                  );
-
-                  return SliverPadding(
+                  // Multi-Column Product Grid with Single-Layer GPU Category Transition
+                  SliverPadding(
                     padding: EdgeInsets.fromLTRB(
                       sidePad,
                       8,
                       sidePad,
                       (cartSummary.isEmpty ? 24.0 : 96.0) + navClearance,
                     ),
-                    sliver: SliverGrid(
-                      gridDelegate: SliverGridDelegateWithFixedCrossAxisCount(
-                        crossAxisCount: cols,
-                        mainAxisSpacing: spacing,
-                        crossAxisSpacing: spacing,
-                        mainAxisExtent: cardHeight,
+                    sliver: SliverFadeTransition(
+                      opacity: _gridOpacity,
+                      sliver: SliverGrid(
+                        gridDelegate: SliverGridDelegateWithFixedCrossAxisCount(
+                          crossAxisCount: cols,
+                          mainAxisSpacing: spacing,
+                          crossAxisSpacing: spacing,
+                          mainAxisExtent: cardHeight,
+                        ),
+                        delegate: SliverChildBuilderDelegate(
+                          (context, index) {
+                            final product = filteredProducts[index];
+                            return SlideTransition(
+                              key: ValueKey<String>(product.id),
+                              position: activeSlide,
+                              child: _MenuProductCard(
+                                product: product,
+                                isCompactGrid: cols <= 2,
+                                onOpenDetails: () =>
+                                    _showItemDetailSheet(context, product),
+                              ),
+                            );
+                          },
+                          childCount: filteredProducts.length,
+                          addRepaintBoundaries: false,
+                        ),
                       ),
-                      delegate: SliverChildBuilderDelegate((context, index) {
-                        final product = filteredProducts[index];
-                        return _CategoryCardEntrance(
-                          key: ValueKey(
-                            'cat_${_selectedCategoryKey ?? "all"}_${_categorySwitchTick}_${product.id}',
-                          ),
-                          index: index,
-                          isCategorySwitch: _categorySwitchTick > 0,
-                          logicalDirection: _categorySlideDir,
-                          child: _MenuProductCard(
-                            product: product,
-                            isCompactGrid: cols <= 2,
-                            onOpenDetails: () =>
-                                _showItemDetailSheet(context, product),
-                          ),
-                        );
-                      }, childCount: filteredProducts.length),
                     ),
-                  );
-                },
-              ),
-            ],
+                  ),
+                ],
+              );
+            },
           ),
 
           // Animated Floating Checkout Dock (lifts cleanly above EvaFloatingNavBar on mobile)
@@ -732,7 +848,7 @@ class _StudentMenuViewState extends ConsumerState<StudentMenuView> {
 }
 
 class _SmartBundleCard extends ConsumerWidget {
-  const _SmartBundleCard({required this.bundle});
+  const _SmartBundleCard({super.key, required this.bundle});
 
   final BundleOffer bundle;
 
@@ -925,163 +1041,62 @@ class _CategoryFilterChip extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final tokens = EvaTokens.of(context);
-    return AnimatedScale(
-      scale: selected ? 1.03 : 1.0,
-      duration: const Duration(milliseconds: 200),
-      curve: Curves.easeOutBack,
-      child: InkWell(
-        onTap: () {
-          HapticFeedback.selectionClick();
-          onTap();
-        },
-        borderRadius: BorderRadius.circular(999),
-        child: AnimatedContainer(
-          duration: const Duration(milliseconds: 210),
-          curve: Curves.easeOutCubic,
-          padding: EdgeInsets.symmetric(
-            horizontal: selected ? 14 : 15,
-            vertical: 7,
+    return InkWell(
+      onTap: () {
+        HapticFeedback.selectionClick();
+        onTap();
+      },
+      borderRadius: BorderRadius.circular(999),
+      child: AnimatedContainer(
+        duration: const Duration(milliseconds: 160),
+        curve: Curves.easeOutCubic,
+        padding: EdgeInsets.symmetric(
+          horizontal: selected ? 14 : 15,
+          vertical: 7,
+        ),
+        decoration: BoxDecoration(
+          color: selected ? tokens.brandPrimary : tokens.surfaceElevated,
+          borderRadius: BorderRadius.circular(999),
+          border: Border.all(
+            color: selected ? tokens.brandPrimary : tokens.borderSubtle,
+            width: tokens.borderWidth,
           ),
-          decoration: BoxDecoration(
-            color: selected ? tokens.brandPrimary : tokens.surfaceElevated,
-            borderRadius: BorderRadius.circular(999),
-            border: Border.all(
-              color: selected ? tokens.brandPrimary : tokens.borderSubtle,
-              width: tokens.borderWidth,
-            ),
-            boxShadow: selected && !tokens.isNight
-                ? [
-                    BoxShadow(
-                      color: tokens.brandPrimary.withValues(alpha: 0.24),
-                      blurRadius: 10,
-                      offset: const Offset(0, 3),
-                    ),
-                  ]
-                : null,
-          ),
-          alignment: Alignment.center,
-          child: Row(
-            mainAxisSize: MainAxisSize.min,
-            children: [
-              AnimatedSize(
-                duration: const Duration(milliseconds: 190),
-                curve: Curves.easeOutCubic,
-                child: selected
-                    ? Padding(
-                        padding: const EdgeInsetsDirectional.only(end: 6),
-                        child: Container(
-                          width: 6,
-                          height: 6,
-                          decoration: BoxDecoration(
-                            color: tokens.brandOnPrimary,
-                            shape: BoxShape.circle,
-                          ),
-                        ),
-                      )
-                    : const SizedBox.shrink(),
-              ),
-              Text(
-                label,
-                style: Theme.of(context).textTheme.labelLarge?.copyWith(
-                  color: selected ? tokens.brandOnPrimary : tokens.textPrimary,
-                  fontWeight: selected ? FontWeight.w800 : FontWeight.w700,
+          boxShadow: selected && !tokens.isNight
+              ? [
+                  BoxShadow(
+                    color: tokens.brandPrimary.withValues(alpha: 0.22),
+                    blurRadius: 8,
+                    offset: const Offset(0, 2),
+                  ),
+                ]
+              : null,
+        ),
+        alignment: Alignment.center,
+        child: Row(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            if (selected)
+              Padding(
+                padding: const EdgeInsetsDirectional.only(end: 6),
+                child: Container(
+                  width: 6,
+                  height: 6,
+                  decoration: BoxDecoration(
+                    color: tokens.brandOnPrimary,
+                    shape: BoxShape.circle,
+                  ),
                 ),
               ),
-            ],
-          ),
+            Text(
+              label,
+              style: Theme.of(context).textTheme.labelLarge?.copyWith(
+                color: selected ? tokens.brandOnPrimary : tokens.textPrimary,
+                fontWeight: selected ? FontWeight.w800 : FontWeight.w700,
+              ),
+            ),
+          ],
         ),
       ),
-    );
-  }
-}
-
-class _CategoryCardEntrance extends StatefulWidget {
-  const _CategoryCardEntrance({
-    super.key,
-    required this.index,
-    required this.isCategorySwitch,
-    required this.logicalDirection,
-    required this.child,
-  });
-
-  final int index;
-  final bool isCategorySwitch;
-  final double logicalDirection;
-  final Widget child;
-
-  @override
-  State<_CategoryCardEntrance> createState() => _CategoryCardEntranceState();
-}
-
-class _CategoryCardEntranceState extends State<_CategoryCardEntrance>
-    with SingleTickerProviderStateMixin {
-  late final AnimationController _ctrl;
-  late final Animation<double> _curved;
-  bool _settled = false;
-
-  @override
-  void initState() {
-    super.initState();
-    final clampedIdx = widget.index.clamp(0, 7);
-    final delayMs = clampedIdx * 22;
-    final animMs = widget.isCategorySwitch ? 235 : 210;
-    final totalMs = delayMs + animMs;
-
-    _ctrl = AnimationController(
-      vsync: this,
-      duration: Duration(milliseconds: totalMs),
-    );
-    _curved = CurvedAnimation(
-      parent: _ctrl,
-      curve: Interval(
-        delayMs / totalMs,
-        1.0,
-        curve: Curves.easeOutCubic,
-      ),
-    );
-    _ctrl.addStatusListener((status) {
-      if (status == AnimationStatus.completed && mounted && !_settled) {
-        setState(() => _settled = true);
-      }
-    });
-    _ctrl.forward();
-  }
-
-  @override
-  void dispose() {
-    _ctrl.dispose();
-    super.dispose();
-  }
-
-  @override
-  Widget build(BuildContext context) {
-    final disableMotion = MediaQuery.maybeDisableAnimationsOf(context) ?? false;
-    if (_settled || disableMotion) return widget.child;
-
-    final isRtl = Directionality.of(context) == TextDirection.rtl;
-    final visualDir = isRtl
-        ? -widget.logicalDirection
-        : widget.logicalDirection;
-    final startDx = widget.isCategorySwitch ? 24.0 * visualDir : 0.0;
-    final startDy = widget.isCategorySwitch ? 10.0 : 14.0;
-
-    return AnimatedBuilder(
-      animation: _curved,
-      child: widget.child,
-      builder: (context, child) {
-        final t = _curved.value;
-        if (t >= 0.999) return child!;
-        return Opacity(
-          opacity: t.clamp(0.0, 1.0),
-          child: Transform.translate(
-            offset: Offset(startDx * (1.0 - t), startDy * (1.0 - t)),
-            child: Transform.scale(
-              scale: 0.955 + 0.045 * t,
-              child: child,
-            ),
-          ),
-        );
-      },
     );
   }
 }

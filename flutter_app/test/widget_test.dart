@@ -1850,6 +1850,154 @@ void main() {
       expect(overlayFinder, findsNothing);
     },
   );
+
+  testWidgets(
+    'Menu category switches use single-layer SliverFadeTransition without per-card Opacity saveLayers or SliverLayoutBuilder churn',
+    (tester) async {
+      await tester.binding.setSurfaceSize(const Size(412, 915));
+      addTearDown(() => tester.binding.setSurfaceSize(null));
+
+      SharedPreferences.setMockInitialValues({});
+      final prefs = await SharedPreferences.getInstance();
+      final mockSocket = EvaSocketClient(enableNetwork: false);
+
+      final container = ProviderContainer(
+        overrides: [
+          sharedPrefsProvider.overrideWithValue(prefs),
+          socketClientProvider.overrideWithValue(mockSocket),
+        ],
+      );
+      addTearDown(container.dispose);
+
+      container.read(canteenStoreProvider.notifier).enterBrowseGuestMode();
+
+      await tester.pumpWidget(
+        UncontrolledProviderScope(
+          container: container,
+          child: const EvaCanteenApp(),
+        ),
+      );
+      await tester.pumpAndSettle();
+
+      mockSocket.injectTestEvent('initial_categories', [
+        {
+          'key': 'sandwiches',
+          'name_key': 'cat_sandwiches',
+          'productIds': ['s1', 's2'],
+        },
+        {
+          'key': 'drinks',
+          'name_key': 'cat_drinks',
+          'productIds': ['d1', 'd2'],
+        },
+      ]);
+      mockSocket.injectTestEvent('initial_translations', {
+        'cat_sandwiches': {'en': 'Sandwiches', 'ar': 'الساندويتشات'},
+        'cat_drinks': {'en': 'Drinks', 'ar': 'المشروبات'},
+        'item_s1': {'en': 'Club Sandwich', 'ar': 'كلوب ساندويتش'},
+        'item_s2': {'en': 'Cheese Panini', 'ar': 'بانيني جبنة'},
+        'item_d1': {'en': 'Mango Juice', 'ar': 'عصير مانجو'},
+        'item_d2': {'en': 'Cold Brew', 'ar': 'كولد برو'},
+        'bundle_combo': {'en': 'Lunch Combo', 'ar': 'كومبو الغداء'},
+        'desc_generic': {'en': 'Fresh daily', 'ar': 'طازج يومياً'},
+      });
+      mockSocket.injectTestEvent('initial_products', [
+        {
+          'id': 's1',
+          'name_key': 'item_s1',
+          'description_key': 'desc_generic',
+          'price': 55,
+          'quantity': 20,
+          'image': '',
+          'category': 'sandwiches',
+        },
+        {
+          'id': 's2',
+          'name_key': 'item_s2',
+          'description_key': 'desc_generic',
+          'price': 45,
+          'quantity': 20,
+          'image': '',
+          'category': 'sandwiches',
+        },
+        {
+          'id': 'd1',
+          'name_key': 'item_d1',
+          'description_key': 'desc_generic',
+          'price': 30,
+          'quantity': 20,
+          'image': '',
+          'category': 'drinks',
+        },
+        {
+          'id': 'd2',
+          'name_key': 'item_d2',
+          'description_key': 'desc_generic',
+          'price': 35,
+          'quantity': 20,
+          'image': '',
+          'category': 'drinks',
+        },
+      ]);
+      mockSocket.injectTestEvent('initial_bundles', [
+        {
+          'id': 'b1',
+          'name_key': 'bundle_combo',
+          'description_key': 'desc_generic',
+          'itemIds': ['s1', 'd1'],
+          'discountPercent': 15,
+          'isSuggestion': false,
+          'active': true,
+        },
+      ]);
+      await tester.pumpAndSettle();
+
+      // Structural guarantees: single SliverFadeTransition, zero SliverLayoutBuilder, zero per-card Opacity
+      expect(find.byType(SliverFadeTransition), findsOneWidget);
+      expect(find.byType(SliverLayoutBuilder), findsNothing);
+      expect(
+        find.descendant(
+          of: find.byType(SliverGrid),
+          matching: find.byType(Opacity),
+        ),
+        findsNothing,
+      );
+
+      // Capture element of card s1 on 'All'
+      final s1ElementBefore = tester.element(find.byKey(const ValueKey<String>('s1')));
+
+      // Switch 'All' -> 'Sandwiches' (combos collapse + grid slides)
+      await tester.tap(find.text('Sandwiches'));
+      await tester.pump(const Duration(milliseconds: 40));
+      expect(tester.takeException(), isNull);
+      expect(
+        find.descendant(
+          of: find.byType(SliverGrid),
+          matching: find.byType(Opacity),
+        ),
+        findsNothing,
+      );
+
+      // Card s1 stayed stably keyed and mounted without teardown!
+      final s1ElementAfter = tester.element(find.byKey(const ValueKey<String>('s1')));
+      expect(identical(s1ElementBefore, s1ElementAfter), isTrue);
+
+      // Rapid mid-flight switches ('Sandwiches' -> 'Drinks' -> 'All') before previous animation finishes
+      await tester.tap(find.text('Drinks'));
+      await tester.pump(const Duration(milliseconds: 50));
+      expect(tester.takeException(), isNull);
+      expect(find.text('Mango Juice'), findsOneWidget);
+      expect(find.text('Club Sandwich'), findsNothing);
+
+      await tester.tap(find.text('All'));
+      await tester.pump(const Duration(milliseconds: 50));
+      await tester.pumpAndSettle();
+      expect(tester.takeException(), isNull);
+      expect(find.text('Club Sandwich'), findsOneWidget);
+      expect(find.text('Mango Juice'), findsOneWidget);
+      expect(find.text('Lunch Combo'), findsOneWidget);
+    },
+  );
 }
 
 class _RecordingSocketClient extends EvaSocketClient {
