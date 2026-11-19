@@ -146,7 +146,12 @@ app.use((req, res, next) => {
 });
 
 app.get('/api/health', (_req, res) => {
-    res.json({ ok: true, version: '1.1.0', mode: WEB_MODE });
+    res.json({
+        ok: true,
+        version: '1.1.0',
+        mode: WEB_MODE,
+        pushEnabled: pushService.isEnabled()
+    });
 });
 
 app.post('/api/push-tokens', async (req, res) => {
@@ -1279,9 +1284,16 @@ async function handleUpdateOrderStatus(clientInfo, payload) {
         sendToUser(updatedOrder.user.email, 'my_order_updated', updatePayload);
 
         if (shouldNotifyReady) {
-            pushService.sendOrderReadyNotification(updatedOrder).catch((err) => {
-                console.error(`Failed to send order ready push for ${orderId}:`, err);
-            });
+            pushService
+                .sendOrderReadyNotification(updatedOrder)
+                .then((summary) => {
+                    console.log(
+                        `Order ready push for ${orderId}: sent=${summary.sent} failed=${summary.failed} pruned=${summary.pruned} skipped=${summary.skipped || 'none'}`
+                    );
+                })
+                .catch((err) => {
+                    console.error(`Failed to send order ready push for ${orderId}:`, err);
+                });
         }
     }
 }

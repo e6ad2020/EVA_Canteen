@@ -217,7 +217,7 @@ class EvaSocketClient {
               'locale': locale,
             }),
           )
-          .timeout(const Duration(seconds: 6));
+          .timeout(const Duration(seconds: 15));
       return response.statusCode == 200;
     } catch (_) {
       return false;

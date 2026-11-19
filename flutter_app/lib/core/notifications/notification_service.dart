@@ -183,7 +183,6 @@ class FcmNotificationService implements NotificationService {
   bool _initialized = false;
   bool _firebaseReady = false;
   bool _localNotificationsReady = false;
-  String? _lastRegisteredToken;
 
   bool get _isMobilePlatform =>
       !kIsWeb &&
@@ -277,15 +276,13 @@ class FcmNotificationService implements NotificationService {
       }
     });
 
-    _onTokenRefreshSub = FirebaseMessaging.instance.onRegistered.listen((
+    // ignore: deprecated_member_use
+    _onTokenRefreshSub = FirebaseMessaging.instance.onTokenRefresh.listen((
       token,
     ) {
       final cleaned = token.trim();
-      if (cleaned.isNotEmpty) {
-        _lastRegisteredToken = cleaned;
-        if (!_tokenRefreshController.isClosed) {
-          _tokenRefreshController.add(cleaned);
-        }
+      if (cleaned.isNotEmpty && !_tokenRefreshController.isClosed) {
+        _tokenRefreshController.add(cleaned);
       }
     });
   }
@@ -368,7 +365,6 @@ class FcmNotificationService implements NotificationService {
       case AuthorizationStatus.deniedPermanently:
         return PushPermissionState.permanentlyDenied;
       case AuthorizationStatus.denied:
-        return PushPermissionState.permanentlyDenied;
       case AuthorizationStatus.notDetermined:
         return PushPermissionState.denied;
     }
@@ -390,13 +386,6 @@ class FcmNotificationService implements NotificationService {
   Future<PushPermissionState> requestPermission() async {
     if (!isSupported) return PushPermissionState.unsupported;
     try {
-      if (!kIsWeb && defaultTargetPlatform == TargetPlatform.android) {
-        final androidPlugin = _localNotifications
-            .resolvePlatformSpecificImplementation<
-              AndroidFlutterLocalNotificationsPlugin
-            >();
-        await androidPlugin?.requestNotificationsPermission();
-      }
       final settings = await FirebaseMessaging.instance.requestPermission(
         alert: true,
         badge: false,
@@ -412,9 +401,6 @@ class FcmNotificationService implements NotificationService {
   @override
   Future<String?> getToken() async {
     if (!isSupported) return null;
-    if (_lastRegisteredToken != null && _lastRegisteredToken!.isNotEmpty) {
-      return _lastRegisteredToken;
-    }
     try {
       if (!kIsWeb && defaultTargetPlatform == TargetPlatform.iOS) {
         String? apnsToken = await FirebaseMessaging.instance.getAPNSToken();
@@ -427,26 +413,22 @@ class FcmNotificationService implements NotificationService {
         }
       }
 
-      final nextTokenFuture = FirebaseMessaging.instance.onRegistered
-          .where((token) => token.trim().isNotEmpty)
-          .first
-          .timeout(const Duration(seconds: 5), onTimeout: () => '');
-
-      await FirebaseMessaging.instance.register(
-        vapidKey: kIsWeb && EvaFirebaseEnvConfig.hasWebVapidKey
-            ? EvaFirebaseEnvConfig.webVapidKey
-            : null,
-      );
-
-      final token = (await nextTokenFuture).trim();
-      if (token.isNotEmpty) {
-        _lastRegisteredToken = token;
-        return token;
-      }
-      return _lastRegisteredToken;
+      // Use FCM registration tokens (compatible with firebase-admin `tokens:`
+      // multicast payloads across Android, iOS, and Web).
+      final token = kIsWeb
+          // ignore: deprecated_member_use
+          ? await FirebaseMessaging.instance.getToken(
+              vapidKey: EvaFirebaseEnvConfig.hasWebVapidKey
+                  ? EvaFirebaseEnvConfig.webVapidKey
+                  : null,
+            )
+          // ignore: deprecated_member_use
+          : await FirebaseMessaging.instance.getToken();
+      final cleaned = token?.trim();
+      return (cleaned == null || cleaned.isEmpty) ? null : cleaned;
     } catch (err) {
       debugPrint('EVA Canteen: failed to fetch FCM token ($err)');
-      return _lastRegisteredToken;
+      return null;
     }
   }
 
