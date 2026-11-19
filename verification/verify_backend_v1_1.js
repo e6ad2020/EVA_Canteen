@@ -384,7 +384,15 @@ async function main() {
         const deletedTokens = [];
         const sentMessages = [];
         const fakeDb = {
-            query: async () => fakeRows,
+            query: async (sql) => {
+                if (typeof sql === 'string' && sql.includes('FROM translations')) {
+                    return [
+                        { key: 'item_panini', en: 'Grilled Turkey Panini', ar: 'بانيني رومي' },
+                        { key: 'item_latte', en: 'Iced Latte', ar: 'آيس لاتيه' }
+                    ];
+                }
+                return fakeRows;
+            },
             run: async (_sql, params) => {
                 deletedTokens.push(...params);
                 return { changes: params.length };
@@ -410,6 +418,11 @@ async function main() {
         const pushSummary = await testPush.sendOrderReadyNotification({
             id: 'ORD-42-18-11-2026',
             status: 'delivered',
+            items: [
+                { id: 'p1', name_key: 'item_panini', quantity: 2, isDiscount: false },
+                { id: 'p2', name_key: 'item_latte', quantity: 1, isDiscount: false },
+                { id: 'd1', name_key: 'discount_bundle', quantity: 1, isDiscount: true }
+            ],
             user: { email: studentEmail }
         });
 
@@ -421,13 +434,24 @@ async function main() {
 
         const enMsg = sentMessages.find((m) => m.tokens.includes('tok_en_valid_000001'));
         const arMsg = sentMessages.find((m) => m.tokens.includes('tok_ar_valid_000003'));
-        assert.strictEqual(enMsg.notification.title, 'Order #42 is ready!');
-        assert.strictEqual(arMsg.notification.title, 'طلبك رقم #42 جاهز للاستلام!');
+        assert.strictEqual(enMsg.notification.title, '🎉 Order #42 is ready for pickup!');
+        assert.strictEqual(
+            enMsg.notification.body,
+            '2× Grilled Turkey Panini, 1× Iced Latte • Show pass #42 at the EVA Canteen counter.'
+        );
+        assert.strictEqual(arMsg.notification.title, '🎉 طلبك #42 جاهز للاستلام!');
+        assert.strictEqual(
+            arMsg.notification.body,
+            '2× بانيني رومي، 1× آيس لاتيه • اعرض رقم الاستلام #42 عند كاونتر كانتين إيفا.'
+        );
         assert.strictEqual(enMsg.data.type, 'order_ready');
         assert.strictEqual(enMsg.data.orderId, 'ORD-42-18-11-2026');
         assert.strictEqual(enMsg.data.pickupNumber, '#42');
         assert.strictEqual(enMsg.data.route, '/orders');
         assert.strictEqual(enMsg.android.notification.channelId, ANDROID_ORDER_READY_CHANNEL_ID);
+        assert.strictEqual(enMsg.android.notification.icon, 'ic_stat_eva_canteen');
+        assert.strictEqual(enMsg.android.notification.color, '#10B981');
+        assert.strictEqual(enMsg.android.notification.visibility, 'public');
         assert.strictEqual(enMsg.apns.payload.aps.sound, 'default');
         assert.strictEqual(enMsg.apns.payload.aps.badge, undefined, 'APNs payload must not set badge');
         assert.strictEqual(
@@ -455,11 +479,27 @@ async function main() {
         );
 
         const httpsMsg = buildOrderReadyMulticastMessage({
-            order: { id: 'ORD-42-18-11-2026' },
+            order: {
+                id: 'ORD-42-18-11-2026',
+                items: [
+                    { name_key: 'k1', quantity: 1 },
+                    { name_key: 'k2', quantity: 1 },
+                    { name_key: 'k3', quantity: 2 }
+                ]
+            },
             tokens: ['tok_web_1'],
             locale: 'en',
-            publicAppUrl: 'https://eva-canteen.app/subpath/'
+            publicAppUrl: 'https://eva-canteen.app/subpath/',
+            translationsByKey: new Map([
+                ['k1', { en: 'Club Sandwich', ar: 'كلوب ساندويتش' }],
+                ['k2', { en: 'Orange Juice', ar: 'عصير برتقال' }],
+                ['k3', { en: 'Brownie', ar: 'براوني' }]
+            ])
         });
+        assert.strictEqual(
+            httpsMsg.notification.body,
+            '1× Club Sandwich, 1× Orange Juice, +1 more • Show pass #42 at the EVA Canteen counter.'
+        );
         assert.strictEqual(
             httpsMsg.webpush.fcmOptions.link,
             'https://eva-canteen.app/orders?orderId=ORD-42-18-11-2026',

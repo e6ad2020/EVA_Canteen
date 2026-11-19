@@ -1,5 +1,6 @@
 import 'dart:async';
 import 'dart:convert';
+import 'dart:ui' show Color;
 
 import 'package:equatable/equatable.dart';
 import 'package:firebase_core/firebase_core.dart';
@@ -477,6 +478,16 @@ class FcmNotificationService implements NotificationService {
           playSound: true,
           enableVibration: true,
           icon: '@drawable/ic_stat_eva_canteen',
+          largeIcon: const DrawableResourceAndroidBitmap('@mipmap/ic_launcher'),
+          color: const Color(0xFF10B981),
+          category: AndroidNotificationCategory.status,
+          visibility: NotificationVisibility.public,
+          styleInformation: BigTextStyleInformation(
+            body,
+            contentTitle: title,
+            summaryText: 'EVA Canteen',
+          ),
+          ticker: title,
           tag: orderId,
         ),
         iOS: const DarwinNotificationDetails(

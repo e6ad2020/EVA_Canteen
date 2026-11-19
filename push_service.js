@@ -28,17 +28,65 @@ function normalizePushLocale(rawLocale) {
     return 'en';
 }
 
-function buildOrderReadyLocalizedCopy(locale, pickupNumber) {
+const ANDROID_ORDER_READY_COLOR = '#10B981';
+
+function buildOrderItemsSummary(order, locale, translationsByKey = null) {
+    const rawItems = Array.isArray(order?.items) ? order.items : [];
+    const regularItems = rawItems.filter(
+        (item) => item && !item.isDiscount && Number(item.quantity) > 0
+    );
+    if (regularItems.length === 0) {
+        return '';
+    }
+
+    const lang = normalizePushLocale(locale);
+    const separator = lang === 'ar' ? '، ' : ', ';
+    const namedParts = [];
+
+    for (const item of regularItems) {
+        const qty = Math.max(1, Math.round(Number(item.quantity) || 1));
+        const key = typeof item.name_key === 'string' ? item.name_key.trim() : '';
+        const trans = key && translationsByKey ? translationsByKey.get(key) : null;
+        const localizedName =
+            (trans && typeof trans[lang] === 'string' && trans[lang].trim()) ||
+            (trans && typeof trans.en === 'string' && trans.en.trim()) ||
+            '';
+        if (localizedName) {
+            namedParts.push(`${qty}× ${localizedName}`);
+        }
+    }
+
+    if (namedParts.length > 0) {
+        const visible = namedParts.slice(0, 2);
+        const remaining = namedParts.length - visible.length;
+        if (remaining > 0) {
+            visible.push(lang === 'ar' ? `+${remaining} أخرى` : `+${remaining} more`);
+        }
+        return visible.join(separator);
+    }
+
+    const totalQty = regularItems.reduce(
+        (sum, item) => sum + Math.max(1, Math.round(Number(item.quantity) || 1)),
+        0
+    );
+    if (lang === 'ar') {
+        return totalQty === 1 ? 'صنف واحد' : `${totalQty} أصناف`;
+    }
+    return totalQty === 1 ? '1 item' : `${totalQty} items`;
+}
+
+function buildOrderReadyLocalizedCopy(locale, pickupNumber, itemsSummary = '') {
+    const summaryPrefix = itemsSummary ? `${itemsSummary} • ` : '';
     if (normalizePushLocale(locale) === 'ar') {
         return {
-            title: `طلبك رقم ${pickupNumber} جاهز للاستلام!`,
-            body: 'طلبك جاهز الآن عند كاونتر كانتين إيفا.'
+            title: `🎉 طلبك ${pickupNumber} جاهز للاستلام!`,
+            body: `${summaryPrefix}اعرض رقم الاستلام ${pickupNumber} عند كاونتر كانتين إيفا.`
         };
     }
 
     return {
-        title: `Order ${pickupNumber} is ready!`,
-        body: 'Your order is ready for pickup at the EVA Canteen counter.'
+        title: `🎉 Order ${pickupNumber} is ready for pickup!`,
+        body: `${summaryPrefix}Show pass ${pickupNumber} at the EVA Canteen counter.`
     };
 }
 
@@ -62,12 +110,14 @@ function buildOrderReadyMulticastMessage({
     tokens,
     locale,
     sentAt = new Date().toISOString(),
-    publicAppUrl = null
+    publicAppUrl = null,
+    translationsByKey = null
 }) {
     const orderId = String(order.id);
     const pickupNumber = extractPickupNumber(orderId);
     const normalizedLocale = normalizePushLocale(locale);
-    const copy = buildOrderReadyLocalizedCopy(normalizedLocale, pickupNumber);
+    const itemsSummary = buildOrderItemsSummary(order, normalizedLocale, translationsByKey);
+    const copy = buildOrderReadyLocalizedCopy(normalizedLocale, pickupNumber, itemsSummary);
     const appOrigin = resolvePublicAppOrigin(publicAppUrl);
 
     const webpush = {
@@ -106,9 +156,13 @@ function buildOrderReadyMulticastMessage({
             ttl: 3600 * 1000,
             notification: {
                 channelId: ANDROID_ORDER_READY_CHANNEL_ID,
+                icon: 'ic_stat_eva_canteen',
+                color: ANDROID_ORDER_READY_COLOR,
                 tag: orderId,
                 sound: 'default',
                 defaultVibrateTimings: true,
+                visibility: 'public',
+                ticker: copy.title,
                 clickAction: 'FLUTTER_NOTIFICATION_CLICK'
             }
         },
@@ -262,6 +316,33 @@ function createPushService({ db, messaging = null, logger = console, env = proce
             tokensByLocale.get(locale).push(row.token);
         }
 
+        const translationsByKey = new Map();
+        const nameKeys = Array.from(
+            new Set(
+                (Array.isArray(order.items) ? order.items : [])
+                    .filter((item) => item && !item.isDiscount && typeof item.name_key === 'string' && item.name_key.trim())
+                    .map((item) => item.name_key.trim())
+            )
+        );
+        if (nameKeys.length > 0) {
+            try {
+                const placeholders = nameKeys.map(() => '?').join(', ');
+                const transRows = await db.query(
+                    `SELECT key, en, ar FROM translations WHERE key IN (${placeholders})`,
+                    nameKeys
+                );
+                if (Array.isArray(transRows)) {
+                    for (const row of transRows) {
+                        if (row?.key) {
+                            translationsByKey.set(row.key, { en: row.en, ar: row.ar });
+                        }
+                    }
+                }
+            } catch {
+                // Non-fatal: fall back cleanly to item count summary.
+            }
+        }
+
         const sentAt = new Date().toISOString();
         let sent = 0;
         let failed = 0;
@@ -274,7 +355,8 @@ function createPushService({ db, messaging = null, logger = console, env = proce
                     tokens: batch,
                     locale,
                     sentAt,
-                    publicAppUrl: env.PUBLIC_APP_URL
+                    publicAppUrl: env.PUBLIC_APP_URL,
+                    translationsByKey
                 });
 
                 const response = await messagingClient.sendEachForMulticast(message);

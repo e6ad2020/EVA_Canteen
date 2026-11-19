@@ -995,6 +995,15 @@ class EvaFloatingNavBar extends StatefulWidget {
     return 86.0 + MediaQuery.paddingOf(context).bottom;
   }
 
+  /// Floating SnackBar inset padding so toasts float cleanly above the capsule
+  /// navbar on mobile viewports without overlapping navigation taps.
+  static EdgeInsets snackBarInsetPadding(BuildContext context) {
+    if (MediaQuery.sizeOf(context).width >= shellWideBreakpoint) {
+      return const EdgeInsets.fromLTRB(16, 8, 16, 16);
+    }
+    return const EdgeInsets.fromLTRB(16, 8, 16, 94);
+  }
+
   @override
   State<EvaFloatingNavBar> createState() => _EvaFloatingNavBarState();
 }

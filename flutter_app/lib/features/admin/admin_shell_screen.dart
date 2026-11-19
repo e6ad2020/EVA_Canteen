@@ -42,8 +42,16 @@ class AdminShellScreen extends ConsumerWidget {
         SystemSound.play(SystemSoundType.alert);
         final latest = ref.read(canteenStoreProvider).adminOrders.firstOrNull;
         if (latest != null && context.mounted) {
-          ScaffoldMessenger.of(context).showSnackBar(
+          final messenger = ScaffoldMessenger.of(context);
+          messenger.hideCurrentSnackBar();
+          messenger.showSnackBar(
             SnackBar(
+              behavior: SnackBarBehavior.floating,
+              dismissDirection: DismissDirection.horizontal,
+              margin: EvaFloatingNavBar.snackBarInsetPadding(context),
+              shape: RoundedRectangleBorder(
+                borderRadius: BorderRadius.circular(16),
+              ),
               backgroundColor: tokens.brandPrimary,
               content: Row(
                 children: [
@@ -76,11 +84,19 @@ class AdminShellScreen extends ConsumerWidget {
 
     ref.listen(canteenStoreProvider.select((s) => s.notice), (prev, next) {
       if (next != null && next.id != prev?.id) {
-        ScaffoldMessenger.of(context).showSnackBar(
+        final messenger = ScaffoldMessenger.of(context);
+        messenger.hideCurrentSnackBar();
+        messenger.showSnackBar(
           SnackBar(
+            behavior: SnackBarBehavior.floating,
+            dismissDirection: DismissDirection.horizontal,
+            margin: EvaFloatingNavBar.snackBarInsetPadding(context),
+            shape: RoundedRectangleBorder(
+              borderRadius: BorderRadius.circular(16),
+            ),
             backgroundColor: next.isError
                 ? tokens.statusClosedFg
-                : (next.isCelebration ? tokens.statusDeliveredFg : null),
+                : (next.isCelebration ? const Color(0xFF059669) : null),
             content: Text(next.message),
           ),
         );
@@ -99,12 +115,22 @@ class AdminShellScreen extends ConsumerWidget {
       ),
     );
 
-    return LayoutBuilder(
-      builder: (context, constraints) {
-        final isWide =
-            constraints.maxWidth >= EvaFloatingNavBar.shellWideBreakpoint;
+    final shellTheme = Theme.of(context);
+    final navSafeTheme = shellTheme.copyWith(
+      snackBarTheme: shellTheme.snackBarTheme.copyWith(
+        behavior: SnackBarBehavior.floating,
+        insetPadding: EvaFloatingNavBar.snackBarInsetPadding(context),
+      ),
+    );
 
-        return Scaffold(
+    return Theme(
+      data: navSafeTheme,
+      child: LayoutBuilder(
+        builder: (context, constraints) {
+          final isWide =
+              constraints.maxWidth >= EvaFloatingNavBar.shellWideBreakpoint;
+
+          return Scaffold(
           body: EvaScaffoldBackground(
             child: Column(
               children: [
@@ -288,8 +314,9 @@ class AdminShellScreen extends ConsumerWidget {
               ],
             ),
           ),
-        );
-      },
+          );
+        },
+      ),
     );
   }
 }

@@ -1565,6 +1565,88 @@ void main() {
       expect(find.text('ORD-09-1700000001'), findsWidgets);
     },
   );
+
+  testWidgets(
+    'Order Ready floating SnackBar floats cleanly above EvaFloatingNavBar on 360x800 phone (with gesture bar inset)',
+    (tester) async {
+      await tester.binding.setSurfaceSize(const Size(360, 800));
+      final dpr = tester.view.devicePixelRatio;
+      tester.view.padding = FakeViewPadding(bottom: 24 * dpr);
+      tester.view.viewPadding = FakeViewPadding(bottom: 24 * dpr);
+      addTearDown(() {
+        tester.view.resetPadding();
+        tester.view.resetViewPadding();
+        return tester.binding.setSurfaceSize(null);
+      });
+
+      SharedPreferences.setMockInitialValues({
+        'eva_saved_session_v2':
+            '{"email":"student@eva.edu","role":"student","profilePic":"pic2","balance":80,"token":"jwt-snackbar"}',
+      });
+      final prefs = await SharedPreferences.getInstance();
+      final socket = _RecordingSocketClient();
+      final mockNotif = _MockNotificationService(
+        initialPermission: PushPermissionState.authorized,
+        tokenValue: 'fcm-token-snackbar',
+      );
+
+      final container = ProviderContainer(
+        overrides: [
+          sharedPrefsProvider.overrideWithValue(prefs),
+          socketClientProvider.overrideWithValue(socket),
+          notificationServiceProvider.overrideWithValue(mockNotif),
+        ],
+      );
+      addTearDown(container.dispose);
+
+      await tester.pumpWidget(
+        UncontrolledProviderScope(
+          container: container,
+          child: const EvaCanteenApp(),
+        ),
+      );
+      await tester.pumpAndSettle();
+
+      final nowIso = DateTime.now().toUtc().toIso8601String();
+      socket.injectTestEvent('my_order_updated', {
+        'updatedOrder': {
+          'id': 'ORD-21-1700000005',
+          'totalAmount': 45,
+          'status': 'delivered',
+          'paymentMethod': 'wallet',
+          'timestamp': nowIso,
+          'items': const [],
+        },
+      });
+      await tester.pump();
+      await tester.pump(const Duration(milliseconds: 350));
+
+      final navBarFinder = find.byType(EvaFloatingNavBar);
+      final snackBarFinder = find.byType(SnackBar);
+      expect(navBarFinder, findsOneWidget);
+      expect(snackBarFinder, findsOneWidget);
+      expect(find.text('View'), findsOneWidget);
+
+      // Measure the visible SnackBar card (the Material inside SnackBar) against
+      // the floating navbar bounds to guarantee zero overlap.
+      final snackBarCardFinder = find
+          .descendant(of: snackBarFinder, matching: find.byType(Material))
+          .first;
+      final snackBarRect = tester.getRect(snackBarCardFinder);
+      final navBarRect = tester.getRect(navBarFinder);
+      expect(
+        snackBarRect.bottom,
+        lessThanOrEqualTo(navBarRect.top),
+        reason:
+            'SnackBar bottom (${snackBarRect.bottom}) must sit above EvaFloatingNavBar top (${navBarRect.top})',
+      );
+
+      // Verify tapping the navbar still works while the SnackBar is visible
+      await tester.tap(find.text('Settings'));
+      await tester.pumpAndSettle();
+      expect(find.text('Light Blue'), findsOneWidget);
+    },
+  );
 }
 
 class _RecordingSocketClient extends EvaSocketClient {

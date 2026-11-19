@@ -44,12 +44,49 @@ class StudentShellScreen extends ConsumerWidget {
             navigationShell.currentIndex != 1 &&
             targetOrderId != null &&
             targetOrderId.isNotEmpty;
-        ScaffoldMessenger.of(context).showSnackBar(
+        final messenger = ScaffoldMessenger.of(context);
+        messenger.hideCurrentSnackBar();
+        messenger.showSnackBar(
           SnackBar(
+            behavior: SnackBarBehavior.floating,
+            dismissDirection: DismissDirection.horizontal,
+            elevation: 6,
+            margin: EvaFloatingNavBar.snackBarInsetPadding(context),
+            shape: RoundedRectangleBorder(
+              borderRadius: BorderRadius.circular(16),
+            ),
             backgroundColor: next.isError
                 ? tokens.statusClosedFg
-                : (next.isCelebration ? tokens.statusDeliveredFg : null),
-            content: Text(next.message),
+                : (next.isCelebration ? const Color(0xFF059669) : null),
+            content: next.isCelebration
+                ? Row(
+                    children: [
+                      Container(
+                        width: 30,
+                        height: 30,
+                        decoration: BoxDecoration(
+                          color: Colors.white.withValues(alpha: 0.18),
+                          shape: BoxShape.circle,
+                        ),
+                        child: const Icon(
+                          Icons.restaurant_rounded,
+                          color: Colors.white,
+                          size: 17,
+                        ),
+                      ),
+                      const SizedBox(width: 12),
+                      Expanded(
+                        child: Text(
+                          next.message,
+                          style: const TextStyle(
+                            color: Colors.white,
+                            fontWeight: FontWeight.w700,
+                          ),
+                        ),
+                      ),
+                    ],
+                  )
+                : Text(next.message),
             action: showViewAction
                 ? SnackBarAction(
                     label: i18n.t('notifications_view_order_cta'),
@@ -78,12 +115,22 @@ class StudentShellScreen extends ConsumerWidget {
       ),
     );
 
-    return LayoutBuilder(
-      builder: (context, constraints) {
-        final isWide =
-            constraints.maxWidth >= EvaFloatingNavBar.shellWideBreakpoint;
+    final shellTheme = Theme.of(context);
+    final navSafeTheme = shellTheme.copyWith(
+      snackBarTheme: shellTheme.snackBarTheme.copyWith(
+        behavior: SnackBarBehavior.floating,
+        insetPadding: EvaFloatingNavBar.snackBarInsetPadding(context),
+      ),
+    );
 
-        return Scaffold(
+    return Theme(
+      data: navSafeTheme,
+      child: LayoutBuilder(
+        builder: (context, constraints) {
+          final isWide =
+              constraints.maxWidth >= EvaFloatingNavBar.shellWideBreakpoint;
+
+          return Scaffold(
           body: EvaScaffoldBackground(
             child: Column(
               children: [
@@ -198,8 +245,9 @@ class StudentShellScreen extends ConsumerWidget {
               ],
             ),
           ),
-        );
-      },
+          );
+        },
+      ),
     );
   }
 }
