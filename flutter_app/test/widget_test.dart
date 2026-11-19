@@ -1564,6 +1564,19 @@ void main() {
       expect(find.text('Live Pickup Pass'), findsOneWidget);
       expect(find.text('#09'), findsWidgets);
       expect(find.text('ORD-09-1700000001'), findsWidgets);
+
+      final passCardFinder = find.byKey(const ValueKey('live_pickup_pass_card'));
+      expect(passCardFinder, findsOneWidget);
+      final passCard = tester.widget<EvaSurfaceCard>(passCardFinder);
+      expect(passCard.borderRadius, 22);
+      expect(passCard.clipBehavior, Clip.antiAlias);
+      final innerMat = tester.widget<Material>(
+        find
+            .descendant(of: passCardFinder, matching: find.byType(Material))
+            .first,
+      );
+      expect(innerMat.clipBehavior, Clip.antiAlias);
+      expect(innerMat.borderRadius, isNotNull);
     },
   );
 

@@ -215,48 +215,60 @@ class _LivePickupPassCard extends ConsumerWidget {
       OrderStatus.delivered => 2,
     };
 
+    final isReady = order.status == OrderStatus.delivered;
+    final headerBg = isReady ? tokens.statusDeliveredBg : tokens.brandSoftBg;
+    final headerDivider = isReady
+        ? tokens.statusDeliveredFg.withValues(alpha: 0.14)
+        : tokens.brandPrimary.withValues(alpha: 0.12);
+
     return RepaintBoundary(
       child: EvaSurfaceCard(
+        key: const ValueKey('live_pickup_pass_card'),
+        borderRadius: 22,
+        clipBehavior: Clip.antiAlias,
         child: Column(
-        crossAxisAlignment: CrossAxisAlignment.stretch,
-        children: [
-          Container(
-            padding: const EdgeInsets.symmetric(horizontal: 18, vertical: 13),
-            color: order.status == OrderStatus.delivered
-                ? tokens.statusDeliveredBg
-                : tokens.brandSoftBg,
-            child: Row(
-              children: [
-                Icon(
-                  order.status == OrderStatus.delivered
-                      ? Icons.celebration_rounded
-                      : Icons.confirmation_number_rounded,
-                  color: order.status == OrderStatus.delivered
-                      ? tokens.statusDeliveredFg
-                      : tokens.brandPrimary,
+          crossAxisAlignment: CrossAxisAlignment.stretch,
+          children: [
+            Container(
+              padding: const EdgeInsets.symmetric(horizontal: 18, vertical: 13),
+              decoration: BoxDecoration(
+                color: headerBg,
+                border: Border(
+                  bottom: BorderSide(color: headerDivider, width: 1),
                 ),
-                const SizedBox(width: 10),
-                Expanded(
-                  child: Text(
-                    i18n.t('live_pickup_pass'),
-                    maxLines: 1,
-                    overflow: TextOverflow.ellipsis,
-                    style: Theme.of(context).textTheme.titleMedium?.copyWith(
-                      color: order.status == OrderStatus.delivered
-                          ? tokens.statusDeliveredFg
-                          : tokens.brandPrimary,
+              ),
+              child: Row(
+                children: [
+                  Icon(
+                    isReady
+                        ? Icons.celebration_rounded
+                        : Icons.confirmation_number_rounded,
+                    color: isReady
+                        ? tokens.statusDeliveredFg
+                        : tokens.brandPrimary,
+                  ),
+                  const SizedBox(width: 10),
+                  Expanded(
+                    child: Text(
+                      i18n.t('live_pickup_pass'),
+                      maxLines: 1,
+                      overflow: TextOverflow.ellipsis,
+                      style: Theme.of(context).textTheme.titleMedium?.copyWith(
+                        color: isReady
+                            ? tokens.statusDeliveredFg
+                            : tokens.brandPrimary,
+                      ),
                     ),
                   ),
-                ),
-                const SizedBox(width: 8),
-                EvaStatusBadge.forOrderStatus(
-                  context: context,
-                  status: order.status,
-                  label: i18n.t('status_${order.status.name}'),
-                ),
-              ],
+                  const SizedBox(width: 8),
+                  EvaStatusBadge.forOrderStatus(
+                    context: context,
+                    status: order.status,
+                    label: i18n.t('status_${order.status.name}'),
+                  ),
+                ],
+              ),
             ),
-          ),
           Padding(
             padding: const EdgeInsets.all(22),
             child: Column(

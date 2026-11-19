@@ -20,6 +20,10 @@ class StudentMenuView extends ConsumerStatefulWidget {
 
 class _StudentMenuViewState extends ConsumerState<StudentMenuView>
     with TickerProviderStateMixin {
+  static const int _waveSlots = 6;
+  static const Cubic _expoOut = Cubic(0.16, 1.0, 0.3, 1.0);
+  static const Cubic _combosExpoOut = Cubic(0.22, 1.0, 0.36, 1.0);
+
   final _searchCtrl = TextEditingController();
   final _categoryScrollCtrl = ScrollController();
   final Map<String, GlobalKey> _chipKeys = {};
@@ -28,13 +32,16 @@ class _StudentMenuViewState extends ConsumerState<StudentMenuView>
   double _categorySlideDir = 1.0;
 
   late final AnimationController _gridTransitionCtrl;
-  late final CurvedAnimation _gridCurve;
+  late final CurvedAnimation _gridOpacityCurve;
   late final Animation<double> _gridOpacity;
-  late final Animation<Offset> _slideFromRight;
-  late final Animation<Offset> _slideFromLeft;
+  late final List<CurvedAnimation> _slotCurves;
+  late final List<Animation<Offset>> _slotSlidesRight;
+  late final List<Animation<Offset>> _slotSlidesLeft;
 
   late final AnimationController _combosCtrl;
-  late final CurvedAnimation _combosCurve;
+  late final CurvedAnimation _combosSizeCurve;
+  late final CurvedAnimation _combosFadeCurve;
+  late final Animation<Offset> _combosSlide;
   bool _combosInitialized = false;
   bool _lastShowCombos = false;
 
@@ -43,31 +50,57 @@ class _StudentMenuViewState extends ConsumerState<StudentMenuView>
     super.initState();
     _gridTransitionCtrl = AnimationController(
       vsync: this,
-      duration: const Duration(milliseconds: 175),
+      duration: const Duration(milliseconds: 290),
       value: 1.0,
     );
-    _gridCurve = CurvedAnimation(
+    _gridOpacityCurve = CurvedAnimation(
       parent: _gridTransitionCtrl,
-      curve: Curves.easeOutCubic,
+      curve: const Interval(0.0, 0.56, curve: Curves.easeOutCubic),
     );
-    _gridOpacity = Tween<double>(begin: 0.35, end: 1.0).animate(_gridCurve);
-    _slideFromRight = Tween<Offset>(
-      begin: const Offset(0.055, 0.0),
-      end: Offset.zero,
-    ).animate(_gridCurve);
-    _slideFromLeft = Tween<Offset>(
-      begin: const Offset(-0.055, 0.0),
-      end: Offset.zero,
-    ).animate(_gridCurve);
+    _gridOpacity = Tween<double>(
+      begin: 0.18,
+      end: 1.0,
+    ).animate(_gridOpacityCurve);
+
+    _slotCurves = List<CurvedAnimation>.generate(_waveSlots, (slot) {
+      final start = (slot * 0.044).clamp(0.0, 0.22);
+      final end = (0.72 + slot * 0.056).clamp(0.72, 1.0);
+      return CurvedAnimation(
+        parent: _gridTransitionCtrl,
+        curve: Interval(start, end, curve: _expoOut),
+      );
+    }, growable: false);
+
+    _slotSlidesRight = List<Animation<Offset>>.generate(_waveSlots, (slot) {
+      return Tween<Offset>(
+        begin: const Offset(0.14, 0.045),
+        end: Offset.zero,
+      ).animate(_slotCurves[slot]);
+    }, growable: false);
+
+    _slotSlidesLeft = List<Animation<Offset>>.generate(_waveSlots, (slot) {
+      return Tween<Offset>(
+        begin: const Offset(-0.14, 0.045),
+        end: Offset.zero,
+      ).animate(_slotCurves[slot]);
+    }, growable: false);
 
     _combosCtrl = AnimationController(
       vsync: this,
-      duration: const Duration(milliseconds: 175),
+      duration: const Duration(milliseconds: 250),
     );
-    _combosCurve = CurvedAnimation(
+    _combosSizeCurve = CurvedAnimation(
       parent: _combosCtrl,
-      curve: Curves.easeOutCubic,
+      curve: _combosExpoOut,
     );
+    _combosFadeCurve = CurvedAnimation(
+      parent: _combosCtrl,
+      curve: const Interval(0.12, 1.0, curve: Curves.easeOutCubic),
+    );
+    _combosSlide = Tween<Offset>(
+      begin: const Offset(0.0, -0.06),
+      end: Offset.zero,
+    ).animate(_combosSizeCurve);
     _combosCtrl.addStatusListener(_handleCombosStatus);
   }
 
@@ -98,9 +131,13 @@ class _StudentMenuViewState extends ConsumerState<StudentMenuView>
   @override
   void dispose() {
     _combosCtrl.removeStatusListener(_handleCombosStatus);
-    _combosCurve.dispose();
+    _combosFadeCurve.dispose();
+    _combosSizeCurve.dispose();
     _combosCtrl.dispose();
-    _gridCurve.dispose();
+    for (final c in _slotCurves) {
+      c.dispose();
+    }
+    _gridOpacityCurve.dispose();
     _gridTransitionCtrl.dispose();
     _searchCtrl.dispose();
     _categoryScrollCtrl.dispose();
@@ -219,7 +256,8 @@ class _StudentMenuViewState extends ConsumerState<StudentMenuView>
 
     final isRtl = Directionality.of(context) == TextDirection.rtl;
     final visualDir = isRtl ? -_categorySlideDir : _categorySlideDir;
-    final activeSlide = visualDir >= 0 ? _slideFromRight : _slideFromLeft;
+    final activeSlotSlides =
+        visualDir >= 0 ? _slotSlidesRight : _slotSlidesLeft;
 
     final isGuest = user == null || user.role == UserRole.guest;
     final showWalletInHeader =
@@ -529,74 +567,81 @@ class _StudentMenuViewState extends ConsumerState<StudentMenuView>
                         : IgnorePointer(
                             ignoring: !showCombos,
                             child: FadeTransition(
-                              opacity: _combosCurve,
+                              opacity: _combosFadeCurve,
                               child: SizeTransition(
-                                sizeFactor: _combosCurve,
+                                sizeFactor: _combosSizeCurve,
                                 alignment: Alignment.topCenter,
-                                child: RepaintBoundary(
-                                  child: Center(
-                                    child: ConstrainedBox(
-                                      constraints: const BoxConstraints(
-                                        maxWidth: 1180,
-                                      ),
-                                      child: Column(
-                                        crossAxisAlignment:
-                                            CrossAxisAlignment.start,
-                                        children: [
-                                          Padding(
-                                            padding: const EdgeInsets.fromLTRB(
-                                              12,
-                                              8,
-                                              12,
-                                              8,
-                                            ),
-                                            child: Row(
-                                              children: [
-                                                Icon(
-                                                  Icons
-                                                      .local_fire_department_rounded,
-                                                  size: 20,
-                                                  color: tokens.accentAppetite,
-                                                ),
-                                                const SizedBox(width: 6),
-                                                Expanded(
-                                                  child: Text(
-                                                    i18n.t(
-                                                      'smart_combos_title',
-                                                    ),
-                                                    maxLines: 1,
-                                                    overflow:
-                                                        TextOverflow.ellipsis,
-                                                    style: Theme.of(
-                                                      context,
-                                                    ).textTheme.titleLarge,
-                                                  ),
-                                                ),
-                                              ],
-                                            ),
-                                          ),
-                                          SizedBox(
-                                            height: 170,
-                                            child: ListView.separated(
+                                child: SlideTransition(
+                                  position: _combosSlide,
+                                  child: RepaintBoundary(
+                                    child: Center(
+                                      child: ConstrainedBox(
+                                        constraints: const BoxConstraints(
+                                          maxWidth: 1180,
+                                        ),
+                                        child: Column(
+                                          crossAxisAlignment:
+                                              CrossAxisAlignment.start,
+                                          children: [
+                                            Padding(
                                               padding:
-                                                  const EdgeInsets.symmetric(
-                                                    horizontal: 12,
+                                                  const EdgeInsets.fromLTRB(
+                                                    12,
+                                                    8,
+                                                    12,
+                                                    8,
                                                   ),
-                                              scrollDirection: Axis.horizontal,
-                                              addRepaintBoundaries: false,
-                                              itemCount: activeBundles.length,
-                                              separatorBuilder: (_, _) =>
-                                                  const SizedBox(width: 12),
-                                              itemBuilder: (context, idx) =>
-                                                  _SmartBundleCard(
-                                                    key: ValueKey<String>(
-                                                      activeBundles[idx].id,
+                                              child: Row(
+                                                children: [
+                                                  Icon(
+                                                    Icons
+                                                        .local_fire_department_rounded,
+                                                    size: 20,
+                                                    color:
+                                                        tokens.accentAppetite,
+                                                  ),
+                                                  const SizedBox(width: 6),
+                                                  Expanded(
+                                                    child: Text(
+                                                      i18n.t(
+                                                        'smart_combos_title',
+                                                      ),
+                                                      maxLines: 1,
+                                                      overflow:
+                                                          TextOverflow.ellipsis,
+                                                      style: Theme.of(
+                                                        context,
+                                                      ).textTheme.titleLarge,
                                                     ),
-                                                    bundle: activeBundles[idx],
                                                   ),
+                                                ],
+                                              ),
                                             ),
-                                          ),
-                                        ],
+                                            SizedBox(
+                                              height: 170,
+                                              child: ListView.separated(
+                                                padding:
+                                                    const EdgeInsets.symmetric(
+                                                      horizontal: 12,
+                                                    ),
+                                                scrollDirection:
+                                                    Axis.horizontal,
+                                                addRepaintBoundaries: false,
+                                                itemCount: activeBundles.length,
+                                                separatorBuilder: (_, _) =>
+                                                    const SizedBox(width: 12),
+                                                itemBuilder: (context, idx) =>
+                                                    _SmartBundleCard(
+                                                      key: ValueKey<String>(
+                                                        activeBundles[idx].id,
+                                                      ),
+                                                      bundle:
+                                                          activeBundles[idx],
+                                                    ),
+                                              ),
+                                            ),
+                                          ],
+                                        ),
                                       ),
                                     ),
                                   ),
@@ -646,7 +691,7 @@ class _StudentMenuViewState extends ConsumerState<StudentMenuView>
                     ),
                   ),
 
-                  // Multi-Column Product Grid with Single-Layer GPU Category Transition
+                  // Multi-Column Product Grid with Single-Layer GPU Wave Cascade
                   SliverPadding(
                     padding: EdgeInsets.fromLTRB(
                       sidePad,
@@ -666,9 +711,12 @@ class _StudentMenuViewState extends ConsumerState<StudentMenuView>
                         delegate: SliverChildBuilderDelegate(
                           (context, index) {
                             final product = filteredProducts[index];
+                            final waveSlot = index < _waveSlots
+                                ? index
+                                : _waveSlots - 1;
                             return SlideTransition(
                               key: ValueKey<String>(product.id),
-                              position: activeSlide,
+                              position: activeSlotSlides[waveSlot],
                               child: _MenuProductCard(
                                 product: product,
                                 isCompactGrid: cols <= 2,
@@ -1038,63 +1086,83 @@ class _CategoryFilterChip extends StatelessWidget {
   final bool selected;
   final VoidCallback onTap;
 
+  static const Cubic _chipCurve = Cubic(0.16, 1.0, 0.3, 1.0);
+
   @override
   Widget build(BuildContext context) {
     final tokens = EvaTokens.of(context);
-    return InkWell(
-      onTap: () {
-        HapticFeedback.selectionClick();
-        onTap();
-      },
-      borderRadius: BorderRadius.circular(999),
-      child: AnimatedContainer(
-        duration: const Duration(milliseconds: 160),
-        curve: Curves.easeOutCubic,
-        padding: EdgeInsets.symmetric(
-          horizontal: selected ? 14 : 15,
-          vertical: 7,
-        ),
-        decoration: BoxDecoration(
-          color: selected ? tokens.brandPrimary : tokens.surfaceElevated,
-          borderRadius: BorderRadius.circular(999),
-          border: Border.all(
-            color: selected ? tokens.brandPrimary : tokens.borderSubtle,
-            width: tokens.borderWidth,
+    final labelStyle =
+        (Theme.of(context).textTheme.labelLarge ?? const TextStyle(fontSize: 14))
+            .copyWith(
+              color: selected ? tokens.brandOnPrimary : tokens.textPrimary,
+              fontWeight: selected ? FontWeight.w800 : FontWeight.w700,
+            );
+
+    return EvaPressable(
+      pressedScale: 0.96,
+      child: InkWell(
+        onTap: () {
+          HapticFeedback.selectionClick();
+          onTap();
+        },
+        borderRadius: BorderRadius.circular(999),
+        child: AnimatedContainer(
+          duration: const Duration(milliseconds: 220),
+          curve: _chipCurve,
+          padding: EdgeInsets.symmetric(
+            horizontal: selected ? 14 : 15,
+            vertical: 7,
           ),
-          boxShadow: selected && !tokens.isNight
-              ? [
-                  BoxShadow(
-                    color: tokens.brandPrimary.withValues(alpha: 0.22),
-                    blurRadius: 8,
-                    offset: const Offset(0, 2),
-                  ),
-                ]
-              : null,
-        ),
-        alignment: Alignment.center,
-        child: Row(
-          mainAxisSize: MainAxisSize.min,
-          children: [
-            if (selected)
-              Padding(
-                padding: const EdgeInsetsDirectional.only(end: 6),
-                child: Container(
-                  width: 6,
-                  height: 6,
-                  decoration: BoxDecoration(
-                    color: tokens.brandOnPrimary,
-                    shape: BoxShape.circle,
+          decoration: BoxDecoration(
+            color: selected ? tokens.brandPrimary : tokens.surfaceElevated,
+            borderRadius: BorderRadius.circular(999),
+            border: Border.all(
+              color: selected ? tokens.brandPrimary : tokens.borderSubtle,
+              width: tokens.borderWidth,
+            ),
+            boxShadow: selected && !tokens.isNight
+                ? [
+                    BoxShadow(
+                      color: tokens.brandPrimary.withValues(alpha: 0.24),
+                      blurRadius: 10,
+                      offset: const Offset(0, 3),
+                    ),
+                  ]
+                : null,
+          ),
+          alignment: Alignment.center,
+          child: Row(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              if (selected)
+                Padding(
+                  padding: const EdgeInsetsDirectional.only(end: 6),
+                  child: TweenAnimationBuilder<double>(
+                    tween: Tween<double>(begin: 0.0, end: 1.0),
+                    duration: const Duration(milliseconds: 220),
+                    curve: Curves.easeOutBack,
+                    builder: (context, scale, dot) => Transform.scale(
+                      scale: scale,
+                      child: dot,
+                    ),
+                    child: Container(
+                      width: 6,
+                      height: 6,
+                      decoration: BoxDecoration(
+                        color: tokens.brandOnPrimary,
+                        shape: BoxShape.circle,
+                      ),
+                    ),
                   ),
                 ),
+              AnimatedDefaultTextStyle(
+                duration: const Duration(milliseconds: 180),
+                curve: Curves.easeOutCubic,
+                style: labelStyle,
+                child: Text(label),
               ),
-            Text(
-              label,
-              style: Theme.of(context).textTheme.labelLarge?.copyWith(
-                color: selected ? tokens.brandOnPrimary : tokens.textPrimary,
-                fontWeight: selected ? FontWeight.w800 : FontWeight.w700,
-              ),
-            ),
-          ],
+            ],
+          ),
         ),
       ),
     );

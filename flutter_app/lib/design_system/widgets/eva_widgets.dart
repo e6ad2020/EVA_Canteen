@@ -150,9 +150,14 @@ class EvaSurfaceCard extends StatelessWidget {
         ? Padding(padding: padding!, child: child)
         : child;
 
+    final innerRadius = math.max(0.0, radius - resolvedBorderWidth);
+    final effectiveClip = clipBehavior != Clip.none
+        ? clipBehavior
+        : (onTap != null ? Clip.hardEdge : Clip.none);
+
     if (onTap != null) {
       inner = InkWell(
-        borderRadius: BorderRadius.circular(radius),
+        borderRadius: BorderRadius.circular(innerRadius),
         onTap: onTap,
         child: inner,
       );
@@ -160,12 +165,12 @@ class EvaSurfaceCard extends StatelessWidget {
 
     inner = Material(
       type: MaterialType.transparency,
-      borderRadius: BorderRadius.circular(radius),
-      clipBehavior: onTap != null ? Clip.hardEdge : Clip.none,
+      borderRadius: BorderRadius.circular(innerRadius),
+      clipBehavior: effectiveClip,
       child: inner,
     );
 
-    Widget surface = Container(
+    final Widget surface = Container(
       decoration: BoxDecoration(
         color: resolvedBg,
         borderRadius: BorderRadius.circular(radius),
@@ -184,14 +189,6 @@ class EvaSurfaceCard extends StatelessWidget {
       ),
       child: inner,
     );
-
-    if (clipBehavior != Clip.none) {
-      surface = ClipRRect(
-        borderRadius: BorderRadius.circular(radius),
-        clipBehavior: clipBehavior,
-        child: surface,
-      );
-    }
 
     if (onTap != null) {
       return EvaPressable(child: surface);
