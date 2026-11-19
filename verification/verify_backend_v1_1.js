@@ -434,15 +434,15 @@ async function main() {
 
         const enMsg = sentMessages.find((m) => m.tokens.includes('tok_en_valid_000001'));
         const arMsg = sentMessages.find((m) => m.tokens.includes('tok_ar_valid_000003'));
-        assert.strictEqual(enMsg.notification.title, '🎉 Order #42 is ready for pickup!');
+        assert.strictEqual(enMsg.notification.title, '✅ Order #42 is ready for pickup!');
         assert.strictEqual(
             enMsg.notification.body,
-            '2× Grilled Turkey Panini, 1× Iced Latte • Show pass #42 at the EVA Canteen counter.'
+            '2× Grilled Turkey Panini, 1× Iced Latte • Show pass #42 at the counter.'
         );
-        assert.strictEqual(arMsg.notification.title, '🎉 طلبك #42 جاهز للاستلام!');
+        assert.strictEqual(arMsg.notification.title, '✅ طلبك #42 جاهز للاستلام!');
         assert.strictEqual(
             arMsg.notification.body,
-            '2× بانيني رومي، 1× آيس لاتيه • اعرض رقم الاستلام #42 عند كاونتر كانتين إيفا.'
+            '2× بانيني رومي، 1× آيس لاتيه • اعرض رقم الاستلام #42 عند الكاونتر.'
         );
         assert.strictEqual(enMsg.data.type, 'order_ready');
         assert.strictEqual(enMsg.data.orderId, 'ORD-42-18-11-2026');
@@ -498,7 +498,7 @@ async function main() {
         });
         assert.strictEqual(
             httpsMsg.notification.body,
-            '1× Club Sandwich, 1× Orange Juice, +1 more • Show pass #42 at the EVA Canteen counter.'
+            '1× Club Sandwich, 1× Orange Juice, +1 more • Show pass #42 at the counter.'
         );
         assert.strictEqual(
             httpsMsg.webpush.fcmOptions.link,

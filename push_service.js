@@ -79,14 +79,14 @@ function buildOrderReadyLocalizedCopy(locale, pickupNumber, itemsSummary = '') {
     const summaryPrefix = itemsSummary ? `${itemsSummary} • ` : '';
     if (normalizePushLocale(locale) === 'ar') {
         return {
-            title: `🎉 طلبك ${pickupNumber} جاهز للاستلام!`,
-            body: `${summaryPrefix}اعرض رقم الاستلام ${pickupNumber} عند كاونتر كانتين إيفا.`
+            title: `✅ طلبك ${pickupNumber} جاهز للاستلام!`,
+            body: `${summaryPrefix}اعرض رقم الاستلام ${pickupNumber} عند الكاونتر.`
         };
     }
 
     return {
-        title: `🎉 Order ${pickupNumber} is ready for pickup!`,
-        body: `${summaryPrefix}Show pass ${pickupNumber} at the EVA Canteen counter.`
+        title: `✅ Order ${pickupNumber} is ready for pickup!`,
+        body: `${summaryPrefix}Show pass ${pickupNumber} at the counter.`
     };
 }
 
