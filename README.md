@@ -12,7 +12,7 @@
 
   <p>
     <a href="#-live-demos">Live Demos</a> •
-    <a href="#-student-experience">Student App</a> •
+    <a href="#-user-experience">User Experience</a> •
     <a href="#-signature-themes">Themes</a> •
     <a href="#-kitchen-display-system-kds">Admin KDS</a> •
     <a href="#-architecture">Architecture</a> •
@@ -65,10 +65,10 @@
 
 ---
 
-## 📱 Student Experience
+## 📱 User Experience
 
 <div align="center">
-  <img src="docs/media/student_showcase.png" alt="EVA Canteen Student App Showcase: Moon Menu, Live Pickup Pass, and Arabic RTL" width="100%" />
+  <img src="docs/media/user_showcase.png" alt="EVA Canteen User Experience Showcase: Light Blue Menu, Live Pickup Pass, and Arabic RTL" width="100%" />
 </div>
 
 <br />
