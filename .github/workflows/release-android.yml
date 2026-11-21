@@ -1,11 +1,19 @@
-name: Release EVA Canteen Android APKs (v8a, v7a, Universal)
+name: EVA Canteen — Build & Release (Android & Web Wasm)
 
 on:
   push:
+    branches:
+      - flutter-v2
+      - main
     tags:
       - 'v*'
   workflow_dispatch:
     inputs:
+      publish_release:
+        description: 'Publish GitHub Release (APKs + WebAssembly bundle)'
+        required: false
+        default: true
+        type: boolean
       tag:
         description: 'Release tag (leave empty to use v<version> from pubspec.yaml, e.g. v2.0.0)'
         required: false
@@ -20,10 +28,18 @@ on:
 permissions:
   contents: write
 
+concurrency:
+  group: eva-canteen-${{ github.ref }}
+  cancel-in-progress: ${{ !startsWith(github.ref, 'refs/tags/') }}
+
 jobs:
-  build-and-release:
-    name: Build v8a, v7a & Universal APKs and Publish Release
+  build-web-wasm:
+    name: Test & Build Web (WebAssembly)
     runs-on: ubuntu-latest
+    outputs:
+      full_version: ${{ steps.meta.outputs.full_version }}
+      tag: ${{ steps.meta.outputs.tag }}
+      web_size: ${{ steps.pkg.outputs.web_size }}
 
     steps:
       - name: Checkout repository
@@ -35,7 +51,6 @@ jobs:
         run: |
           FULL_VERSION=$(grep -E '^version:' flutter_app/pubspec.yaml | head -n1 | awk '{print $2}' | tr -d '\r')
           VERSION_NAME="${FULL_VERSION%%+*}"
-          BUILD_NUMBER="${FULL_VERSION#*+}"
 
           if [ "${GITHUB_REF_TYPE}" = "tag" ]; then
             TAG="${GITHUB_REF_NAME}"
@@ -46,16 +61,7 @@ jobs:
           fi
 
           echo "full_version=${FULL_VERSION}" >> "$GITHUB_OUTPUT"
-          echo "version_name=${VERSION_NAME}" >> "$GITHUB_OUTPUT"
-          echo "build_number=${BUILD_NUMBER}" >> "$GITHUB_OUTPUT"
           echo "tag=${TAG}" >> "$GITHUB_OUTPUT"
-          echo "Resolved release tag=${TAG} (pubspec version=${FULL_VERSION})"
-
-      - name: Set up Java 21
-        uses: actions/setup-java@v4
-        with:
-          distribution: temurin
-          java-version: '21'
 
       - name: Set up Flutter Stable
         uses: subosito/flutter-action@v2
@@ -70,6 +76,74 @@ jobs:
           flutter pub get
           flutter analyze
           flutter test
+
+      - name: Build Flutter Web (WebAssembly)
+        working-directory: flutter_app
+        run: flutter build web --wasm --no-web-resources-cdn --release
+
+      - name: Package WebAssembly bundle
+        id: pkg
+        shell: bash
+        run: |
+          mkdir -p web_assets
+          ZIP_NAME="EVA-Canteen-${{ steps.meta.outputs.tag }}-web-wasm.zip"
+          (cd flutter_app/build/web && zip -qr "../../../web_assets/${ZIP_NAME}" .)
+          WEB_SIZE=$(du -h "web_assets/${ZIP_NAME}" | awk '{print $1}')
+          echo "web_size=${WEB_SIZE}" >> "$GITHUB_OUTPUT"
+          ls -lh web_assets/
+
+      - name: Upload WebAssembly Artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: web-wasm-bundle
+          path: web_assets/*
+
+  build-android-apks:
+    name: Build Android APKs (v8a, v7a & Universal)
+    runs-on: ubuntu-latest
+    outputs:
+      fcm_enabled: ${{ steps.fcm.outputs.enabled }}
+      v8a_size: ${{ steps.sizes.outputs.v8a }}
+      v7a_size: ${{ steps.sizes.outputs.v7a }}
+      universal_size: ${{ steps.sizes.outputs.universal }}
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Resolve app version and release tag
+        id: meta
+        shell: bash
+        run: |
+          FULL_VERSION=$(grep -E '^version:' flutter_app/pubspec.yaml | head -n1 | awk '{print $2}' | tr -d '\r')
+          VERSION_NAME="${FULL_VERSION%%+*}"
+
+          if [ "${GITHUB_REF_TYPE}" = "tag" ]; then
+            TAG="${GITHUB_REF_NAME}"
+          elif [ -n "${{ inputs.tag }}" ]; then
+            TAG="${{ inputs.tag }}"
+          else
+            TAG="v${VERSION_NAME}"
+          fi
+
+          echo "full_version=${FULL_VERSION}" >> "$GITHUB_OUTPUT"
+          echo "tag=${TAG}" >> "$GITHUB_OUTPUT"
+
+      - name: Set up Java 21
+        uses: actions/setup-java@v5
+        with:
+          distribution: temurin
+          java-version: '21'
+
+      - name: Set up Flutter Stable
+        uses: subosito/flutter-action@v2
+        with:
+          channel: stable
+          cache: true
+
+      - name: Install dependencies
+        working-directory: flutter_app
+        run: flutter pub get
 
       - name: Decode google-services.json (if configured)
         id: fcm
@@ -89,47 +163,69 @@ jobs:
         working-directory: flutter_app
         run: |
           flutter build apk --release --split-per-abi --target-platform android-arm,android-arm64
-          mkdir -p ../release_assets
-          cp build/app/outputs/flutter-apk/app-arm64-v8a-release.apk "../release_assets/EVA-Canteen-${{ steps.meta.outputs.tag }}-arm64-v8a.apk"
-          cp build/app/outputs/flutter-apk/app-armeabi-v7a-release.apk "../release_assets/EVA-Canteen-${{ steps.meta.outputs.tag }}-armeabi-v7a.apk"
+          mkdir -p ../android_assets
+          cp build/app/outputs/flutter-apk/app-arm64-v8a-release.apk "../android_assets/EVA-Canteen-${{ steps.meta.outputs.tag }}-arm64-v8a.apk"
+          cp build/app/outputs/flutter-apk/app-armeabi-v7a-release.apk "../android_assets/EVA-Canteen-${{ steps.meta.outputs.tag }}-armeabi-v7a.apk"
 
       - name: Build Universal APK (all ABIs)
         working-directory: flutter_app
         run: |
           flutter build apk --release
-          cp build/app/outputs/flutter-apk/app-release.apk "../release_assets/EVA-Canteen-${{ steps.meta.outputs.tag }}-universal.apk"
+          cp build/app/outputs/flutter-apk/app-release.apk "../android_assets/EVA-Canteen-${{ steps.meta.outputs.tag }}-universal.apk"
 
-      - name: Generate SHA-256 Checksums & Build Summary
+      - name: Compute APK Sizes
         id: sizes
         shell: bash
         run: |
+          cd android_assets
+          ls -lh
+          echo "v8a=$(du -h "EVA-Canteen-${{ steps.meta.outputs.tag }}-arm64-v8a.apk" | awk '{print $1}')" >> "$GITHUB_OUTPUT"
+          echo "v7a=$(du -h "EVA-Canteen-${{ steps.meta.outputs.tag }}-armeabi-v7a.apk" | awk '{print $1}')" >> "$GITHUB_OUTPUT"
+          echo "universal=$(du -h "EVA-Canteen-${{ steps.meta.outputs.tag }}-universal.apk" | awk '{print $1}')" >> "$GITHUB_OUTPUT"
+
+      - name: Upload Android APKs Artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: android-apks
+          path: android_assets/*
+
+  publish-release:
+    name: Publish GitHub Release
+    runs-on: ubuntu-latest
+    needs: [build-web-wasm, build-android-apks]
+    if: ${{ startsWith(github.ref, 'refs/tags/v') || (github.event_name == 'workflow_dispatch' && inputs.publish_release) }}
+
+    steps:
+      - name: Download Android APKs
+        uses: actions/download-artifact@v4
+        with:
+          name: android-apks
+          path: release_assets
+
+      - name: Download WebAssembly Bundle
+        uses: actions/download-artifact@v4
+        with:
+          name: web-wasm-bundle
+          path: release_assets
+
+      - name: Generate SHA-256 Checksums
+        shell: bash
+        run: |
           cd release_assets
-          sha256sum *.apk > SHA256SUMS.txt
+          sha256sum *.apk *.zip > SHA256SUMS.txt
           ls -lh
           cat SHA256SUMS.txt
 
-          V8A_SIZE=$(du -h "EVA-Canteen-${{ steps.meta.outputs.tag }}-arm64-v8a.apk" | awk '{print $1}')
-          V7A_SIZE=$(du -h "EVA-Canteen-${{ steps.meta.outputs.tag }}-armeabi-v7a.apk" | awk '{print $1}')
-          UNI_SIZE=$(du -h "EVA-Canteen-${{ steps.meta.outputs.tag }}-universal.apk" | awk '{print $1}')
-          echo "v8a=${V8A_SIZE}" >> "$GITHUB_OUTPUT"
-          echo "v7a=${V7A_SIZE}" >> "$GITHUB_OUTPUT"
-          echo "universal=${UNI_SIZE}" >> "$GITHUB_OUTPUT"
-
-      - name: Upload Release APKs as Workflow Artifact
-        uses: actions/upload-artifact@v4
-        with:
-          name: EVA-Canteen-${{ steps.meta.outputs.tag }}-APKs
-          path: release_assets/*
-
-      - name: Publish GitHub Release
+      - name: Create or Update GitHub Release
         env:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-          TAG: ${{ steps.meta.outputs.tag }}
-          FULL_VERSION: ${{ steps.meta.outputs.full_version }}
-          FCM_ENABLED: ${{ steps.fcm.outputs.enabled }}
-          V8A_SIZE: ${{ steps.sizes.outputs.v8a }}
-          V7A_SIZE: ${{ steps.sizes.outputs.v7a }}
-          UNI_SIZE: ${{ steps.sizes.outputs.universal }}
+          TAG: ${{ needs.build-web-wasm.outputs.tag }}
+          FULL_VERSION: ${{ needs.build-web-wasm.outputs.full_version }}
+          FCM_ENABLED: ${{ needs.build-android-apks.outputs.fcm_enabled }}
+          V8A_SIZE: ${{ needs.build-android-apks.outputs.v8a_size }}
+          V7A_SIZE: ${{ needs.build-android-apks.outputs.v7a_size }}
+          UNI_SIZE: ${{ needs.build-android-apks.outputs.universal_size }}
+          WEB_SIZE: ${{ needs.build-web-wasm.outputs.web_size }}
           IS_PRERELEASE: ${{ inputs.prerelease || false }}
         run: |
           if [ "$FCM_ENABLED" = "true" ]; then
@@ -141,23 +237,24 @@ jobs:
           cat <<EOF > release_notes.md
           ## EVA Canteen ${TAG} (\`${FULL_VERSION}\`)
 
-          ### Download Android APK
+          ### Download Releases
 
-          | Variant | File | Size | Best For |
+          | Platform / Variant | File | Size | Best For |
           | :--- | :--- | :---: | :--- |
-          | **ARM64 (Recommended)** | \`EVA-Canteen-${TAG}-arm64-v8a.apk\` | ${V8A_SIZE} | Modern 64-bit Android phones (smallest & fastest) |
-          | **ARM32** | \`EVA-Canteen-${TAG}-armeabi-v7a.apk\` | ${V7A_SIZE} | Older 32-bit Android devices |
-          | **Universal** | \`EVA-Canteen-${TAG}-universal.apk\` | ${UNI_SIZE} | Any Android device (\`arm64-v8a\`, \`armeabi-v7a\`, \`x86_64\`) |
+          | **Android ARM64 (Recommended)** | \`EVA-Canteen-${TAG}-arm64-v8a.apk\` | ${V8A_SIZE} | Modern 64-bit Android phones (smallest & fastest) |
+          | **Android ARM32** | \`EVA-Canteen-${TAG}-armeabi-v7a.apk\` | ${V7A_SIZE} | Older 32-bit Android devices |
+          | **Android Universal** | \`EVA-Canteen-${TAG}-universal.apk\` | ${UNI_SIZE} | Any Android device (\`arm64-v8a\`, \`armeabi-v7a\`, \`x86_64\`) |
+          | **Web (WebAssembly)** | \`EVA-Canteen-${TAG}-web-wasm.zip\` | ${WEB_SIZE} | Self-hosted Wasm web bundle (offline CanvasKit/Skwasm) |
 
           - **Build:** \`${FULL_VERSION}\` (\`${GITHUB_SHA::7}\`)
           - **Push Notifications (FCM):** ${FCM_BADGE}
           - **Checksums:** Included in \`SHA256SUMS.txt\`
           EOF
 
-          if gh release view "${TAG}" >/dev/null 2>&1; then
+          if gh release view "${TAG}" --repo "${GITHUB_REPOSITORY}" >/dev/null 2>&1; then
             echo "Updating existing release ${TAG}..."
-            gh release upload "${TAG}" release_assets/* --clobber
-            gh release edit "${TAG}" --title "EVA Canteen ${TAG}" --notes-file release_notes.md
+            gh release upload "${TAG}" release_assets/* --repo "${GITHUB_REPOSITORY}" --clobber
+            gh release edit "${TAG}" --repo "${GITHUB_REPOSITORY}" --title "EVA Canteen ${TAG}" --notes-file release_notes.md
           else
             echo "Creating new release ${TAG}..."
             PRERELEASE_FLAG=""
@@ -165,6 +262,7 @@ jobs:
               PRERELEASE_FLAG="--prerelease"
             fi
             gh release create "${TAG}" release_assets/* \
+              --repo "${GITHUB_REPOSITORY}" \
               --target "${GITHUB_SHA}" \
               --title "EVA Canteen ${TAG}" \
               --notes-file release_notes.md \
