@@ -2082,6 +2082,113 @@ void main() {
       expect(find.text('Lunch Combo'), findsOneWidget);
     },
   );
+
+  testWidgets(
+    'Moon theme activates auto-night lunar backdrop, custom crescent swatch, RTL mirror, Daylight Lunar Mist fallback, and synced splash screen with zero BackdropFilter',
+    (tester) async {
+      await tester.binding.setSurfaceSize(const Size(412, 915));
+      addTearDown(() => tester.binding.setSurfaceSize(null));
+
+      SharedPreferences.setMockInitialValues({});
+      final prefs = await SharedPreferences.getInstance();
+      final mockSocket = EvaSocketClient(enableNetwork: false);
+
+      final container = ProviderContainer(
+        overrides: [
+          sharedPrefsProvider.overrideWithValue(prefs),
+          socketClientProvider.overrideWithValue(mockSocket),
+        ],
+      );
+      addTearDown(container.dispose);
+
+      container.read(canteenStoreProvider.notifier).enterBrowseGuestMode();
+
+      await tester.pumpWidget(
+        UncontrolledProviderScope(
+          container: container,
+          child: const EvaCanteenApp(),
+        ),
+      );
+      await tester.pumpAndSettle();
+
+      // Open Settings and tap 'Moon' theme chip
+      await tester.tap(find.text('Settings'));
+      await tester.pumpAndSettle();
+      expect(find.byKey(const ValueKey('moon_theme_swatch')), findsOneWidget);
+
+      await tester.tap(find.text('Moon'));
+      await tester.pumpAndSettle();
+      expect(tester.takeException(), isNull);
+
+      final appPrefs = container.read(appPreferencesProvider);
+      expect(appPrefs.accentPreset, EvaAccentPreset.moon);
+      expect(appPrefs.surfaceMode, EvaSurfaceMode.nightShift);
+
+      final nightTokens = EvaTokens.of(tester.element(find.text('Moon')));
+      expect(nightTokens.isMoon, isTrue);
+      expect(nightTokens.isNight, isTrue);
+      expect(nightTokens.canvasBackground, const Color(0xFF070B16));
+      expect(nightTokens.brandPrimary, const Color(0xFFDCE8FF));
+      expect(nightTokens.logoSwooshTint, const Color(0xFFF7DC88));
+
+      expect(find.byType(EvaMoonBackdrop), findsOneWidget);
+      expect(find.byKey(const ValueKey('moon_backdrop_true')), findsOneWidget);
+      expect(find.text('Subtle background pattern'), findsNothing);
+      expect(find.byType(BackdropFilter), findsNothing);
+
+      // Switch to Light mode while on Moon -> curated Lunar Mist daylight fallback
+      await tester.tap(find.text('Light'));
+      await tester.pumpAndSettle();
+      expect(tester.takeException(), isNull);
+      final dayTokens = EvaTokens.of(tester.element(find.text('Moon')));
+      expect(dayTokens.isMoon, isTrue);
+      expect(dayTokens.isNight, isFalse);
+      expect(find.byKey(const ValueKey('moon_backdrop_false')), findsOneWidget);
+
+      // Switch back to Dark + Arabic RTL to verify mirrored crescent & Arabic label ('القمر')
+      await tester.tap(find.text('Dark'));
+      await tester.pumpAndSettle();
+      await tester.ensureVisible(find.text('العربية'));
+      await tester.pumpAndSettle();
+      await tester.tap(find.text('العربية'));
+      await tester.pumpAndSettle();
+      expect(tester.takeException(), isNull);
+      expect(find.text('القمر'), findsOneWidget);
+      expect(find.byType(EvaMoonBackdrop), findsOneWidget);
+      expect(find.byType(BackdropFilter), findsNothing);
+
+      // Cold-start splash screen syncs with saved Moon preferences and unmounts cleanly
+      SharedPreferences.setMockInitialValues({
+        'eva_pref_accent': 'moon',
+        'eva_pref_mode': 'nightShift',
+      });
+      final moonPrefs = await SharedPreferences.getInstance();
+      final moonContainer = ProviderContainer(
+        overrides: [
+          sharedPrefsProvider.overrideWithValue(moonPrefs),
+          socketClientProvider.overrideWithValue(mockSocket),
+        ],
+      );
+      addTearDown(moonContainer.dispose);
+
+      await tester.pumpWidget(
+        UncontrolledProviderScope(
+          container: moonContainer,
+          child: const EvaCanteenApp(
+            key: ValueKey('moon_cold_start_app'),
+            forceShowSplashInTests: true,
+          ),
+        ),
+      );
+      await tester.pump(const Duration(milliseconds: 220));
+      expect(find.byKey(const ValueKey('eva_splash_overlay')), findsOneWidget);
+      expect(tester.takeException(), isNull);
+      await tester.pump(const Duration(milliseconds: 1400));
+      await tester.pumpAndSettle();
+      expect(find.byKey(const ValueKey('eva_splash_overlay')), findsNothing);
+      expect(tester.takeException(), isNull);
+    },
+  );
 }
 
 class _RecordingSocketClient extends EvaSocketClient {

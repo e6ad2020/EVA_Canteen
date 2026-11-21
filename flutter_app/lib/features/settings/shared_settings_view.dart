@@ -249,7 +249,7 @@ class _SharedSettingsViewState extends ConsumerState<SharedSettingsView> {
                                     ),
                                 ],
                               ),
-                              if (!tokens.isLiquidGlass) ...[
+                              if (!tokens.isLiquidGlass && !tokens.isMoon) ...[
                                 const SizedBox(height: 14),
                                 SwitchListTile.adaptive(
                                   contentPadding: EdgeInsets.zero,

@@ -366,12 +366,13 @@ class _EvaSplashOverlayState extends ConsumerState<EvaSplashOverlay>
                       child: Stack(
                         fit: StackFit.expand,
                         children: [
-                          // Theme-matched radial aurora + subtle diagonal icon stripes
+                          // Theme-matched radial aurora + subtle diagonal icon stripes (or lunar starfield for Moon)
                           CustomPaint(
                             painter: _EvaSplashBackdropPainter(
                               brandPrimary: tokens.brandPrimary,
                               logoFill: tokens.logoFill,
                               isNight: tokens.isNight,
+                              isMoon: tokens.isMoon,
                               isMonochrome: tokens.isMonochromeLogo,
                               stripeSlide: stripeSlide,
                               glowBreath: glowBreath,
@@ -391,7 +392,9 @@ class _EvaSplashOverlayState extends ConsumerState<EvaSplashOverlay>
                                       size: Size.square(logoSize * 1.45),
                                       painter: _EvaSplashEffectsPainter(
                                         brandPrimary: tokens.brandPrimary,
-                                        logoFill: tokens.logoFill,
+                                        logoFill: tokens.isMoon
+                                            ? const Color(0xFFF7DC88)
+                                            : tokens.logoFill,
                                         logoOutline: tokens.logoOutline,
                                         isNight: tokens.isNight,
                                         isMonochrome: tokens.isMonochromeLogo,
@@ -424,6 +427,7 @@ class _EvaSplashBackdropPainter extends CustomPainter {
     required this.brandPrimary,
     required this.logoFill,
     required this.isNight,
+    required this.isMoon,
     required this.isMonochrome,
     required this.stripeSlide,
     required this.glowBreath,
@@ -432,6 +436,7 @@ class _EvaSplashBackdropPainter extends CustomPainter {
   final Color brandPrimary;
   final Color logoFill;
   final bool isNight;
+  final bool isMoon;
   final bool isMonochrome;
   final double stripeSlide;
   final double glowBreath;
@@ -444,10 +449,84 @@ class _EvaSplashBackdropPainter extends CustomPainter {
     Color(0xFF29B6F6),
   ];
 
+  static final List<({double x, double y, double r, double a, bool gold})>
+  _splashMoonStars = _buildSplashMoonStars();
+
+  static List<({double x, double y, double r, double a, bool gold})>
+  _buildSplashMoonStars() {
+    final rng = math.Random(20260721);
+    return List.unmodifiable(
+      List.generate(42, (i) {
+        final hero = i >= 30;
+        return (
+          x: rng.nextDouble(),
+          y: rng.nextDouble(),
+          r: hero ? (1.3 + rng.nextDouble() * 0.9) : (0.7 + rng.nextDouble() * 0.6),
+          a: hero ? (0.42 + rng.nextDouble() * 0.42) : (0.18 + rng.nextDouble() * 0.30),
+          gold: hero && i % 3 == 0,
+        );
+      }),
+    );
+  }
+
   @override
   void paint(Canvas canvas, Size size) {
     final center = Offset(size.width * 0.5, size.height * 0.5);
     final shortest = size.shortestSide;
+
+    if (isMoon) {
+      final rect = Offset.zero & size;
+      canvas.drawRect(
+        rect,
+        Paint()
+          ..shader = LinearGradient(
+            begin: Alignment.topCenter,
+            end: Alignment.bottomCenter,
+            stops: const [0.0, 0.45, 1.0],
+            colors: isNight
+                ? const [
+                    Color(0xFF040711),
+                    Color(0xFF091227),
+                    Color(0xFF152546),
+                  ]
+                : const [
+                    Color(0xFFE7EFFD),
+                    Color(0xFFF0F4FC),
+                    Color(0xFFE3EBF8),
+                  ],
+          ).createShader(rect),
+      );
+
+      // Soft silver-moonlight radial aura behind the pearl-and-gold EVA emblem
+      final glowRadius = shortest * 0.58 * glowBreath;
+      canvas.drawCircle(
+        center,
+        glowRadius,
+        Paint()
+          ..shader = RadialGradient(
+            colors: [
+              (isNight ? const Color(0xFFDCE8FF) : const Color(0xFF6B85C4))
+                  .withValues(alpha: isNight ? 0.22 : 0.14),
+              const Color(0xFFF7DC88).withValues(alpha: isNight ? 0.08 : 0.05),
+              const Color(0x00070B16),
+            ],
+            stops: const [0.0, 0.46, 1.0],
+          ).createShader(Rect.fromCircle(center: center, radius: glowRadius)),
+      );
+
+      // Subtle seeded lunar starfield fading in smoothly with the splash
+      final starAlphaFactor = (0.35 + 0.65 * stripeSlide).clamp(0.0, 1.0);
+      for (final s in _splashMoonStars) {
+        final pos = Offset(s.x * size.width, s.y * size.height);
+        if ((pos - center).distance < shortest * 0.16) continue;
+        final c = isNight
+            ? (s.gold ? const Color(0xFFF7DC88) : const Color(0xFFE6F0FF))
+            : const Color(0xFF47629E);
+        final alpha = (isNight ? s.a : s.a * 0.25) * starAlphaFactor;
+        canvas.drawCircle(pos, s.r, Paint()..color = c.withValues(alpha: alpha));
+      }
+      return;
+    }
 
     // 1. Soft breathing radial glow behind the emblem
     final glowRadius = shortest * 0.56 * glowBreath;
@@ -509,6 +588,7 @@ class _EvaSplashBackdropPainter extends CustomPainter {
         oldDelegate.brandPrimary != brandPrimary ||
         oldDelegate.logoFill != logoFill ||
         oldDelegate.isNight != isNight ||
+        oldDelegate.isMoon != isMoon ||
         oldDelegate.isMonochrome != isMonochrome;
   }
 }

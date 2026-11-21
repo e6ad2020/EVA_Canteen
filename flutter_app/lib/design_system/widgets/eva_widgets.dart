@@ -39,7 +39,12 @@ class EvaScaffoldBackground extends StatelessWidget {
           children: [
             Positioned.fill(
               child: RepaintBoundary(
-                child: wallpaperFolder != null
+                child: tokens.isMoon
+                    ? EvaMoonBackdrop(
+                        key: ValueKey('moon_backdrop_${tokens.isNight}'),
+                        isNight: tokens.isNight,
+                      )
+                    : wallpaperFolder != null
                     ? LayoutBuilder(
                         key: ValueKey('wallpaper_$wallpaperFolder'),
                         builder: (context, constraints) {
@@ -88,6 +93,510 @@ class EvaScaffoldBackground extends StatelessWidget {
       ),
     );
   }
+}
+
+/// Handcrafted celestial backdrop for the signature Moon theme:
+/// - Static GPU-cached midnight sky gradient, sculpted crescent moon framed
+///   cleanly below the floating header bar (RTL-mirrored), multi-depth
+///   starfield, gossamer constellations, and soft lunar horizon ridges.
+/// - Separate ultra-lightweight isolated RepaintBoundary for 5 slowly
+///   twinkling 4-point hero stars (paused under Reduce Motion & widget tests).
+class EvaMoonBackdrop extends StatelessWidget {
+  const EvaMoonBackdrop({super.key, required this.isNight});
+
+  final bool isNight;
+
+  @override
+  Widget build(BuildContext context) {
+    final topInset = MediaQuery.paddingOf(context).top;
+    final isRtl = Directionality.of(context) == TextDirection.rtl;
+
+    return Stack(
+      fit: StackFit.expand,
+      children: [
+        RepaintBoundary(
+          child: CustomPaint(
+            painter: _EvaMoonSkyPainter(
+              isNight: isNight,
+              topInset: topInset,
+              isRtl: isRtl,
+            ),
+          ),
+        ),
+        if (isNight)
+          RepaintBoundary(
+            child: _MoonTwinkleStarsOverlay(
+              topInset: topInset,
+              isRtl: isRtl,
+            ),
+          ),
+      ],
+    );
+  }
+}
+
+class _EvaMoonSkyPainter extends CustomPainter {
+  const _EvaMoonSkyPainter({
+    required this.isNight,
+    required this.topInset,
+    required this.isRtl,
+  });
+
+  final bool isNight;
+  final double topInset;
+  final bool isRtl;
+
+  static final List<({double x, double y, double r, double a, bool gold})>
+  _stars = _generateStars();
+
+  static List<({double x, double y, double r, double a, bool gold})>
+  _generateStars() {
+    final rng = math.Random(20260720);
+    final list = <({double x, double y, double r, double a, bool gold})>[];
+    for (int i = 0; i < 62; i++) {
+      final isMedium = i >= 44;
+      list.add((
+        x: rng.nextDouble(),
+        y: rng.nextDouble() * 0.84,
+        r: isMedium
+            ? (1.25 + rng.nextDouble() * 0.75)
+            : (0.65 + rng.nextDouble() * 0.65),
+        a: isMedium
+            ? (0.36 + rng.nextDouble() * 0.36)
+            : (0.16 + rng.nextDouble() * 0.30),
+        gold: isMedium && i % 5 == 0,
+      ));
+    }
+    return List.unmodifiable(list);
+  }
+
+  double _rx(double normalizedX, double width) =>
+      (isRtl ? (1.0 - normalizedX) : normalizedX) * width;
+
+  @override
+  void paint(Canvas canvas, Size size) {
+    final rect = Offset.zero & size;
+
+    // 1. Sky gradient (Nocturnal Obsidian -> Midnight Indigo -> Horizon Haze)
+    final skyPaint = Paint()
+      ..shader = LinearGradient(
+        begin: Alignment.topCenter,
+        end: Alignment.bottomCenter,
+        stops: const [0.0, 0.36, 0.74, 1.0],
+        colors: isNight
+            ? const [
+                Color(0xFF040711),
+                Color(0xFF091227),
+                Color(0xFF101E3D),
+                Color(0xFF182B52),
+              ]
+            : const [
+                Color(0xFFE7EFFD),
+                Color(0xFFEEF3FC),
+                Color(0xFFF3F6FD),
+                Color(0xFFE5ECF9),
+              ],
+      ).createShader(rect);
+    canvas.drawRect(rect, skyPaint);
+
+    // 2. Sculpted crescent moon framed below the floating EvaGlassBar header
+    final moonRadius = (size.shortestSide * 0.105).clamp(34.0, 50.0);
+    final horizontalEdge = math.min(72.0, size.width * 0.185);
+    final moonCenter = Offset(
+      isRtl ? horizontalEdge : size.width - horizontalEdge,
+      topInset + 132.0,
+    );
+
+    // Multi-stop atmospheric lunar halo
+    final haloRadius = moonRadius * 3.8;
+    final haloPaint = Paint()
+      ..shader = RadialGradient(
+        colors: isNight
+            ? const [
+                Color(0x30DCE8FF),
+                Color(0x186E95DF),
+                Color(0x083B5AA0),
+                Color(0x00070B16),
+              ]
+            : const [
+                Color(0x40FFFFFF),
+                Color(0x2299B5E8),
+                Color(0x0A5B7AB8),
+                Color(0x00F1F5FC),
+              ],
+        stops: const [0.0, 0.34, 0.66, 1.0],
+      ).createShader(Rect.fromCircle(center: moonCenter, radius: haloRadius));
+    canvas.drawCircle(moonCenter, haloRadius, haloPaint);
+
+    // 3. Multi-depth starfield
+    for (final s in _stars) {
+      final px = _rx(s.x, size.width);
+      final py = s.y * size.height;
+      // Keep the immediate crescent disc clean
+      if ((Offset(px, py) - moonCenter).distance < moonRadius * 1.45) continue;
+      final baseColor = isNight
+          ? (s.gold ? const Color(0xFFF7DC88) : const Color(0xFFE4EEFF))
+          : const Color(0xFF47629E);
+      final alpha = isNight ? s.a : s.a * 0.24;
+      canvas.drawCircle(
+        Offset(px, py),
+        s.r,
+        Paint()..color = baseColor.withValues(alpha: alpha),
+      );
+    }
+
+    // 4. Gossamer constellations (2 delicate geometric star chains)
+    final constellationLinePaint = Paint()
+      ..color = (isNight ? const Color(0xFFBFD4FF) : const Color(0xFF4B67A3))
+          .withValues(alpha: isNight ? 0.085 : 0.075)
+      ..strokeWidth = 0.85
+      ..style = PaintingStyle.stroke;
+    final constellationNodePaint = Paint()
+      ..color = (isNight ? const Color(0xFFE6F0FF) : const Color(0xFF4B67A3))
+          .withValues(alpha: isNight ? 0.42 : 0.22);
+
+    void drawConstellation(List<Offset> normalizedPoints) {
+      final pts = [
+        for (final p in normalizedPoints)
+          Offset(_rx(p.dx, size.width), p.dy * size.height),
+      ];
+      for (int i = 0; i < pts.length - 1; i++) {
+        canvas.drawLine(pts[i], pts[i + 1], constellationLinePaint);
+      }
+      for (final p in pts) {
+        canvas.drawCircle(p, 1.7, constellationNodePaint);
+      }
+    }
+
+    drawConstellation(const [
+      Offset(0.11, 0.24),
+      Offset(0.19, 0.20),
+      Offset(0.28, 0.25),
+      Offset(0.35, 0.19),
+    ]);
+    drawConstellation(const [
+      Offset(0.68, 0.56),
+      Offset(0.76, 0.51),
+      Offset(0.84, 0.55),
+      Offset(0.89, 0.48),
+    ]);
+
+    // 5. Sculpted Crescent Moon (earthshine disc + crescent + lunar maria + rim)
+    final earthshinePaint = Paint()
+      ..color = (isNight ? const Color(0xFF9FB8E8) : const Color(0xFF6B85BD))
+          .withValues(alpha: isNight ? 0.065 : 0.08);
+    canvas.drawCircle(moonCenter, moonRadius, earthshinePaint);
+
+    // Cutout shifted inward so the sunlit crescent cradles toward center sky
+    final cutoutDirX = isRtl ? 1.0 : -1.0;
+    final outerCircle = Path()
+      ..addOval(Rect.fromCircle(center: moonCenter, radius: moonRadius));
+    final cutoutCenter = Offset(
+      moonCenter.dx + cutoutDirX * moonRadius * 0.38,
+      moonCenter.dy - moonRadius * 0.16,
+    );
+    final shadowCutout = Path()
+      ..addOval(
+        Rect.fromCircle(center: cutoutCenter, radius: moonRadius * 0.88),
+      );
+    final crescentPath = Path.combine(
+      PathOperation.difference,
+      outerCircle,
+      shadowCutout,
+    );
+
+    final crescentFill = Paint()
+      ..shader = LinearGradient(
+        begin: isRtl ? Alignment.bottomLeft : Alignment.bottomRight,
+        end: isRtl ? Alignment.topRight : Alignment.topLeft,
+        colors: isNight
+            ? const [
+                Color(0xFFFFFFFF),
+                Color(0xFFE3EDFF),
+                Color(0xFFB5C9EE),
+              ]
+            : const [
+                Color(0xFFFFFFFF),
+                Color(0xFFDCE8FC),
+                Color(0xFF9EB5E0),
+              ],
+      ).createShader(Rect.fromCircle(center: moonCenter, radius: moonRadius));
+    canvas.drawPath(crescentPath, crescentFill);
+
+    // Subtle procedural lunar maria (craters) masked strictly inside the crescent
+    canvas.save();
+    canvas.clipPath(crescentPath);
+    final craterPaint = Paint()
+      ..color = (isNight ? const Color(0xFF7B95C9) : const Color(0xFF637EB8))
+          .withValues(alpha: isNight ? 0.20 : 0.16);
+    final cDir = -cutoutDirX; // lit side direction
+    canvas.drawOval(
+      Rect.fromCenter(
+        center: Offset(
+          moonCenter.dx + cDir * moonRadius * 0.44,
+          moonCenter.dy + moonRadius * 0.18,
+        ),
+        width: moonRadius * 0.34,
+        height: moonRadius * 0.24,
+      ),
+      craterPaint,
+    );
+    canvas.drawOval(
+      Rect.fromCenter(
+        center: Offset(
+          moonCenter.dx + cDir * moonRadius * 0.58,
+          moonCenter.dy - moonRadius * 0.24,
+        ),
+        width: moonRadius * 0.22,
+        height: moonRadius * 0.18,
+      ),
+      craterPaint,
+    );
+    canvas.drawCircle(
+      Offset(
+        moonCenter.dx + cDir * moonRadius * 0.20,
+        moonCenter.dy + moonRadius * 0.56,
+      ),
+      moonRadius * 0.13,
+      craterPaint,
+    );
+    canvas.drawCircle(
+      Offset(
+        moonCenter.dx + cDir * moonRadius * 0.66,
+        moonCenter.dy + moonRadius * 0.04,
+      ),
+      moonRadius * 0.09,
+      craterPaint,
+    );
+    canvas.restore();
+
+    // Crisp silver rim highlight along the sunlit crescent edge
+    canvas.drawPath(
+      crescentPath,
+      Paint()
+        ..color = Colors.white.withValues(alpha: isNight ? 0.52 : 0.72)
+        ..style = PaintingStyle.stroke
+        ..strokeWidth = 1.0,
+    );
+
+    // 6. Whisper-soft layered lunar horizon ridges near bottom edge
+    final ridgeBack = Path()
+      ..moveTo(0, size.height * 0.89)
+      ..quadraticBezierTo(
+        size.width * 0.28,
+        size.height * 0.82,
+        size.width * 0.56,
+        size.height * 0.88,
+      )
+      ..quadraticBezierTo(
+        size.width * 0.82,
+        size.height * 0.93,
+        size.width,
+        size.height * 0.85,
+      )
+      ..lineTo(size.width, size.height)
+      ..lineTo(0, size.height)
+      ..close();
+    canvas.drawPath(
+      ridgeBack,
+      Paint()
+        ..color = (isNight ? const Color(0xFF1A2D56) : const Color(0xFFCBD8F2))
+            .withValues(alpha: isNight ? 0.34 : 0.42),
+    );
+
+    final ridgeFront = Path()
+      ..moveTo(0, size.height * 0.94)
+      ..quadraticBezierTo(
+        size.width * 0.34,
+        size.height * 0.88,
+        size.width * 0.68,
+        size.height * 0.93,
+      )
+      ..quadraticBezierTo(
+        size.width * 0.88,
+        size.height * 0.96,
+        size.width,
+        size.height * 0.91,
+      )
+      ..lineTo(size.width, size.height)
+      ..lineTo(0, size.height)
+      ..close();
+    canvas.drawPath(
+      ridgeFront,
+      Paint()
+        ..color = (isNight ? const Color(0xFF0A1328) : const Color(0xFFDAE4F7))
+            .withValues(alpha: isNight ? 0.62 : 0.58),
+    );
+
+    // Subtle moonlit crest line on the back ridge
+    final crestPath = Path()
+      ..moveTo(0, size.height * 0.89)
+      ..quadraticBezierTo(
+        size.width * 0.28,
+        size.height * 0.82,
+        size.width * 0.56,
+        size.height * 0.88,
+      )
+      ..quadraticBezierTo(
+        size.width * 0.82,
+        size.height * 0.93,
+        size.width,
+        size.height * 0.85,
+      );
+    canvas.drawPath(
+      crestPath,
+      Paint()
+        ..color = (isNight ? const Color(0xFFDCE8FF) : const Color(0xFFFFFFFF))
+            .withValues(alpha: isNight ? 0.14 : 0.55)
+        ..style = PaintingStyle.stroke
+        ..strokeWidth = 1.0,
+    );
+  }
+
+  @override
+  bool shouldRepaint(covariant _EvaMoonSkyPainter oldDelegate) =>
+      oldDelegate.isNight != isNight ||
+      oldDelegate.topInset != topInset ||
+      oldDelegate.isRtl != isRtl;
+}
+
+class _MoonTwinkleStarsOverlay extends StatefulWidget {
+  const _MoonTwinkleStarsOverlay({
+    required this.topInset,
+    required this.isRtl,
+  });
+
+  final double topInset;
+  final bool isRtl;
+
+  @override
+  State<_MoonTwinkleStarsOverlay> createState() =>
+      _MoonTwinkleStarsOverlayState();
+}
+
+class _MoonTwinkleStarsOverlayState extends State<_MoonTwinkleStarsOverlay>
+    with SingleTickerProviderStateMixin {
+  late final AnimationController _ctrl;
+  bool _isRunning = false;
+
+  static bool get _isTestBinding {
+    try {
+      return WidgetsBinding.instance.runtimeType.toString().contains('Test');
+    } catch (_) {
+      return false;
+    }
+  }
+
+  @override
+  void initState() {
+    super.initState();
+    _ctrl = AnimationController(
+      vsync: this,
+      duration: const Duration(milliseconds: 6400),
+      value: 0.25,
+    );
+  }
+
+  @override
+  void didChangeDependencies() {
+    super.didChangeDependencies();
+    final disableMotion = MediaQuery.maybeDisableAnimationsOf(context) ?? false;
+    final shouldAnimate = !disableMotion && !_isTestBinding;
+    if (shouldAnimate && !_isRunning) {
+      _isRunning = true;
+      _ctrl.repeat();
+    } else if (!shouldAnimate && _isRunning) {
+      _isRunning = false;
+      _ctrl.stop();
+    }
+  }
+
+  @override
+  void dispose() {
+    _ctrl.dispose();
+    super.dispose();
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return CustomPaint(
+      painter: _MoonTwinkleStarsPainter(
+        progress: _ctrl,
+        topInset: widget.topInset,
+        isRtl: widget.isRtl,
+      ),
+    );
+  }
+}
+
+class _MoonTwinkleStarsPainter extends CustomPainter {
+  _MoonTwinkleStarsPainter({
+    required this.progress,
+    required this.topInset,
+    required this.isRtl,
+  }) : super(repaint: progress);
+
+  final Animation<double> progress;
+  final double topInset;
+  final bool isRtl;
+
+  // 5 hero 4-point diamond stars (normalized x/y, base radius, phase, gold tint)
+  static const List<({double x, double y, double r, double phase, bool gold})>
+  _heroStars = [
+    (x: 0.16, y: 0.16, r: 5.2, phase: 0.0, gold: false),
+    (x: 0.62, y: 0.18, r: 4.4, phase: 1.3, gold: true),
+    (x: 0.34, y: 0.34, r: 3.8, phase: 2.5, gold: false),
+    (x: 0.84, y: 0.36, r: 4.6, phase: 3.8, gold: true),
+    (x: 0.22, y: 0.66, r: 4.0, phase: 5.1, gold: false),
+  ];
+
+  void _drawFourPointStar(
+    Canvas canvas,
+    Offset center,
+    double radius,
+    Color color,
+  ) {
+    final inner = radius * 0.24;
+    final path = Path()
+      ..moveTo(center.dx, center.dy - radius)
+      ..quadraticBezierTo(center.dx, center.dy - inner, center.dx + inner, center.dy - inner)
+      ..quadraticBezierTo(center.dx + inner, center.dy, center.dx + radius, center.dy)
+      ..quadraticBezierTo(center.dx + inner, center.dy, center.dx + inner, center.dy + inner)
+      ..quadraticBezierTo(center.dx, center.dy + inner, center.dx, center.dy + radius)
+      ..quadraticBezierTo(center.dx, center.dy + inner, center.dx - inner, center.dy + inner)
+      ..quadraticBezierTo(center.dx - inner, center.dy, center.dx - radius, center.dy)
+      ..quadraticBezierTo(center.dx - inner, center.dy, center.dx - inner, center.dy - inner)
+      ..quadraticBezierTo(center.dx, center.dy - inner, center.dx, center.dy - radius)
+      ..close();
+    canvas.drawPath(path, Paint()..color = color);
+  }
+
+  @override
+  void paint(Canvas canvas, Size size) {
+    final tau = progress.value * math.pi * 2.0;
+    for (final star in _heroStars) {
+      final wave = 0.5 + 0.5 * math.sin(tau + star.phase);
+      final alpha = 0.36 + 0.56 * wave;
+      final r = star.r * (0.86 + 0.28 * wave);
+      final x = (isRtl ? (1.0 - star.x) : star.x) * size.width;
+      final y = math.max(topInset + 92.0, star.y * size.height);
+      final c = star.gold
+          ? const Color(0xFFF7DC88)
+          : const Color(0xFFEAF1FF);
+
+      // Soft ambient pinpoint halo
+      canvas.drawCircle(
+        Offset(x, y),
+        r * 1.45,
+        Paint()..color = c.withValues(alpha: alpha * 0.20),
+      );
+      _drawFourPointStar(canvas, Offset(x, y), r, c.withValues(alpha: alpha));
+    }
+  }
+
+  @override
+  bool shouldRepaint(covariant _MoonTwinkleStarsPainter oldDelegate) =>
+      oldDelegate.topInset != topInset || oldDelegate.isRtl != isRtl;
 }
 
 class _SubtleArchitecturalPatternPainter extends CustomPainter {
@@ -170,12 +679,41 @@ class EvaSurfaceCard extends StatelessWidget {
       child: inner,
     );
 
+    final isMoonNight = tokens.isMoon && tokens.isNight;
     final Widget surface = Container(
       decoration: BoxDecoration(
-        color: resolvedBg,
+        color: isMoonNight && backgroundColor == null ? null : resolvedBg,
+        gradient: isMoonNight && backgroundColor == null
+            ? LinearGradient(
+                begin: Alignment.topCenter,
+                end: Alignment.bottomCenter,
+                stops: const [0.0, 0.22, 1.0],
+                colors: [
+                  Color.alphaBlend(
+                    const Color(0x16DCE8FF),
+                    resolvedBg,
+                  ),
+                  resolvedBg,
+                  resolvedBg,
+                ],
+              )
+            : null,
         borderRadius: BorderRadius.circular(radius),
         border: Border.all(color: resolvedBorder, width: resolvedBorderWidth),
-        boxShadow: tokens.isNight
+        boxShadow: isMoonNight
+            ? const [
+                BoxShadow(
+                  color: Color(0x28030610),
+                  blurRadius: 14,
+                  offset: Offset(0, 4),
+                ),
+                BoxShadow(
+                  color: Color(0x12DCE8FF),
+                  blurRadius: 1,
+                  offset: Offset(0, -0.5),
+                ),
+              ]
+            : tokens.isNight
             ? null
             : [
                 BoxShadow(
@@ -255,7 +793,9 @@ class _EvaGlassBarState extends State<EvaGlassBar>
 
     final borderColor = widget.isScrolled
         ? Color.lerp(tokens.borderSubtle, tokens.brandPrimary, 0.42)!
-        : tokens.borderSubtle;
+        : (tokens.isMoon && tokens.isNight
+              ? Color.lerp(tokens.borderSubtle, tokens.brandPrimary, 0.20)!
+              : tokens.borderSubtle);
 
     final bar = Padding(
       padding: widget.margin,
@@ -272,7 +812,24 @@ class _EvaGlassBarState extends State<EvaGlassBar>
                 ? math.max(tokens.borderWidth, 1.35)
                 : tokens.borderWidth,
           ),
-          boxShadow: tokens.isNight
+          boxShadow: tokens.isMoon && tokens.isNight
+              ? [
+                  BoxShadow(
+                    color: const Color(0xFF02050D).withValues(
+                      alpha: widget.isScrolled ? 0.50 : 0.32,
+                    ),
+                    blurRadius: widget.isScrolled ? 20 : 12,
+                    offset: Offset(0, widget.isScrolled ? 6 : 3),
+                  ),
+                  BoxShadow(
+                    color: tokens.brandPrimary.withValues(
+                      alpha: widget.isScrolled ? 0.14 : 0.08,
+                    ),
+                    blurRadius: widget.isScrolled ? 12 : 6,
+                    offset: const Offset(0, 0),
+                  ),
+                ]
+              : tokens.isNight
               ? [
                   BoxShadow(
                     color: Colors.black.withValues(
@@ -1127,7 +1684,10 @@ class _EvaFloatingNavBarState extends State<EvaFloatingNavBar>
     final screenW = MediaQuery.sizeOf(context).width;
     final disableMotion = MediaQuery.maybeDisableAnimationsOf(context) ?? false;
 
-    final capsuleBg = tokens.isNight
+    final isMoonNight = tokens.isMoon && tokens.isNight;
+    final capsuleBg = isMoonNight
+        ? const Color(0xF20F182D)
+        : tokens.isNight
         ? Color.alphaBlend(
             tokens.brandPrimary.withValues(alpha: 0.07),
             const Color(0xF2151922),
@@ -1136,9 +1696,13 @@ class _EvaFloatingNavBarState extends State<EvaFloatingNavBar>
     final capsuleBorder = Color.lerp(
       tokens.borderSubtle,
       tokens.brandPrimary,
-      tokens.isNight ? 0.30 : (tokens.isLiquidGlass ? 0.26 : 0.16),
+      isMoonNight
+          ? 0.44
+          : (tokens.isNight ? 0.30 : (tokens.isLiquidGlass ? 0.26 : 0.16)),
     )!;
-    final activeFg = tokens.isNight
+    final activeFg = isMoonNight
+        ? const Color(0xFFF4F8FF)
+        : tokens.isNight
         ? Color.lerp(tokens.brandPrimary, Colors.white, 0.18)!
         : tokens.brandPrimary;
     final inactiveFg = tokens.textSecondary;
@@ -1859,7 +2423,8 @@ class _EvaShellTransitionState extends State<EvaShellTransition>
 }
 
 /// Diagonal 135° split swatch for Light Blue / Light Red / Monochrome themes,
-/// or solid circle for single-hue themes.
+/// bespoke crescent-moon sky disc for Moon theme, or solid circle for
+/// single-hue themes.
 class EvaThemeSwatch extends StatelessWidget {
   const EvaThemeSwatch({
     super.key,
@@ -1875,6 +2440,22 @@ class EvaThemeSwatch extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final tokens = EvaTokens.of(context);
+
+    if (preset == EvaAccentPreset.moon) {
+      return SizedBox(
+        width: size,
+        height: size,
+        child: CustomPaint(
+          key: const ValueKey('moon_theme_swatch'),
+          painter: _MoonSwatchPainter(
+            borderColor: tokens.isMoon
+                ? const Color(0xFFDCE8FF)
+                : tokens.borderSubtle,
+          ),
+        ),
+      );
+    }
+
     final hasDiagonal =
         !isNight && preset.swatchStart != null && preset.swatchEnd != null;
 
@@ -1906,6 +2487,68 @@ class EvaThemeSwatch extends StatelessWidget {
       ),
     );
   }
+}
+
+class _MoonSwatchPainter extends CustomPainter {
+  const _MoonSwatchPainter({required this.borderColor});
+
+  final Color borderColor;
+
+  @override
+  void paint(Canvas canvas, Size size) {
+    final center = Offset(size.width / 2, size.height / 2);
+    final radius = size.shortestSide / 2;
+
+    // Midnight sky disc
+    canvas.drawCircle(
+      center,
+      radius,
+      Paint()
+        ..shader = const RadialGradient(
+          center: Alignment(-0.25, -0.25),
+          colors: [Color(0xFF1E3263), Color(0xFF070C1B)],
+        ).createShader(Offset.zero & size),
+    );
+
+    // Mini sculpted silver crescent
+    final moonR = radius * 0.52;
+    final moonCenter = Offset(center.dx - radius * 0.08, center.dy + radius * 0.04);
+    final outer = Path()
+      ..addOval(Rect.fromCircle(center: moonCenter, radius: moonR));
+    final cutout = Path()
+      ..addOval(
+        Rect.fromCircle(
+          center: Offset(
+            moonCenter.dx + moonR * 0.46,
+            moonCenter.dy - moonR * 0.24,
+          ),
+          radius: moonR * 0.86,
+        ),
+      );
+    final crescent = Path.combine(PathOperation.difference, outer, cutout);
+    canvas.drawPath(crescent, Paint()..color = const Color(0xFFEAF1FF));
+
+    // Tiny golden companion star
+    canvas.drawCircle(
+      Offset(center.dx + radius * 0.34, center.dy - radius * 0.30),
+      radius * 0.13,
+      Paint()..color = const Color(0xFFF7DC88),
+    );
+
+    // Crisp circular rim
+    canvas.drawCircle(
+      center,
+      radius - 0.6,
+      Paint()
+        ..color = borderColor
+        ..style = PaintingStyle.stroke
+        ..strokeWidth = 1.2,
+    );
+  }
+
+  @override
+  bool shouldRepaint(covariant _MoonSwatchPainter oldDelegate) =>
+      oldDelegate.borderColor != borderColor;
 }
 
 class EvaBrandLogo extends StatelessWidget {

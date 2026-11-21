@@ -38,6 +38,14 @@ enum EvaAccentPreset {
     swatchEnd: Color(0xFFEF9A9A),
     wallpaperFolder: 'assets/images/wallpapers/light_red',
   ),
+  moon(
+    i18nKey: 'theme_moon',
+    fallbackLabel: 'Moon',
+    daylightColor: Color(0xFF283A6E),
+    nightColor: Color(0xFFDCE8FF),
+    swatchStart: Color(0xFF0A1124),
+    swatchEnd: Color(0xFFDCE8FF),
+  ),
   cobalt(
     i18nKey: 'theme_cobalt',
     fallbackLabel: 'Cobalt',
@@ -90,6 +98,7 @@ enum EvaAccentPreset {
   final String? wallpaperFolder;
 
   bool get isWallpaperLightTheme => wallpaperFolder != null;
+  bool get isSignatureDarkTheme => this == EvaAccentPreset.moon;
 
   static EvaAccentPreset fromStorageName(String? raw) {
     if (raw == null || raw.isEmpty) return EvaAccentPreset.lightBlue;
@@ -110,6 +119,7 @@ class EvaTokens extends ThemeExtension<EvaTokens> {
   const EvaTokens({
     required this.isNight,
     required this.isLiquidGlass,
+    this.isMoon = false,
     required this.wallpaperFolder,
     required this.canvasBackground,
     required this.surfaceCard,
@@ -142,6 +152,7 @@ class EvaTokens extends ThemeExtension<EvaTokens> {
 
   final bool isNight;
   final bool isLiquidGlass;
+  final bool isMoon;
   final String? wallpaperFolder;
   final Color canvasBackground;
   final Color surfaceCard;
@@ -184,6 +195,12 @@ class EvaTokens extends ThemeExtension<EvaTokens> {
         isNight ? const Color(0xFFFF8A80) : const Color(0xFFFF9E9E),
         isNight ? const Color(0xFF7F0019) : const Color(0xFF8E001C),
         const Color(0xFFFFD584),
+        false,
+      ),
+      EvaAccentPreset.moon => (
+        isNight ? const Color(0xFFEAF1FF) : const Color(0xFFC5D8FA),
+        isNight ? const Color(0xFF1E2E5C) : const Color(0xFF1B2B5C),
+        isNight ? const Color(0xFFF7DC88) : const Color(0xFFEAB308),
         false,
       ),
       EvaAccentPreset.cobalt => (
@@ -231,6 +248,78 @@ class EvaTokens extends ThemeExtension<EvaTokens> {
         : const Color(0xFFFFFFFF);
     final (logoFill, logoOutline, logoSwooshTint, isMonoLogo) =
         _resolveLogoPalette(accent, isNight: isNight);
+
+    // Signature 'Moon' celestial theme:
+    // Deep nocturnal obsidian, silver moonlight primary CTAs, starlight gold
+    // accents, translucent smoked slate cards, and custom celestial backdrop.
+    if (accent == EvaAccentPreset.moon) {
+      if (isNight) {
+        return EvaTokens(
+          isNight: true,
+          isLiquidGlass: false,
+          isMoon: true,
+          wallpaperFolder: null,
+          canvasBackground: const Color(0xFF070B16),
+          surfaceCard: const Color(0xDE10182B),
+          surfaceElevated: const Color(0xF2141E35),
+          surfaceSubtle: const Color(0xFF1B2742),
+          borderSubtle: const Color(0xFF394E78),
+          borderWidth: 1.15,
+          textPrimary: const Color(0xFFF4F7FF),
+          textSecondary: const Color(0xFF9EB2D8),
+          brandPrimary: const Color(0xFFDCE8FF),
+          brandOnPrimary: const Color(0xFF091124),
+          brandSoftBg: const Color(0x28DCE8FF),
+          accentAppetite: const Color(0xFFF5B951),
+          statusPendingBg: const Color(0xFF3B2A0C),
+          statusPendingFg: const Color(0xFFFCD34D),
+          statusPreparingBg: const Color(0xFF132A4F),
+          statusPreparingFg: const Color(0xFF93C5FD),
+          statusDeliveredBg: const Color(0xFF0A3327),
+          statusDeliveredFg: const Color(0xFF5EEAD4),
+          statusClosedBg: const Color(0xFF3B1520),
+          statusClosedFg: const Color(0xFFFCA5A5),
+          showDoodlePattern: false,
+          logoFill: logoFill,
+          logoOutline: logoOutline,
+          logoSwooshTint: logoSwooshTint,
+          isMonochromeLogo: isMonoLogo,
+        );
+      }
+
+      // Curated 'Lunar Mist' daylight fallback when user switches Moon to Light mode
+      return EvaTokens(
+        isNight: false,
+        isLiquidGlass: false,
+        isMoon: true,
+        wallpaperFolder: null,
+        canvasBackground: const Color(0xFFF1F5FC),
+        surfaceCard: const Color(0xF5FFFFFF),
+        surfaceElevated: const Color(0xFAFFFFFF),
+        surfaceSubtle: const Color(0xFFE4ECFA),
+        borderSubtle: const Color(0xFFB5C4E0),
+        borderWidth: 1.25,
+        textPrimary: const Color(0xFF152242),
+        textSecondary: const Color(0xFF4D618A),
+        brandPrimary: const Color(0xFF283A6E),
+        brandOnPrimary: const Color(0xFFFFFFFF),
+        brandSoftBg: const Color(0xFFE6EEFC),
+        accentAppetite: const Color(0xFFD97706),
+        statusPendingBg: const Color(0xFFFEF3C7),
+        statusPendingFg: const Color(0xFFB45309),
+        statusPreparingBg: const Color(0xFFDBEAFE),
+        statusPreparingFg: const Color(0xFF1E40AF),
+        statusDeliveredBg: const Color(0xFFD1FAE5),
+        statusDeliveredFg: const Color(0xFF047857),
+        statusClosedBg: const Color(0xFFFEE2E2),
+        statusClosedFg: const Color(0xFFB91C1C),
+        showDoodlePattern: false,
+        logoFill: logoFill,
+        logoOutline: logoOutline,
+        logoSwooshTint: logoSwooshTint,
+        isMonochromeLogo: isMonoLogo,
+      );
+    }
 
     if (isNight) {
       return EvaTokens(
@@ -384,6 +473,7 @@ class EvaTokens extends ThemeExtension<EvaTokens> {
   EvaTokens copyWith({
     bool? isNight,
     bool? isLiquidGlass,
+    bool? isMoon,
     String? wallpaperFolder,
     Color? canvasBackground,
     Color? surfaceCard,
@@ -416,6 +506,7 @@ class EvaTokens extends ThemeExtension<EvaTokens> {
     return EvaTokens(
       isNight: isNight ?? this.isNight,
       isLiquidGlass: isLiquidGlass ?? this.isLiquidGlass,
+      isMoon: isMoon ?? this.isMoon,
       wallpaperFolder: wallpaperFolder ?? this.wallpaperFolder,
       canvasBackground: canvasBackground ?? this.canvasBackground,
       surfaceCard: surfaceCard ?? this.surfaceCard,
@@ -453,6 +544,7 @@ class EvaTokens extends ThemeExtension<EvaTokens> {
     return EvaTokens(
       isNight: t < 0.5 ? isNight : other.isNight,
       isLiquidGlass: t < 0.5 ? isLiquidGlass : other.isLiquidGlass,
+      isMoon: t < 0.5 ? isMoon : other.isMoon,
       wallpaperFolder: t < 0.5 ? wallpaperFolder : other.wallpaperFolder,
       canvasBackground: Color.lerp(canvasBackground, other.canvasBackground, t)!,
       surfaceCard: Color.lerp(surfaceCard, other.surfaceCard, t)!,

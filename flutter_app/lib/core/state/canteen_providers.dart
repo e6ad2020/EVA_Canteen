@@ -130,6 +130,15 @@ class AppPreferencesNotifier extends Notifier<AppPreferencesState> {
       );
       return;
     }
+    if (accent.isSignatureDarkTheme &&
+        state.surfaceMode != EvaSurfaceMode.nightShift) {
+      prefs.setString(_kMode, EvaSurfaceMode.nightShift.name);
+      state = state.copyWith(
+        accentPreset: accent,
+        surfaceMode: EvaSurfaceMode.nightShift,
+      );
+      return;
+    }
     state = state.copyWith(accentPreset: accent);
   }
 

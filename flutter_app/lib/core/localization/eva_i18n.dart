@@ -310,6 +310,7 @@ class EvaTranslator {
     'mode_night': {'en': 'Dark', 'ar': 'ليلي'},
     'theme_light_blue': {'en': 'Light Blue', 'ar': 'أزرق فاتح'},
     'theme_light_red': {'en': 'Light Red', 'ar': 'أحمر فاتح'},
+    'theme_moon': {'en': 'Moon', 'ar': 'القمر'},
     'theme_cobalt': {'en': 'Cobalt', 'ar': 'أزرق كوبالت'},
     'theme_emerald': {'en': 'Emerald', 'ar': 'زمردي'},
     'theme_violet': {'en': 'Violet', 'ar': 'بنفسجي'},
