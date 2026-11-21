@@ -46,11 +46,11 @@
   <table>
     <tr>
       <td align="center" width="50%">
-        <img src="docs/media/splash_moon.gif" alt="Kinetic 3-Layer Lunar Splash Animation" width="300" />
+        <img src="docs/media/splash_demo.gif" alt="Kinetic 3-Layer Light Blue Splash Animation" width="300" />
         <br />
         <strong>Kinetic 3-Layer Splash Screen</strong>
         <br />
-        <sub>Orbital swoosh launch, halo ripple, starburst & glossy sheen synced to your saved theme (tap to skip).</sub>
+        <sub>Orbital swoosh launch, halo ripple, starburst & glossy sheen on the Light Blue default theme (tap to skip).</sub>
       </td>
       <td align="center" width="50%">
         <img src="docs/media/menu_demo.gif" alt="Menu Category Wave Transitions and Live Theme Switching" width="300" />
