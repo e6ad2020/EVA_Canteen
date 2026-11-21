@@ -31,8 +31,8 @@
   </p>
 
   <p>
-    <a href="https://github.com/e6ad2020/EVA_Canteen/raw/refs/heads/apk-builds/EVA-Canteen-arm64-v8a-release.apk">
-      <img src="https://img.shields.io/badge/Download_Android_APK-v2.0.0_(arm64--v8a)-10B981?style=for-the-badge&logo=android&logoColor=white" alt="Download Android APK" />
+    <a href="https://github.com/e6ad2020/EVA_Canteen/releases/latest">
+      <img src="https://img.shields.io/badge/Download_Android_APK-v2.0.0_(v8a_%C2%B7_v7a_%C2%B7_Universal)-10B981?style=for-the-badge&logo=android&logoColor=white" alt="Download Android APK" />
     </a>
   </p>
 
@@ -121,7 +121,7 @@ EVA Canteen ships with **8 curated themes** across Light and Dark modes — head
 ```mermaid
 flowchart LR
     subgraph Clients["Flutter v2 Clients (Single Codebase)"]
-        A["Android APK (arm64-v8a)"]
+        A["Android APK (v8a · v7a · Universal)"]
         I["iOS App"]
         W["Flutter Web (Wasm)"]
     end
@@ -242,9 +242,15 @@ npm run start:web-flutter
 
 ## 📲 Download Android APK
 
-Pre-built FCM-enabled `arm64-v8a` release APKs are published on the [`apk-builds`](https://github.com/e6ad2020/EVA_Canteen/tree/apk-builds) branch:
+Pre-built FCM-enabled release APKs are built automatically via GitHub Actions and published on [**GitHub Releases**](https://github.com/e6ad2020/EVA_Canteen/releases/latest):
 
-- **Latest Release (`v2.0.0`):** [Download `EVA-Canteen-arm64-v8a-release.apk`](https://github.com/e6ad2020/EVA_Canteen/raw/refs/heads/apk-builds/EVA-Canteen-arm64-v8a-release.apk)
+| Variant | Best For | Direct Download (`v2.0.0`) |
+| :--- | :--- | :--- |
+| **ARM64 (`arm64-v8a`)** *(Recommended)* | Modern 64-bit Android phones (smallest & fastest) | [Download `EVA-Canteen-v2.0.0-arm64-v8a.apk`](https://github.com/e6ad2020/EVA_Canteen/releases/download/v2.0.0/EVA-Canteen-v2.0.0-arm64-v8a.apk) |
+| **ARM32 (`armeabi-v7a`)** | Older 32-bit Android devices | [Download `EVA-Canteen-v2.0.0-armeabi-v7a.apk`](https://github.com/e6ad2020/EVA_Canteen/releases/download/v2.0.0/EVA-Canteen-v2.0.0-armeabi-v7a.apk) |
+| **Universal** | Any Android device (`arm64-v8a`, `armeabi-v7a`, `x86_64`) | [Download `EVA-Canteen-v2.0.0-universal.apk`](https://github.com/e6ad2020/EVA_Canteen/releases/download/v2.0.0/EVA-Canteen-v2.0.0-universal.apk) |
+
+> SHA-256 verification checksums are included in [`SHA256SUMS.txt`](https://github.com/e6ad2020/EVA_Canteen/releases/download/v2.0.0/SHA256SUMS.txt) on every release.
 
 ---
 
